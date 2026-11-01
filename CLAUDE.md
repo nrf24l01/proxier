@@ -27,6 +27,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Comments say why, not what. Match the surrounding code.
 - No error reporting service: errors are only logged (Sentry was removed on purpose; don't add it back unasked).
 
+## How to work
+
+- Run `/tikhon:unslop` on every change to `docs/**` or this file before committing.
+- When tests, lint, a build or a subagent's work fails, fix it and go on. Ask only when it can't be solved, and mention the fix in the summary.
+- Never run `caffeinate` or `pkill caffeinate`. The user keeps the display on with Amphetamine. When screenshots go black or WebDriver clicks stop landing, ask them to keep the display on.
+
 ## Commands
 
 ```sh
