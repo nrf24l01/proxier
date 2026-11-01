@@ -3,8 +3,12 @@ package health
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -15,6 +19,7 @@ import (
 	"github.com/tikhonp/proxier/internal/modules/servers/manifest"
 	"github.com/tikhonp/proxier/internal/modules/servers/proxy"
 	"github.com/tikhonp/proxier/internal/modules/servers/remote"
+	"github.com/tikhonp/proxier/internal/modules/servers/sealed"
 	"github.com/tikhonp/proxier/internal/modules/servers/stats"
 	"github.com/tikhonp/proxier/internal/modules/servers/store"
 	"github.com/tikhonp/proxier/internal/platform/db"
@@ -85,6 +90,9 @@ type Service struct {
 	EvalDelay time.Duration
 	// CheckHost returns the external checker's client; nil means the public one.
 	CheckHost func() *checkhost.Client
+	// Dial opens a connection way through a server's endpoint, for reaching
+	// check-host around a block; nil means proxy.Dialer.
+	Dial func(ctx context.Context, e endpoint.Endpoint) (proxy.DialFunc, io.Closer, error)
 	// HTTP is the client of the reference check.
 	HTTP *http.Client
 }
@@ -107,11 +115,62 @@ func (s *Service) seams() Seams {
 	return sm
 }
 
-func (s *Service) checkhostClient() *checkhost.Client {
+// checkhostClient is a client for one check. When check-host gets no answer
+// directly it goes through a healthy server, the checked one last: a blocked
+// server can't carry the question of whether it is blocked.
+func (s *Service) checkhostClient(checked int64) *checkhost.Client {
+	c := &checkhost.Client{}
 	if s.CheckHost != nil {
-		return s.CheckHost()
+		c = s.CheckHost()
 	}
-	return &checkhost.Client{}
+	if c.Via == nil {
+		c.Via = func(ctx context.Context) (checkhost.Route, error) { return s.routeAround(ctx, checked) }
+	}
+	return c
+}
+
+// routeAround opens a way to check-host through the first healthy active
+// server, by ID, with the checked one last.
+func (s *Service) routeAround(ctx context.Context, checked int64) (checkhost.Route, error) {
+	all, err := store.ListServers(ctx, s.DB.R)
+	if err != nil {
+		return checkhost.Route{}, err
+	}
+	sort.SliceStable(all, func(i, j int) bool {
+		if (all[i].ID == checked) != (all[j].ID == checked) {
+			return all[j].ID == checked
+		}
+		return all[i].ID < all[j].ID
+	})
+	for _, srv := range all {
+		if srv.State != "active" || srv.Retiring() || srv.Health != Healthy {
+			continue
+		}
+		rows, err := store.Endpoints(ctx, s.DB.R, srv.ID)
+		if err != nil {
+			return checkhost.Route{}, err
+		}
+		eps, err := sealed.OpenEndpoints(s.Vault, rows)
+		if err != nil {
+			return checkhost.Route{}, err
+		}
+		if len(eps) == 0 {
+			continue
+		}
+		dial := s.Dial
+		if dial == nil {
+			dial = func(ctx context.Context, e endpoint.Endpoint) (proxy.DialFunc, io.Closer, error) {
+				return proxy.Dialer(ctx, e, proxy.Options{})
+			}
+		}
+		d, closer, err := dial(ctx, eps[0])
+		if err != nil {
+			return checkhost.Route{}, fmt.Errorf("through %s: %w", srv.Name, err)
+		}
+		hc := &http.Client{Timeout: 15 * time.Second, Transport: &http.Transport{DialContext: d, TLSHandshakeTimeout: 10 * time.Second}}
+		return checkhost.Route{Name: srv.Name, HTTP: hc, Close: closer.Close}, nil
+	}
+	return checkhost.Route{}, errors.New("no server is healthy to go through")
 }
 
 func serverKey(id int64) string { return "server:" + strconv.FormatInt(id, 10) }

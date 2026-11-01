@@ -3,6 +3,9 @@ package checkhost_test
 import (
 	"context"
 	"errors"
+	"net"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -69,5 +72,72 @@ func TestNodeAnswers(t *testing.T) {
 		if res[i] != want[i] {
 			t.Errorf("node %d: got %+v want %+v", i, res[i], want[i])
 		}
+	}
+}
+
+// route reaches the fake whatever address is asked, and counts its dials.
+func route(f *checkhosttest.Fake, dials *int) checkhost.Route {
+	d := &net.Dialer{}
+	tr := &http.Transport{DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
+		*dials++
+		return d.DialContext(ctx, network, f.Addr())
+	}}
+	return checkhost.Route{Name: "nl-1", HTTP: &http.Client{Transport: tr}}
+}
+
+// TestBlockedServiceGoesAround: when the direct way gets no answer, the client
+// opens its route once and asks everything else of the check through it.
+func TestBlockedServiceGoesAround(t *testing.T) {
+	f := checkhosttest.New(t)
+	f.Block(true)
+	opened, dials := 0, 0
+	c := f.Client()
+	c.Via = func(context.Context) (checkhost.Route, error) { opened++; return route(f, &dials), nil }
+	f.PollsBeforeAnswer(2)
+	c.Wait = 2 * time.Second
+	res, err := c.CheckTCP(bg, "203.0.113.5:443", []string{"ru1.node.check-host.net"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res) != 1 || !res[0].OK || opened != 1 || c.Through() != "nl-1" || dials == 0 {
+		t.Fatalf("res %+v opened %d through %q dials %d", res, opened, c.Through(), dials)
+	}
+	if _, err := c.Nodes(bg); err != nil || opened != 1 {
+		t.Fatalf("nodes: %v, opened %d", err, opened)
+	}
+}
+
+// TestHTTPErrorDoesNotGoAround: an answer, even a refusal, means the direct
+// way works, so the route is not opened.
+func TestHTTPErrorDoesNotGoAround(t *testing.T) {
+	f := checkhosttest.New(t)
+	f.Fail(503)
+	c := f.Client()
+	c.Via = func(context.Context) (checkhost.Route, error) {
+		t.Fatal("opened a route")
+		return checkhost.Route{}, nil
+	}
+	if _, err := c.Nodes(bg); !errors.Is(err, checkhost.ErrUnavailable) || c.Through() != "" {
+		t.Fatalf("err %v through %q", err, c.Through())
+	}
+}
+
+// TestNoWayAround: without a route the error says both what failed and why
+// there is no way around it, and the client does not try again.
+func TestNoWayAround(t *testing.T) {
+	f := checkhosttest.New(t)
+	f.Block(true)
+	opened := 0
+	c := f.Client()
+	c.Via = func(context.Context) (checkhost.Route, error) {
+		opened++
+		return checkhost.Route{}, errors.New("no healthy server")
+	}
+	_, err := c.Nodes(bg)
+	if !errors.Is(err, checkhost.ErrUnavailable) || !strings.Contains(err.Error(), "TLS handshake timeout") || !strings.Contains(err.Error(), "no way around it: no healthy server") {
+		t.Fatalf("err %v", err)
+	}
+	if _, err := c.Nodes(bg); err == nil || opened != 1 {
+		t.Fatalf("err %v opened %d", err, opened)
 	}
 }

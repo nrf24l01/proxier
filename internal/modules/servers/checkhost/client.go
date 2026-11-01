@@ -39,12 +39,45 @@ type NodeResult struct {
 }
 
 // Client talks to check-host.net. Zero values use the defaults: the public
-// base URL, a 2 s poll and a 30 s wait.
+// base URL, a 2 s poll and a 30 s wait. A client serves one check: it
+// remembers the route it switched to, and Close ends that route.
 type Client struct {
 	BaseURL string
 	HTTP    *http.Client
 	Poll    time.Duration
 	Wait    time.Duration
+	// Via opens a way around the direct one. From home the service's own
+	// addresses can get no answer at all while its site works on others
+	// (docs/integrations/check-host.md#reaching-it). It is called at most
+	// once, by the first request that fails before any HTTP answer; that
+	// request and every later one go through the route. Nil: direct only.
+	Via func(ctx context.Context) (Route, error)
+
+	route    *Route
+	viaTried bool
+}
+
+// Route is a way to the service other than the direct one.
+type Route struct {
+	Name  string // what it goes through, for the log
+	HTTP  *http.Client
+	Close func() error
+}
+
+// Through names the route the client switched to; "" while it goes direct.
+func (c *Client) Through() string {
+	if c.route == nil {
+		return ""
+	}
+	return c.route.Name
+}
+
+// Close ends the route the client switched to, if any.
+func (c *Client) Close() error {
+	if c.route == nil || c.route.Close == nil {
+		return nil
+	}
+	return c.route.Close()
 }
 
 // ErrUnavailable wraps every failure to get an answer from the service.
@@ -76,18 +109,9 @@ func (c *Client) get(ctx context.Context, path string, q url.Values, into any) e
 	if len(q) > 0 {
 		u += "?" + q.Encode()
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	resp, err := c.send(ctx, u)
 	if err != nil {
 		return err
-	}
-	req.Header.Set("Accept", "application/json")
-	hc := c.HTTP
-	if hc == nil {
-		hc = &http.Client{Timeout: 15 * time.Second}
-	}
-	resp, err := hc.Do(req)
-	if err != nil {
-		return fmt.Errorf("%w: %v", ErrUnavailable, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
@@ -101,6 +125,49 @@ func (c *Client) get(ctx context.Context, path string, q url.Values, into any) e
 		return fmt.Errorf("%w: unreadable answer: %v", ErrUnavailable, err)
 	}
 	return nil
+}
+
+// send makes the request on the client's current route, switching to Via
+// when the direct way fails before an answer.
+func (c *Client) send(ctx context.Context, u string) (*http.Response, error) {
+	if c.route != nil {
+		resp, err := do(ctx, c.route.HTTP, u)
+		if err != nil {
+			return nil, fmt.Errorf("%w: through %s: %v", ErrUnavailable, c.route.Name, err)
+		}
+		return resp, nil
+	}
+	hc := c.HTTP
+	if hc == nil {
+		hc = &http.Client{Timeout: 15 * time.Second}
+	}
+	resp, err := do(ctx, hc, u)
+	if err == nil {
+		return resp, nil
+	}
+	if c.Via == nil || c.viaTried || ctx.Err() != nil {
+		return nil, fmt.Errorf("%w: %v", ErrUnavailable, err)
+	}
+	c.viaTried = true
+	r, verr := c.Via(ctx)
+	if verr != nil {
+		return nil, fmt.Errorf("%w: %v; no way around it: %v", ErrUnavailable, err, verr)
+	}
+	c.route = &r
+	resp, rerr := do(ctx, r.HTTP, u)
+	if rerr != nil {
+		return nil, fmt.Errorf("%w: %v; through %s: %v", ErrUnavailable, err, r.Name, rerr)
+	}
+	return resp, nil
+}
+
+func do(ctx context.Context, hc *http.Client, u string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+	return hc.Do(req)
 }
 
 // Nodes lists the nodes, sorted by name. The service answers

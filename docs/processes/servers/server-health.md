@@ -103,5 +103,7 @@ When a proxy test fails and no external result newer than 10 minutes exists, an 
 - **Pause checks** for 1 h → `paused` at once, no checks for an hour, then `unknown`, then a verdict from new results.
 - The proxy test fails, and the last external result is 25 min old → an on-demand external check starts, and the evaluation waits for it (at most 2 min).
 - check-host answers with an error → treated as "no external data", and the reason says "unconfirmed".
+- check-host's addresses get no answer from home → the check asks it through a healthy server, the checked server only when no other is healthy, and stores the nodes' answers as usual ([reaching it](../../integrations/check-host.md#reaching-it)).
+- check-host gets no answer from home and no server is healthy → one `unavailable` row that says so, and the reason says "unconfirmed".
 - A host key changed on the server → `unknown` with "host key changed", plus the security notification. No `down`.
 - A server with two endpoints where one fails and one passes → `degraded` ("Endpoint backup fails").

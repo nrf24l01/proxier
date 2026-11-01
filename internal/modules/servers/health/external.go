@@ -134,8 +134,10 @@ func (s *Service) externalStep(ctx context.Context, r *jobs.Run) error {
 		r.Log().Info("Skipped: %s", why)
 		return storeOne("skipped", why)
 	}
+	ch := s.checkhostClient(srv.ID)
+	defer func() { _ = ch.Close() }()
 	if len(cfg.NodesRU)+len(cfg.Abroad) == 0 {
-		if err := s.RefreshNodes(ctx, actor); err != nil {
+		if err := s.refreshNodes(ctx, ch, actor); err != nil {
 			r.Log().Warn("Could not list the nodes: %v", err)
 			return storeOne("unavailable", err.Error())
 		}
@@ -154,13 +156,16 @@ func (s *Service) externalStep(ctx context.Context, r *jobs.Run) error {
 	}
 	target := net.JoinHostPort(srv.IP, strconv.Itoa(port))
 	r.Log().Info("Asking %d nodes to connect to %s", len(nodes), target)
-	results, err := s.checkhostClient().CheckTCP(ctx, target, nodes)
+	results, err := ch.CheckTCP(ctx, target, nodes)
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
 	if err != nil {
 		r.Log().Warn("check-host: %v", err)
 		return storeOne("unavailable", err.Error())
+	}
+	if via := ch.Through(); via != "" {
+		r.Log().Info("check-host.net gave no answer directly; asked through %s", via)
 	}
 	known, _ := store.CheckhostNodes(ctx, s.DB.R)
 	countries := map[string]string{}
@@ -232,7 +237,13 @@ func (s *Service) externalRoundStep(ctx context.Context, r *jobs.Run) error {
 // RefreshNodes reads check-host's node list, stores it and, when the node
 // settings are empty, fills them with the defaults.
 func (s *Service) RefreshNodes(ctx context.Context, actor string) error {
-	nodes, err := s.checkhostClient().Nodes(ctx)
+	ch := s.checkhostClient(0)
+	defer func() { _ = ch.Close() }()
+	return s.refreshNodes(ctx, ch, actor)
+}
+
+func (s *Service) refreshNodes(ctx context.Context, ch *checkhost.Client, actor string) error {
+	nodes, err := ch.Nodes(ctx)
 	if err != nil {
 		return err
 	}

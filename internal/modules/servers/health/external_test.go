@@ -1,13 +1,19 @@
 package health_test
 
 import (
+	"context"
+	"io"
+	"net"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/tikhonp/proxier/internal/modules/servers/checkhost/checkhosttest"
+	"github.com/tikhonp/proxier/internal/modules/servers/endpoint"
 	"github.com/tikhonp/proxier/internal/modules/servers/health"
+	"github.com/tikhonp/proxier/internal/modules/servers/proxy"
 	"github.com/tikhonp/proxier/internal/modules/servers/store"
 	"github.com/tikhonp/proxier/internal/platform/jobs"
 )
@@ -179,5 +185,77 @@ func TestExternalBudget(t *testing.T) {
 	st, err := f.Svc.Load(bg, f.ID, f.Clock.Now())
 	if err != nil || st.External != nil {
 		t.Fatalf("external %v %v", st.External, err)
+	}
+}
+
+// dialFake makes routes around the block reach the fake check-host and
+// records which endpoint each went through.
+func (f *fixture) dialFake() *[]string {
+	var through []string
+	var mu sync.Mutex
+	f.Svc.Dial = func(_ context.Context, e endpoint.Endpoint) (proxy.DialFunc, io.Closer, error) {
+		mu.Lock()
+		through = append(through, e.Host)
+		mu.Unlock()
+		d := &net.Dialer{}
+		return func(ctx context.Context, network, _ string) (net.Conn, error) {
+			return d.DialContext(ctx, network, f.CH.Addr())
+		}, io.NopCloser(nil), nil
+	}
+	return &through
+}
+
+// TestBlockedCheckHostGoesThroughAServer: check-host's addresses get no
+// answer from home, so the external check asks it through a healthy server,
+// another than the one it checks, and stores the nodes' answers as usual.
+func TestBlockedCheckHostGoesThroughAServer(t *testing.T) {
+	f := newFixture(t)
+	f.setNodes()
+	f.Healthy()
+	other := f.AddServer("10.77.0.2")
+	if _, err := f.App.DB.W.Exec(`UPDATE servers_servers SET health = 'healthy' WHERE id = ?`, other); err != nil {
+		t.Fatal(err)
+	}
+	f.CH.Block(true)
+	through := f.dialFake()
+
+	f.queueExternal(health.ExternalScheduled)
+	f.Drain()
+
+	if len(f.CH.Checks()) != 1 || f.externalRows("unavailable") != 0 {
+		t.Fatalf("%d checks, %d unavailable", len(f.CH.Checks()), f.externalRows("unavailable"))
+	}
+	var ok int
+	if err := f.App.DB.R.Get(&ok, `SELECT count(*) FROM servers_check_results WHERE kind = 'external' AND server_id = ? AND ok = 1`, f.ID); err != nil {
+		t.Fatal(err)
+	}
+	if ok != 6 {
+		t.Fatalf("%d nodes connected, want 6", ok)
+	}
+	if want := f.Server(other).ProxyHostname; len(*through) != 1 || (*through)[0] != want {
+		t.Fatalf("went through %v, want %s", *through, want)
+	}
+	if log := f.Log(f.LastJob(health.JobExternal)); !strings.Contains(log, "asked through "+f.Server(other).Name) {
+		t.Fatalf("log:\n%s", log)
+	}
+}
+
+// TestBlockedCheckHostWithoutAHealthyServer: with no healthy server to go
+// through, the check is unavailable and says why.
+func TestBlockedCheckHostWithoutAHealthyServer(t *testing.T) {
+	f := newFixture(t)
+	f.setNodes()
+	f.CH.Block(true)
+	through := f.dialFake()
+
+	f.queueExternal(health.ExternalScheduled)
+	f.Drain()
+
+	var detail string
+	if err := f.App.DB.R.Get(&detail, `SELECT detail FROM servers_check_results WHERE kind = 'external' AND class = 'unavailable'`); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(detail, "no server is healthy to go through") || len(*through) != 0 || len(f.CH.Checks()) != 0 {
+		t.Fatalf("detail %s, through %v, %d checks", detail, *through, len(f.CH.Checks()))
 	}
 }

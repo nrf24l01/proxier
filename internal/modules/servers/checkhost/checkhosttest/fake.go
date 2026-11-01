@@ -2,8 +2,11 @@
 package checkhosttest
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -41,6 +44,7 @@ type Fake struct {
 	checks  []Check
 	reqs    map[string]*request
 	nextID  int
+	blocked bool
 }
 
 type request struct {
@@ -68,10 +72,32 @@ func New(t testing.TB) *Fake {
 	return f
 }
 
-// Client is a client for the fake with fast polling.
+// Client is a client for the fake with fast polling. Its direct way gets no
+// answer while the fake is Blocked.
 func (f *Fake) Client() *checkhost.Client {
-	return &checkhost.Client{BaseURL: f.URL, Poll: time.Millisecond, Wait: 60 * time.Millisecond}
+	dialer := &net.Dialer{}
+	direct := &http.Transport{DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+		f.mu.Lock()
+		blocked := f.blocked
+		f.mu.Unlock()
+		if blocked {
+			return nil, errors.New("net/http: TLS handshake timeout")
+		}
+		return dialer.DialContext(ctx, network, addr)
+	}}
+	return &checkhost.Client{BaseURL: f.URL, HTTP: &http.Client{Transport: direct}, Poll: time.Millisecond, Wait: 60 * time.Millisecond}
 }
+
+// Block makes the direct way of Client get no answer, as the service's
+// addresses do from home; false lifts it. Other ways still reach the fake.
+func (f *Fake) Block(on bool) {
+	f.mu.Lock()
+	f.blocked = on
+	f.mu.Unlock()
+}
+
+// Addr is the fake's listening address, where a route around the block dials.
+func (f *Fake) Addr() string { return strings.TrimPrefix(f.URL, "http://") }
 
 // SetNodes replaces the node list.
 func (f *Fake) SetNodes(n ...checkhost.Node) {
