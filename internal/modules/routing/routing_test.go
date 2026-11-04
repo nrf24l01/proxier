@@ -41,11 +41,12 @@ func TestModuleIsWired(t *testing.T) {
 			}
 		}
 	}
-	if n != len(routing.Events) || n != 32 {
+	if n != len(routing.Events) || n != 34 {
 		t.Errorf("%d events declared, module has %d", n, len(routing.Events))
 	}
 	for _, name := range []string{"routing.snapshot_rejected", "routing.refresh_failing", "routing.refresh_digest", "routing.catalog_refresh_failed",
-		"routing.router_sync_failed", "routing.router_recovered", "routing.drift_detected", "routing.unmanaged_tags_found"} {
+		"routing.router_sync_failed", "routing.router_recovered", "routing.drift_detected", "routing.unmanaged_tags_found",
+		"routing.shadowrocket_agent_session_opened"} {
 		if !notifying[name] {
 			t.Errorf("%s must notify by default", name)
 		}

@@ -121,6 +121,7 @@ Lists, routers, Shadowrocket configs, imports and discovery runs have an **owner
 | **Shadowrocket config** | owner, name (also the file name), routing list, rule policy (default `PROXY`), token 🔒 + HMAC, enabled, created, last fetch (time, user agent) | |
 | **Base config version** | config, number, content, note, created | |
 | **Shadowrocket fetch** | config, time, IP, user agent | Retention 90 days. |
+| **Agent session** (Shadowrocket) | config, token lookup (HMAC; the token itself is never stored), problem, agent, opened, expires, closed and why (expired / revoked / replaced), saves, request counters | At most one open per config. Deleted with its config. |
 | **Import** | owner, state (preview / running / done / failed), routing list, rows (JSON), ignored keys, fetched base config and its URL, Shadowrocket choice and outcome (JSON), service lists that failed (JSON), job, times | Never the imported file's text. |
 | **Discovery run** | owner, input, URL visited, host, registrable domain, via (direct / server / auto), server (ID from servers, and its name), depth, state, job, title, suggestions (JSON), visits (JSON), capped, error, created, finished | Retention 30 days; screenshots are files under the data directory. |
 | **Discovered host** | run, hostname, registrable domain, class (first-party / CDN / tracker / third-party / IP literal), requests, failure on the direct visit, the visits that saw it | |

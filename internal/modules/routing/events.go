@@ -26,6 +26,8 @@ var Events = []events.Type{
 	{Name: "routing.shadowrocket_created", Description: "A Shadowrocket config was created."},
 	{Name: "routing.shadowrocket_updated", Description: "A Shadowrocket config changed."},
 	{Name: "routing.shadowrocket_deleted", Description: "A Shadowrocket config was deleted."},
+	{Name: "routing.shadowrocket_agent_session_opened", Notify: true, Emoji: "🤖", Description: "A config's base config was handed to an agent: anyone holding the prompt can change it until the session ends."},
+	{Name: "routing.shadowrocket_agent_session_closed", Description: "An agent session on a base config ended (expired, revoked, replaced)."},
 	{Name: "routing.router_added", Description: "A router was added."},
 	{Name: "routing.router_updated", Description: "A router's name, connection, names or list changed."},
 	{Name: "routing.router_connected", Description: "A router connected for the first time."},

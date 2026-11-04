@@ -122,8 +122,10 @@ Lists in payloads are one comma-joined string.
 | `routing.list_deleted` | routing list | name, moved (the targets moved to another list, comma-joined) | off | Each moved router records `router_updated{changes: list, from, to}`, each config `shadowrocket_updated{changes: list, from, to}`. |
 | `routing.list_refused_server_hostname` | routing list | domain, server, hostname, service | off | Shown in the UI at once; one per list the refused change would have broken, recorded after its transaction rolled back. A refresh that brings such a name records nothing (the list shows a warning while it lasts). |
 | `routing.shadowrocket_created` | Shadowrocket config | name, list, policy | off | Also by the mtvpn import |
-| `routing.shadowrocket_updated` | Shadowrocket config | changes: `base` (+ version), `list` (+ from, to), `policy` (+ policy_from, policy), `list, policy`, `token`, `disabled`, `enabled` | off | Never the token. An edit that changes nothing records nothing. |
-| `routing.shadowrocket_deleted` | Shadowrocket config | name, list | off | |
+| `routing.shadowrocket_updated` | Shadowrocket config | changes: `base` (+ version), `list` (+ from, to), `policy` (+ policy_from, policy), `list, policy`, `token`, `disabled`, `enabled` | off | Never the token. An edit that changes nothing records nothing. A base saved by an agent has actor `agent:<session id>`. |
+| `routing.shadowrocket_deleted` | Shadowrocket config | name, list | off | Its agent sessions go with it, without `shadowrocket_agent_session_closed`. |
+| `routing.shadowrocket_agent_session_opened` | Shadowrocket config | expires_at, agent, session | **on** 🤖 | "An agent can change the base config of iphone". Anyone holding the copied prompt can do so, and the phone gets each save. |
+| `routing.shadowrocket_agent_session_closed` | Shadowrocket config | reason (expired / revoked / replaced), saves, session | off | |
 | `routing.router_added` | router | list, host, by (`routerscripts` when a router script registered it, else the actor) | off | |
 | `routing.router_updated` | router | changes (of name, connection, names, list), from, to (the old and new name on a rename, list names on a list switch) | off | |
 | `routing.router_connected` | router | version, board | off | First successful connection: a passing Test connection (saved with it, or of a saved router that never connected) or a sync's connect step; ends "awaiting setup". An awaiting router's probe records it too and queues the initial sync. |

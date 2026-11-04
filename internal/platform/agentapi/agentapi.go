@@ -1,7 +1,8 @@
 // Package agentapi is what every agent hand-off shares: servers hands a
-// template draft to a coding agent, routerscripts a script draft. Proxier never
-// runs the agent. A module gives the admin a prompt with a short-lived bearer
-// token that reaches one draft through the module's part of /agent/v1. Each
+// template draft to a coding agent, routerscripts a script draft, routing a
+// Shadowrocket base config. Proxier never runs the agent. A module gives the
+// member a prompt with a short-lived bearer token that reaches one draft or
+// base config through the module's part of /agent/v1. Each
 // module keeps its own sessions; this package holds the token, the limits of a
 // session, the answers every API gives, and the one-time hand-off form.
 package agentapi

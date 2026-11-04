@@ -265,7 +265,7 @@ func TestConfigPageHoldsTogether(t *testing.T) {
 	ua := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.0.1 Safari/605.1.15"
 	h.Site.Do(sitetest.Req{Path: "/r/" + token + "/iphone.conf", Addr: "[2001:db8:85a3::8a2e:370:7334]:5000", Header: http.Header{"User-Agent": {ua}}})
 	h.Site.Do(sitetest.Req{Path: "/r/" + token + "/iphone.conf", Addr: "198.51.100.23:5000", Header: http.Header{"User-Agent": {""}}})
-	if _, _, err := h.Mod.Shadowrocket.SaveBase(bg(), 1, access.All, srBase+"\n", "imported from mtvpn", "admin"); err != nil {
+	if _, _, err := h.Mod.Shadowrocket.SaveBase(bg(), 1, access.All, 0, srBase+"\n", "imported from mtvpn", "admin"); err != nil {
 		t.Fatal(err)
 	}
 	page := tight(h.Login.Get("/routing/shadowrocket/1").Body.String())

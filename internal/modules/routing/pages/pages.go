@@ -18,9 +18,11 @@ import (
 	"github.com/tikhonp/proxier/internal/modules/routing/selector"
 	"github.com/tikhonp/proxier/internal/modules/routing/services"
 	"github.com/tikhonp/proxier/internal/modules/routing/shadowrocket"
+	sragent "github.com/tikhonp/proxier/internal/modules/routing/shadowrocket/agent"
 	"github.com/tikhonp/proxier/internal/modules/routing/sources"
 	"github.com/tikhonp/proxier/internal/modules/routing/store"
 	"github.com/tikhonp/proxier/internal/platform/access"
+	"github.com/tikhonp/proxier/internal/platform/agentapi"
 	"github.com/tikhonp/proxier/internal/platform/db"
 	"github.com/tikhonp/proxier/internal/platform/i18n"
 	"github.com/tikhonp/proxier/internal/platform/jobs"
@@ -37,8 +39,10 @@ type Deps struct {
 	Refresh      *refresh.Service
 	Catalog      *catalog.Service
 	Shadowrocket *shadowrocket.Service
-	Import       *mtvpn.Service
-	Routers      *routers.Service
+	// ShadowrocketAgent hands a config's base config to a coding agent.
+	ShadowrocketAgent *sragent.Service
+	Import            *mtvpn.Service
+	Routers           *routers.Service
 	// SSH shows Proxier's key and the pinned fingerprints.
 	SSH       *sshx.SSH
 	Discovery *discovery.Service
@@ -52,6 +56,7 @@ type handler struct {
 	Deps
 	shell         func(c *echo.Context, title, path string) ui.Shell
 	settingsPages func() []ui.SettingsPage
+	forms         agentapi.Forms // hand-off forms already posted (shadowrocket_agent.go)
 }
 
 // Register adds the module's routes.

@@ -89,11 +89,19 @@ templ srFormPage(s ui.Shell, v srFormView, title string) {
 					<button type="submit" form="sr-form" class="pc-btn pc-pri" data-action="shadowrocket.create" data-code-save>{ i18n.T(ctx, "shadowrocket.create") }</button>
 					<a href={ templ.SafeURL(srPath) } class="pc-btn pc-ghost" data-cancel>{ i18n.T(ctx, "ui.cancel") }</a>
 				} else {
-					<button type="submit" form="sr-form" class="pc-btn pc-pri" data-action="shadowrocket.save" data-code-save>{ i18n.T(ctx, "shadowrocket.save") }</button>
+					<button type="submit" form="sr-form" class="pc-btn pc-pri" data-action="shadowrocket.save" data-code-save disabled?={ v.Stale }>{ i18n.T(ctx, "shadowrocket.save") }</button>
 					<a href={ templ.SafeURL(srHref(v.C.ID)) } class="pc-btn pc-ghost" data-cancel>{ i18n.T(ctx, "ui.cancel") }</a>
 				}
 			</div>
 		</div>
+		if v.Agent != nil {
+			@srAgentBand(v.Agent)
+		}
+		if v.Stale {
+			@srBaseChangedBand(v.C.ID)
+		} else if v.Agent != nil {
+			@srBasePoller(v.C.ID)
+		}
 		<form
 			id="sr-form"
 			method="post"
@@ -107,6 +115,9 @@ templ srFormPage(s ui.Shell, v srFormView, title string) {
 		>
 			<input type="hidden" name="_csrf" value={ ui.CSRF(ctx) }/>
 			<input type="hidden" name="config" value={ i64(v.C.ID) }/>
+			if v.C.ID != 0 {
+				<input type="hidden" id="ed-revision" name="version" value={ strconv.Itoa(v.Version) }/>
+			}
 			if v.C.ID == 0 {
 				<div class="sr-strip top">
 					<div class="field">
@@ -229,6 +240,7 @@ templ srPage(s ui.Shell, v srView) {
 			<div class="actions">
 				if v.CanChange {
 					@ui.ActionButton(ui.Action{ID: "shadowrocket.edit_base", Label: "shadowrocket.edit_base", Method: "GET", Href: srHref(v.C.ID) + "/base", Key: "e", Kind: ui.Primary})
+					@ui.ActionButton(ui.Action{ID: "sr.handoff", Label: "agent.handoff", Method: "GET", Href: srAgentHref(v.C.ID)})
 				}
 				<button type="button" class="pc-btn" data-copy={ v.URL } data-action="shadowrocket.copy" data-key="y">{ i18n.T(ctx, "shadowrocket.url.copy") }</button>
 			</div>
@@ -237,6 +249,9 @@ templ srPage(s ui.Shell, v srView) {
 			@ui.Band(v.BandKind) {
 				{ v.Band }
 			}
+		}
+		if v.Agent != nil {
+			@srAgentBand(v.Agent)
 		}
 		@ui.Area(i18n.T(ctx, "shadowrocket.area.url"), "") {
 			<div class="area-body stacked">

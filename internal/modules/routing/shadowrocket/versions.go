@@ -14,20 +14,32 @@ import (
 // ErrNoVersion: the config has no such base version.
 var ErrNoVersion = errors.New("shadowrocket: no such version")
 
+// ErrBaseChanged: a save was based on a version that is no longer the
+// current one (an agent or another tab saved meanwhile).
+var ErrBaseChanged = errors.New("shadowrocket: the base config changed")
+
 // SaveBase makes a new base version when content differs from the current
-// one. Errors are store.FieldErrors (base, note); an unchanged base makes
-// no version and records nothing.
-func (s *Service) SaveBase(ctx context.Context, id int64, scope access.Scope, content, note, actor string) (int, bool, error) {
+// one. basedOn is the version the editor opened (0: no check); another
+// current version is ErrBaseChanged. Errors are store.FieldErrors (base,
+// note); an unchanged base makes no version and records nothing.
+func (s *Service) SaveBase(ctx context.Context, id int64, scope access.Scope, basedOn int, content, note, actor string) (int, bool, error) {
+	return s.SaveBaseIn(ctx, id, scope, basedOn, content, note, actor, nil)
+}
+
+// SaveBaseIn is SaveBase that also runs in(tx, changed) in its transaction
+// before it commits: the agent API checks its session there and counts the
+// save. An error from in writes nothing.
+func (s *Service) SaveBaseIn(ctx context.Context, id int64, scope access.Scope, basedOn int, content, note, actor string, in func(tx *sqlx.Tx, changed bool) error) (int, bool, error) {
 	fe := store.FieldErrors{}
 	checkBase(content, fe)
 	note = checkNote(note, fe)
 	if len(fe) > 0 {
 		return 0, false, fe
 	}
-	return s.newVersion(ctx, id, scope, content, note, actor)
+	return s.newVersion(ctx, id, scope, basedOn, content, note, actor, in)
 }
 
-func (s *Service) newVersion(ctx context.Context, id int64, scope access.Scope, content, note, actor string) (int, bool, error) {
+func (s *Service) newVersion(ctx context.Context, id int64, scope access.Scope, basedOn int, content, note, actor string, in func(tx *sqlx.Tx, changed bool) error) (int, bool, error) {
 	var version int
 	changed := false
 	err := s.change(ctx, id, scope, func(tx *sqlx.Tx, _ store.Shadowrocket) error {
@@ -35,19 +47,30 @@ func (s *Service) newVersion(ctx context.Context, id int64, scope access.Scope, 
 		if err != nil {
 			return err
 		}
+		if basedOn > 0 && cur.Number != basedOn {
+			return ErrBaseChanged
+		}
 		version = cur.Number
-		if cur.Content == content {
-			return nil
+		if cur.Content != content {
+			version, changed = cur.Number+1, true
+			if err := store.InsertShadowrocketVersion(ctx, tx, id, store.ShadowrocketVersion{
+				Number: version, Content: content, Note: note, CreatedAt: db.At(s.d.Now()),
+			}); err != nil {
+				return err
+			}
+			if err := s.record(ctx, tx, "routing.shadowrocket_updated", id, actor, map[string]any{"changes": "base", "version": version}); err != nil {
+				return err
+			}
 		}
-		version, changed = cur.Number+1, true
-		if err := store.InsertShadowrocketVersion(ctx, tx, id, store.ShadowrocketVersion{
-			Number: version, Content: content, Note: note, CreatedAt: db.At(s.d.Now()),
-		}); err != nil {
-			return err
+		if in != nil {
+			return in(tx, changed)
 		}
-		return s.record(ctx, tx, "routing.shadowrocket_updated", id, actor, map[string]any{"changes": "base", "version": version})
+		return nil
 	})
-	return version, changed, err
+	if err != nil {
+		return 0, false, err
+	}
+	return version, changed, nil
 }
 
 // Restore makes a new version with version number's content (note
@@ -57,7 +80,7 @@ func (s *Service) Restore(ctx context.Context, id int64, scope access.Scope, num
 	if err != nil {
 		return 0, err
 	}
-	n, _, err := s.newVersion(ctx, id, scope, v.Content, "restored from v"+strconv.Itoa(number), actor)
+	n, _, err := s.newVersion(ctx, id, scope, 0, v.Content, "restored from v"+strconv.Itoa(number), actor, nil)
 	return n, err
 }
 

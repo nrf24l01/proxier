@@ -69,7 +69,7 @@ func TestRoutingMigrationsRoundTrip(t *testing.T) {
 	if err := db.MigrateUp(ctx, d, dbtest.Discard, srcs...); err != nil {
 		t.Fatal(err)
 	}
-	if n := count(t, d, `SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name LIKE 'routing\_%' ESCAPE '\' AND name <> 'routing_goose_db_version'`); n != 20 {
+	if n := count(t, d, `SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name LIKE 'routing\_%' ESCAPE '\' AND name <> 'routing_goose_db_version'`); n != 21 {
 		t.Fatalf("%d tables after up", n)
 	}
 	var name string
@@ -84,6 +84,12 @@ func TestRoutingMigrationsRoundTrip(t *testing.T) {
 	}
 	if n := count(t, d, `SELECT count(*) FROM sqlite_master m, pragma_table_info(m.name) p WHERE m.type = 'table' AND p.name = 'owner_id'`); n != 7 {
 		t.Fatalf("00003: %d tables with an owner", n)
+	}
+	if err := db.MigrateDown(ctx, d, dbtest.Discard, source{}); err != nil {
+		t.Fatalf("down 00004: %v", err)
+	}
+	if n := count(t, d, `SELECT count(*) FROM sqlite_master WHERE name = 'routing_shadowrocket_agent_sessions'`); n != 0 {
+		t.Fatalf("agent sessions after down: %d", n)
 	}
 	if err := db.MigrateDown(ctx, d, dbtest.Discard, source{}); err != nil {
 		t.Fatalf("down 00003: %v", err)
@@ -127,6 +133,23 @@ func TestTableChecks(t *testing.T) {
 	mustExec(t, d, `UPDATE routing_snapshots SET dismissed_at = ? WHERE status = 'rejected'`, now)
 }
 
+func TestShadowrocketAgentSessionChecks(t *testing.T) {
+	d := open(t)
+	mustExec(t, d, `INSERT INTO routing_shadowrocket (id, name, list_id, token, token_lookup, created_at) VALUES (1, 'phone', 1, X'00', X'01', ?)`, now)
+	const insert = `INSERT INTO routing_shadowrocket_agent_sessions (config_id, token_lookup, problem, agent, opened_at, expires_at) VALUES (1, ?, 'fix it', ?, ?, ?)`
+	mustExec(t, d, insert, []byte{1}, "claude-code", now, now)
+	mustFail(t, d, "a second open session", insert, []byte{2}, "codex", now, now)
+	mustFail(t, d, "a closed session without a reason", `UPDATE routing_shadowrocket_agent_sessions SET closed_at = ?`, now)
+	mustFail(t, d, "an unknown reason", `UPDATE routing_shadowrocket_agent_sessions SET closed_at = ?, close_reason = 'published'`, now)
+	mustExec(t, d, `UPDATE routing_shadowrocket_agent_sessions SET closed_at = ?, close_reason = 'replaced'`, now)
+	mustFail(t, d, "an unknown agent", insert, []byte{2}, "copilot", now, now)
+	mustExec(t, d, insert, []byte{2}, "codex", now, now)
+	mustExec(t, d, `DELETE FROM routing_shadowrocket WHERE id = 1`)
+	if n := count(t, d, `SELECT count(*) FROM routing_shadowrocket_agent_sessions`); n != 0 {
+		t.Fatalf("sessions of a deleted config: %d", n)
+	}
+}
+
 func TestDeletesFollowOwnership(t *testing.T) {
 	d := open(t)
 	mustExec(t, d, insertSnapshot, 1, "accepted", "", now)
@@ -154,8 +177,11 @@ func TestDeletesFollowOwnership(t *testing.T) {
 func TestThingsFromBeforeMembersBelongToMemberOne(t *testing.T) {
 	ctx := context.Background()
 	d := open(t)
-	if err := db.MigrateDown(ctx, d, dbtest.Discard, source{}); err != nil {
-		t.Fatal(err)
+	// down 00004 and 00003: the schema from before members
+	for range 2 {
+		if err := db.MigrateDown(ctx, d, dbtest.Discard, source{}); err != nil {
+			t.Fatal(err)
+		}
 	}
 	mustExec(t, d, `INSERT INTO routing_services (id, tag, source, selector, created_at) VALUES (2, 'mine', 'custom', '', ?)`, now)
 	mustExec(t, d, `INSERT INTO routing_shadowrocket (name, list_id, token, token_lookup, created_at) VALUES ('phone', 1, X'00', X'01', ?)`, now)

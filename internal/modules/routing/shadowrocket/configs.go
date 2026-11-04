@@ -458,11 +458,29 @@ func (s *Service) render(ctx context.Context, r store.Shadowrocket) ([]byte, err
 	if err != nil {
 		return nil, err
 	}
+	return s.renderBase(ctx, r, v.Content)
+}
+
+func (s *Service) renderBase(ctx context.Context, r store.Shadowrocket, base string) ([]byte, error) {
 	blocks, err := s.blocks(ctx, r.ListID)
 	if err != nil {
 		return nil, err
 	}
-	return Render([]byte(v.Content), r.List, blocks, r.Policy, s.d.Now())
+	return Render([]byte(base), r.List, blocks, r.Policy, s.d.Now())
+}
+
+// OutputOf is what a fetch of the config would answer if its base were
+// base: the agent API renders the base with its secrets masked. Rendering
+// it records nothing.
+func (s *Service) OutputOf(ctx context.Context, id int64, base string) ([]byte, error) {
+	r, err := store.GetShadowrocket(ctx, s.d.DB.R, id, access.All)
+	if errors.Is(err, store.ErrNotFound) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return s.renderBase(ctx, r, base)
 }
 
 // Interactive bounds Import from URL inside a request.

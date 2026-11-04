@@ -62,8 +62,9 @@ func MemberActors(id int64) []string {
 // JobActor is the actor of an event recorded by job id.
 func JobActor(id int64) string { return fmt.Sprintf("job:%d", id) }
 
-// AgentActor is the actor of an event recorded for a template agent session:
-// the coding agent the admin handed a draft to (servers module).
+// AgentActor is the actor of an event recorded for an agent session: the
+// coding agent a member handed a draft or a base config to. Session IDs are
+// each module's own.
 func AgentActor(sessionID int64) string { return fmt.Sprintf("agent:%d", sessionID) }
 
 // Subject is what an event is about, e.g. {"server", "12"}. The zero Subject

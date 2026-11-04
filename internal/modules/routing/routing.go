@@ -25,6 +25,7 @@ import (
 	"github.com/tikhonp/proxier/internal/modules/routing/routers"
 	"github.com/tikhonp/proxier/internal/modules/routing/services"
 	"github.com/tikhonp/proxier/internal/modules/routing/shadowrocket"
+	sragent "github.com/tikhonp/proxier/internal/modules/routing/shadowrocket/agent"
 	"github.com/tikhonp/proxier/internal/modules/routing/snapshot"
 	"github.com/tikhonp/proxier/internal/modules/routing/sources"
 	"github.com/tikhonp/proxier/internal/modules/routing/store"
@@ -59,9 +60,11 @@ type Module struct {
 	Lists    *lists.Service
 	Refresh  *refresh.Service
 	Catalog  *catalog.Service
-	// Shadowrocket hosts the configs; Import is the mtvpn import.
-	Shadowrocket *shadowrocket.Service
-	Import       *mtvpn.Service
+	// Shadowrocket hosts the configs; ShadowrocketAgent hands their base
+	// configs to coding agents; Import is the mtvpn import.
+	Shadowrocket      *shadowrocket.Service
+	ShadowrocketAgent *sragent.Service
+	Import            *mtvpn.Service
 	// Routers keeps routers in sync.
 	Routers *routers.Service
 	// Discovery finds a website's domains. Browser is the Chromium it
@@ -124,6 +127,9 @@ func (m *Module) Init(d module.Deps) error {
 	m.Shadowrocket = shadowrocket.NewService(shadowrocket.Deps{
 		DB: d.DB, Vault: d.Vault, Events: d.Events, Lists: m.Lists, Fetch: interactiveFetch, BaseURL: d.Cfg.BaseURL, Now: now, Log: d.Log,
 	})
+	m.ShadowrocketAgent = sragent.New(sragent.Deps{
+		DB: d.DB, Events: d.Events, Vault: d.Vault, Shadowrocket: m.Shadowrocket, BaseURL: d.Cfg.BaseURL.String(), Now: now, Log: d.Log,
+	})
 	m.Import = mtvpn.New(mtvpn.Deps{
 		DB: d.DB, Events: d.Events, Jobs: d.Jobs, Services: m.Services, Lists: m.Lists, Shadowrocket: m.Shadowrocket,
 		Resolver: &sources.Resolver{Endpoints: m.Endpoints, Fetch: jobFetch}, Fetch: interactiveFetch, Now: now, Log: d.Log,
@@ -151,10 +157,11 @@ func (m *Module) Init(d module.Deps) error {
 }
 
 // JobTypes: the refresh, the daily round, the catalog refresh, the import,
-// the routers' jobs, discovery and the prune job.
+// the routers' jobs, discovery, the agent sessions' expiry and the prune job.
 func (m *Module) JobTypes() []jobs.Type {
 	out := append(m.Refresh.JobTypes(), m.Catalog.JobTypes()...)
 	out = append(out, m.Import.JobTypes()...)
+	out = append(out, m.ShadowrocketAgent.JobTypes()...)
 	out = append(out, m.Routers.JobTypes()...)
 	out = append(out, m.Discovery.JobTypes()...)
 	return append(out, m.pruneType())
@@ -162,9 +169,11 @@ func (m *Module) JobTypes() []jobs.Type {
 
 // Schedules: the round at routing.refresh_at, the catalog at
 // routing.catalog_at, the drift round every routing.drift_every, the probe
-// round every 10 minutes, the prune job at 05:10.
+// round every 10 minutes, the agent sessions' expiry every 5, the prune job
+// at 05:10.
 func (m *Module) Schedules() []jobs.Schedule {
 	out := append(m.Refresh.Schedules(), m.Catalog.Schedules()...)
+	out = append(out, m.ShadowrocketAgent.Schedule())
 	out = append(out, m.Routers.Schedules()...)
 	return append(out, m.pruneSchedule())
 }
@@ -188,12 +197,14 @@ func (*Module) Messages() i18n.Messages { return messages }
 func (m *Module) Routes(r web.Routes) {
 	pages.Register(r, m.pageDeps())
 	m.Shadowrocket.Register(r.Public)
+	// The agent API answers to a bearer token only: a public route.
+	m.ShadowrocketAgent.Routes(r.Public)
 }
 
 func (m *Module) pageDeps() pages.Deps {
 	return pages.Deps{
 		Services: m.Services, Lists: m.Lists, Refresh: m.Refresh, Catalog: m.Catalog, Jobs: m.deps.Jobs, Settings: m.deps.Settings,
-		Shadowrocket: m.Shadowrocket, Import: m.Import, Routers: m.Routers, SSH: m.deps.SSH, Discovery: m.Discovery,
+		Shadowrocket: m.Shadowrocket, ShadowrocketAgent: m.ShadowrocketAgent, Import: m.Import, Routers: m.Routers, SSH: m.deps.SSH, Discovery: m.Discovery,
 		DB: m.deps.DB, Now: func() time.Time { return m.Now() },
 	}
 }

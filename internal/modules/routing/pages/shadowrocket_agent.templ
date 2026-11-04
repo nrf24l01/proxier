@@ -1,0 +1,165 @@
+package pages
+
+import (
+	"github.com/tikhonp/proxier/internal/platform/agentapi"
+	"github.com/tikhonp/proxier/internal/platform/i18n"
+	"github.com/tikhonp/proxier/internal/platform/ui"
+	"strconv"
+)
+
+templ srAgentFormPage(s ui.Shell, v srAgentFormView) {
+	@ui.Layout(s) {
+		<div class="titleblock">
+			<div class="head">
+				@srCrumbs(v.C.ID, v.C.Name, i18n.T(ctx, "agent.handoff.short"))
+				<h1>{ i18n.T(ctx, "shadowrocket.agent.title") }</h1>
+				<p class="subtle">{ v.C.File() } · { i18n.T(ctx, "shadowrocket.agent.line", i18n.Args{"version": v.Version}) } · { i18n.T(ctx, "agent.for_whom") }</p>
+			</div>
+		</div>
+		if v.Error != "" {
+			@ui.Alert("love", "alert") {
+				{ v.Error }
+			}
+		}
+		<form method="post" action={ templ.SafeURL(srAgentHref(v.C.ID)) } class="form agent-form">
+			<input type="hidden" name="_csrf" value={ ui.CSRF(ctx) }/>
+			<input type="hidden" name="form_id" value={ v.FormID }/>
+			<div class="field">
+				<label for="ag-problem">{ i18n.T(ctx, "agent.problem") }</label>
+				<textarea id="ag-problem" name="problem" class="pc-inp" rows="5" required maxlength={ strconv.Itoa(agentapi.MaxProblemRunes) } aria-invalid?={ v.Error != "" && v.Problem == "" }>{ v.Problem }</textarea>
+				<p class="help">{ i18n.T(ctx, "shadowrocket.agent.problem.help") }</p>
+			</div>
+			<fieldset class="fs">
+				<legend>{ i18n.T(ctx, "agent.context") }</legend>
+				<p class="help">{ i18n.T(ctx, "shadowrocket.agent.ctx") }</p>
+				if v.Hidden != "" {
+					<p class="help">{ i18n.T(ctx, "shadowrocket.agent.hidden", i18n.Args{"names": v.Hidden}) }</p>
+				}
+			</fieldset>
+			<fieldset class="pause-opts">
+				<legend class="sm subtle">{ i18n.T(ctx, "agent.agent") }</legend>
+				for _, a := range agentapi.Agents {
+					<label class="pc-opt"><input type="radio" name="agent" value={ a } checked?={ v.Agent == a }/> { i18n.T(ctx, "agent.agent."+a) }</label>
+				}
+				<p class="help">{ i18n.T(ctx, "agent.agent.note") }</p>
+			</fieldset>
+			<fieldset class="pause-opts">
+				<legend class="sm subtle">{ i18n.T(ctx, "agent.for") }</legend>
+				for _, m := range agentapi.FormDurations {
+					<label class="pc-opt"><input type="radio" name="for" value={ m } checked?={ v.For == m }/> { i18n.T(ctx, "agent.for."+m) }</label>
+				}
+			</fieldset>
+			<div class="agent-scope">
+				<div>
+					<p class="pc-label">{ i18n.T(ctx, "agent.can") }</p>
+					<ul class="plain">
+						<li>{ i18n.T(ctx, "shadowrocket.agent.can.1") }</li>
+						<li>{ i18n.T(ctx, "shadowrocket.agent.can.2") }</li>
+						<li>{ i18n.T(ctx, "shadowrocket.agent.can.3") }</li>
+					</ul>
+				</div>
+				<div>
+					<p class="pc-label">{ i18n.T(ctx, "agent.cant") }</p>
+					<ul class="plain">
+						<li>{ i18n.T(ctx, "shadowrocket.agent.cant.1") }</li>
+						<li>{ i18n.T(ctx, "shadowrocket.agent.cant.2") }</li>
+						<li>{ i18n.T(ctx, "shadowrocket.agent.cant.3") }</li>
+					</ul>
+				</div>
+			</div>
+			@ui.Alert("gold", "status") {
+				{ i18n.T(ctx, "shadowrocket.agent.live") }
+			}
+			<div class="form-actions">
+				<button type="submit" class="pc-btn pc-pri" data-action="sr.agent_create">{ i18n.T(ctx, "agent.create") }</button>
+				<a href={ templ.SafeURL(srHref(v.C.ID)) } class="pc-btn pc-ghost" data-cancel>{ i18n.T(ctx, "ui.cancel") }</a>
+			</div>
+		</form>
+	}
+}
+
+templ srAgentResultPage(s ui.Shell, v srAgentResultView) {
+	@ui.Layout(s) {
+		<div class="titleblock">
+			<div class="head">
+				@srCrumbs(v.C.ID, v.C.Name, i18n.T(ctx, "agent.handoff.short"))
+				<h1>{ i18n.T(ctx, "shadowrocket.agent.title") }</h1>
+			</div>
+		</div>
+		if v.Repeated {
+			@ui.Band("gold") {
+				<span class="gold bold">{ i18n.T(ctx, "agent.repeated.title") }</span>
+				<span class="subtle">{ i18n.T(ctx, "agent.repeated.body") }</span>
+				<span class="flex1"></span>
+				<a href={ templ.SafeURL(srAgentHref(v.C.ID)) } class="pc-btn pc-sm" data-action="sr.agent_again">{ i18n.T(ctx, "agent.repeated.again") }</a>
+			}
+		} else {
+			<section class="area agent-out" aria-label={ i18n.T(ctx, "agent.prompt") }>
+				<div class="pc-title">
+					<h2>{ i18n.T(ctx, "agent.prompt") }</h2>
+					<span class="note">{ i18n.T(ctx, "agent.prompt.note", i18n.Args{"size": v.Size}) }</span>
+				</div>
+				<pre class="agent-prompt" tabindex="0">{ v.Masked }</pre>
+				@ui.Alert("gold", "status") {
+					<p>
+						<b>{ i18n.T(ctx, "agent.secret.warn") }</b>
+						{ i18n.T(ctx, "shadowrocket.agent.secret.expires") + " " }
+						@ui.TimeThen(v.ExpiresAt, ". "+i18n.T(ctx, "shadowrocket.agent.secret.revoke"))
+					</p>
+				}
+				<div class="form-actions">
+					<button type="button" class="pc-btn pc-pri" data-action="sr.agent_copy" data-copy={ v.Prompt }>{ i18n.T(ctx, "agent.copy") }</button>
+					<span class="subtle sm">{ i18n.T(ctx, "agent.copy.then") }</span>
+					<span class="flex1"></span>
+					<a href={ templ.SafeURL(srHref(v.C.ID)) } class="pc-btn pc-ghost" data-action="sr.agent_to_config">{ i18n.T(ctx, "shadowrocket.agent.to_config") }</a>
+				</div>
+			</section>
+		}
+	}
+}
+
+// srAgentBand shows the open session on the config page and over the base editor.
+templ srAgentBand(b *srAgentBandView) {
+	@ui.Band("iris") {
+		<span class="iris bold">{ i18n.T(ctx, "agent.band.title", i18n.Args{"agent": i18n.T(ctx, "agent.agent."+b.Agent)}) }</span>
+		<span class="subtle">{ b.Problem }</span>
+		<span class="sm subtle">
+			{ i18n.T(ctx, "shadowrocket.agent.band.counts", i18n.Args{"saves": b.Saves}) } ·
+			{ i18n.T(ctx, "agent.band.expires") + " " }
+			@ui.Time(b.ExpiresAt)
+		</span>
+		<span class="flex1"></span>
+		<a href={ templ.SafeURL("/activity?module=routing&actor=agent:" + i64(b.ID)) } class="pc-btn pc-sm" data-action="sr.agent_changes">{ i18n.T(ctx, "agent.band.changes") }</a>
+		if b.CanRevoke {
+			@ui.ActionButton(ui.Action{
+				ID: "sr.agent_revoke", Label: "agent.band.revoke", Method: "POST", Href: srAgentHref(b.Config) + "/" + i64(b.ID) + "/revoke", Small: true, Kind: ui.Danger,
+				Confirm: &ui.Confirm{Strength: 1, Title: i18n.T(ctx, "agent.revoke.title"), Body: i18n.T(ctx, "shadowrocket.agent.revoke.body")},
+			})
+		}
+	}
+}
+
+// srBasePoller asks every ten seconds whether the base is still the version
+// the editor opened; the form's version field says which that is.
+templ srBasePoller(id int64) {
+	<div
+		id="ed-poll"
+		hx-get={ srHref(id) + "/base/version" }
+		hx-trigger="every 10s"
+		hx-include="#ed-revision"
+		hx-swap="outerHTML"
+	></div>
+}
+
+// srBaseChangedBand is the poller's answer, and the refused save's, when an
+// agent (or another tab) saved. Save is turned off by the shell's script.
+templ srBaseChangedBand(id int64) {
+	<div id="ed-poll" data-ed-stale>
+		@ui.Band("gold") {
+			<span class="gold bold">{ i18n.T(ctx, "shadowrocket.stale.title") }</span>
+			<span class="subtle">{ i18n.T(ctx, "shadowrocket.stale.body") }</span>
+			<span class="flex1"></span>
+			<a href={ templ.SafeURL(srHref(id) + "/base") } class="pc-btn pc-sm" data-action="sr.reload">{ i18n.T(ctx, "shadowrocket.stale.reload") }</a>
+		}
+	</div>
+}

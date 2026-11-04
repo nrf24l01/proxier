@@ -99,7 +99,9 @@ Routers are added through **Test connection** (the jump host's and the router's 
 
 ## Shadowrocket config
 
-Proxier renders the config when it's requested: the base config verbatim, with the routing list's rules spliced into `[Rule]` before `FINAL` (or ending with `FINAL,DIRECT`). Rules are `DOMAIN-SUFFIX` / `DOMAIN` with the rule policy, one `# <tag>` block per service, after ownership, without the rules another rule of the config covers. The phone subscribes to the URL once, and from then on every change reaches it on its next refresh. Details: [Shadowrocket config](../processes/routing/shadowrocket-config.md), [Shadowrocket integration](../integrations/shadowrocket.md).
+Proxier renders the config when it's requested: the base config verbatim, with the routing list's rules spliced into `[Rule]` before `FINAL` (or ending with `FINAL,DIRECT`). Rules are `DOMAIN-SUFFIX` / `DOMAIN` with the rule policy, one `# <tag>` block per service, after ownership, without the rules another rule of the config covers. The phone subscribes to the URL once, and from then on every change reaches it on its next refresh.
+
+A base config can be handed to a coding agent (Claude Code, Codex) through a one-time prompt and a short-lived token that reaches that base only, as a template or router script draft can. Each save the agent makes is a new base version that the phone gets; the agent never sees a `[Proxy]` line, the MITM certificate or the config's URL. Details: [Shadowrocket config](../processes/routing/shadowrocket-config.md), [Shadowrocket integration](../integrations/shadowrocket.md).
 
 ## Owners
 
@@ -120,7 +122,7 @@ Several members share one Proxier ([members](../processes/platform/members.md));
 - **Search**: the catalog search ([catalog search](../processes/routing/catalog-search.md)).
 - **Discover**: the discovery form and its runs.
 - **Routers**: each router with state, routing list, last sync (result, when), drift and unmanaged tags. The router page holds the connection (with **Test connection**), installed tags against desired ones, **Preview sync**, **Sync now**, the sync history with plans and logs, and activity.
-- **Shadowrocket configs**: each config with list, URL and last fetch. The config page has the base config editor with version history, a **preview** of the rendered output, the URL (copy, QR, regenerate) and the fetch log.
+- **Shadowrocket configs**: each config with list, URL and last fetch. The config page has the base config editor with version history, a **preview** of the rendered output, the URL (copy, QR, regenerate), the fetch log and **Hand off to an agent…** (with the band of an open session).
 
 ## Ports for other modules
 

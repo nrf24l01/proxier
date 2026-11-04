@@ -54,6 +54,10 @@ func (h *handler) registerShadowrocket(r web.Routes) {
 	}, ""))
 	rt.Manage.GET(srPath+"/:id/delete", h.srDeletePage)
 	rt.Manage.POST(srPath+"/:id/delete", h.srDelete)
+	rt.Manage.GET(srPath+"/:id/base/version", h.srBaseVersion)
+	rt.Manage.GET(srPath+"/:id/agent", h.srAgentForm)
+	rt.Manage.POST(srPath+"/:id/agent", h.srAgentOpen)
+	rt.Manage.POST(srPath+"/:id/agent/:sid/revoke", h.srAgentRevoke)
 }
 
 // loadSRToChange is loadSR for a page or action that changes the config:
@@ -140,6 +144,11 @@ type srFormView struct {
 	ImportURL  string
 	Lists      []lists.List
 	Errs       map[string]string
+	// Version is the base version the editor opened: a save over another
+	// one is refused (Stale) and the text stays.
+	Version int
+	Stale   bool
+	Agent   *srAgentBandView // the open agent session on the base
 }
 
 func (h *handler) renderSRForm(c *echo.Context, status int, v srFormView) error {
@@ -155,6 +164,9 @@ func (h *handler) renderSRForm(c *echo.Context, status int, v srFormView) error 
 	title := i18n.T(ctx, "shadowrocket.new.title")
 	if v.C.ID != 0 {
 		title = i18n.T(ctx, "shadowrocket.base.title", i18n.Args{"name": v.C.Name})
+		if v.Agent, err = h.srAgentBand(c, v.C.ID); err != nil {
+			return err
+		}
 	}
 	s := h.shell(c, title, srPath)
 	s.Scripts = []string{"js/editor.bundle.js"}
@@ -225,6 +237,7 @@ func (h *handler) srImportBase(c *echo.Context) error {
 	v := srFormView{
 		Name: c.FormValue("name"), ListID: formID(c.FormValue("list")), Policy: c.FormValue("policy"),
 		Base: c.FormValue("base"), Note: c.FormValue("note"), ImportURL: strings.TrimSpace(c.FormValue("import_url")),
+		Version: formVersion(c),
 	}
 	if id := formID(c.FormValue("config")); id != 0 {
 		cfg, err := h.Shadowrocket.Get(ctx, id, scope(ctx))
@@ -272,7 +285,13 @@ func (h *handler) srBasePage(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return h.renderSRForm(c, http.StatusOK, srFormView{C: cfg, Base: cur.Content})
+	return h.renderSRForm(c, http.StatusOK, srFormView{C: cfg, Base: cur.Content, Version: cur.Number})
+}
+
+// formVersion is the base version the posted editor opened, 0 for none.
+func formVersion(c *echo.Context) int {
+	n, _ := strconv.Atoi(c.FormValue("version"))
+	return n
 }
 
 func (h *handler) srSaveBase(c *echo.Context) error {
@@ -285,12 +304,16 @@ func (h *handler) srSaveBase(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	v := srFormView{C: cfg, Base: base, Note: c.FormValue("note"), ImportURL: c.FormValue("import_url")}
-	n, changed, err := h.Shadowrocket.SaveBase(ctx, cfg.ID, scope(ctx), v.Base, v.Note, web.Actor(ctx))
+	v := srFormView{C: cfg, Base: base, Note: c.FormValue("note"), ImportURL: c.FormValue("import_url"), Version: formVersion(c)}
+	n, changed, err := h.Shadowrocket.SaveBase(ctx, cfg.ID, scope(ctx), v.Version, v.Base, v.Note, web.Actor(ctx))
 	var fe store.FieldErrors
 	if errors.As(err, &fe) {
 		v.Errs = errText(ctx, fe)
 		return h.renderSRForm(c, http.StatusUnprocessableEntity, v)
+	}
+	if errors.Is(err, shadowrocket.ErrBaseChanged) {
+		v.Stale = true
+		return h.renderSRForm(c, http.StatusConflict, v)
 	}
 	if err != nil {
 		return err
@@ -322,6 +345,7 @@ type srView struct {
 	// a reader sees no controls.
 	CanChange      bool
 	C              shadowrocket.Config
+	Agent          *srAgentBandView // the open agent session on the base
 	Line           string
 	Band, BandKind string
 	Masked, URL    string
@@ -395,6 +419,8 @@ func (h *handler) srPage(c *echo.Context) error {
 		v.Band, v.BandKind = i18n.T(ctx, "shadowrocket.band.saved", i18n.Args{"version": c.QueryParam("saved")}), "pine"
 	case c.QueryParam("unchanged") == "1":
 		v.Band, v.BandKind = i18n.T(ctx, "shadowrocket.band.unchanged"), "pine"
+	case c.QueryParam("revoked") == "1":
+		v.Band, v.BandKind = i18n.T(ctx, "shadowrocket.agent.band.revoked"), "pine"
 	case !cfg.Enabled:
 		v.Band, v.BandKind = i18n.T(ctx, "shadowrocket.band.disabled"), "gold"
 	}
@@ -429,6 +455,9 @@ func (h *handler) srPage(c *echo.Context) error {
 		v.Fetches = append(v.Fetches, srFetchRow{Time: loc.Time(f.At), IP: f.IP, UA: f.UserAgent})
 	}
 	if v.Activity, err = h.srActivity(ctx, cfg); err != nil {
+		return err
+	}
+	if v.Agent, err = h.srAgentBand(c, cfg.ID); err != nil {
 		return err
 	}
 	return web.Render(c, http.StatusOK, srPage(h.shell(c, cfg.Name, srPath), v))

@@ -88,30 +88,9 @@ func ruleStart(lines []string) int {
 // byte for byte; the inserted lines take the base's line ending.
 func Render(base []byte, list string, blocks []Block, policy string, at time.Time) ([]byte, error) {
 	lines := splitLines(base)
-	start := ruleStart(lines)
+	start, end, final, at0 := places(lines)
 	if start < 0 {
 		return nil, ErrNoRule
-	}
-	end := len(lines)
-	for i := start + 1; i < len(lines); i++ {
-		if header.MatchString(trimmed(lines[i])) {
-			end = i
-			break
-		}
-	}
-	final := -1
-	for i := start + 1; i < end; i++ {
-		if strings.HasPrefix(strings.ToUpper(trimmed(lines[i])), "FINAL,") {
-			final = i
-			break
-		}
-	}
-	at0 := end
-	if final >= 0 {
-		at0 = final
-	}
-	for at0 > start+1 && trimmed(lines[at0-1]) == "" {
-		at0--
 	}
 	nl := "\n"
 	if strings.HasSuffix(lines[0], "\r\n") {
@@ -148,4 +127,57 @@ func Render(base []byte, list string, blocks []Block, policy string, at time.Tim
 		b.WriteString(l)
 	}
 	return []byte(b.String()), nil
+}
+
+// places finds, as line indexes, the [Rule] header (-1: none), the end of
+// its section, its first FINAL line (-1: none) and the line the block goes
+// before (len(lines): the end of the base).
+func places(lines []string) (start, end, final, at int) {
+	start = ruleStart(lines)
+	if start < 0 {
+		return -1, 0, -1, 0
+	}
+	end = len(lines)
+	for i := start + 1; i < len(lines); i++ {
+		if header.MatchString(trimmed(lines[i])) {
+			end = i
+			break
+		}
+	}
+	final = -1
+	for i := start + 1; i < end; i++ {
+		if strings.HasPrefix(strings.ToUpper(trimmed(lines[i])), "FINAL,") {
+			final = i
+			break
+		}
+	}
+	at = end
+	if final >= 0 {
+		at = final
+	}
+	for at > start+1 && trimmed(lines[at-1]) == "" {
+		at--
+	}
+	return start, end, final, at
+}
+
+// Places are where Render puts the rules in a base, as line numbers from 1.
+type Places struct {
+	Rule   int // the [Rule] header; 0: none, and the base is refused
+	Final  int // its first FINAL line; 0: none, and Proxier adds FINAL,DIRECT
+	Before int // the line the rules go in before; 0: after the last line
+}
+
+// Where is where Render puts the rules in base.
+func Where(base []byte) Places {
+	lines := splitLines(base)
+	start, _, final, at := places(lines)
+	if start < 0 {
+		return Places{}
+	}
+	p := Places{Rule: start + 1, Final: final + 1}
+	if at < len(lines) {
+		p.Before = at + 1
+	}
+	return p
 }

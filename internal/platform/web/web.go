@@ -27,7 +27,7 @@ const (
 )
 
 // publicPrefixes are the URL spaces that never touch cookies (ADR 0006).
-// /agent/ is the agent APIs (template and router script drafts): they answer to a bearer token only.
+// /agent/ is the agent APIs (template and router script drafts, Shadowrocket base configs): they answer to a bearer token only.
 var publicPrefixes = []string{"/s/", "/r/", "/f/", "/agent/"}
 
 func isPublicPath(p string) bool {
