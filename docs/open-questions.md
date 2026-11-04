@@ -60,6 +60,10 @@ Checked with a software passkey in tests, Chrome's virtual authenticator and Bit
 
 The [browser page](./integrations/subscription-format.md#browser-page)'s Android tab was tried on a real phone; its iPhone & iPad, macOS, Windows, Linux and TV tabs were not: whether each **Add to {app}** button there opens its app and adds the link under the subscription's title, and whether the loose words of each manual import ("tap + and choose to import from the clipboard") match what the app shows. The Shadowrocket link syntax comes from other panels' code, not from the app's maker. Which apps are in the Russian App Store changes month to month: re-check with `https://itunes.apple.com/lookup?id=<id>&country=ru` (an empty `results` means not there) and update the notes in `linkpage/apps.yaml`. In Safari in the iOS 27 simulator the page opens on iPhone & iPad, fits 402 px, and folds the QR code; without a real tap Copy link fell back to selecting the link, and the simulator has none of the apps. Not seen either: the buttons and Copy link tapped on a real iPhone, the QR code scanned by another phone, and the tab an iPad opens.
 
+## An IP change on a real VPS
+
+Tested only against the fake VPS: Change IP from a blocked IP to one added at the provider, on the deployment. Not seen yet: whether that provider configures an added IP on the interface by itself or it needs netplan; that SSH and the stack (nginx in Docker, published on every address) answer on the new IP while the old one stays; that the proxy test aimed at the new IP passes from home while the hostname still leads to the old one; and how long the previous IP's test finds it failing. Whether Russia blocks an added IP from the same subnet along with the old one is the question the change itself answers.
+
 ## Not yet seen on real devices
 
 - The pages in Safari on a real iPhone. In the iOS 27 simulator (402 px) none of the pages scrolls sideways, and a field no longer zooms the page as it takes focus. On an Android phone (Chrome, 360 px) the forms (new server with its country suggestions, generate, new subscription and link), dialogs, live logs and charts work.

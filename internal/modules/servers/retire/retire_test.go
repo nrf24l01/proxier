@@ -681,3 +681,22 @@ func TestFinishIsIdempotent(t *testing.T) {
 		t.Errorf("the re-run recorded %d server.retired events", n)
 	}
 }
+
+func TestRetireDropsPreviousIPs(t *testing.T) {
+	h, id := stubbed(t)
+	if err := h.App.DB.Write(bg, func(tx *sqlx.Tx) error {
+		return store.AddPreviousIP(bg, tx, id, "10.77.0.9", db.At(time.Now()))
+	}); err != nil {
+		t.Fatal(err)
+	}
+	mustRetire(t, h, id, true)
+	h.Drain()
+	if s := h.Server(id); s.State != "retired" {
+		t.Fatalf("state %s", s.State)
+	}
+	if p, err := store.PreviousIPs(bg, h.App.DB.R, id); err != nil || len(p) != 0 {
+		t.Fatalf("previous IPs of a retired server: %+v %v", p, err)
+	}
+	// The IP is free for a new server.
+	h.AddServer("10.77.0.9")
+}

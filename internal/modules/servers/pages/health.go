@@ -90,6 +90,8 @@ type healthView struct {
 	Msg          string // queued busy over_budget
 	PollHref     string // set while the tab polls for fresh results
 	Ago          func(time.Time) string
+	// Previous are the server's previous IPs, tested from home.
+	Previous []previousRow
 }
 
 type legendRow struct{ Kind, Word, Duration string }
@@ -160,6 +162,9 @@ func (h *handler) buildHealth(ctx context.Context, s store.Server, rangeParam st
 	}
 
 	if err := h.buildMatrix(ctx, s, now, &v); err != nil {
+		return v, err
+	}
+	if v.Previous, err = h.previousRows(ctx, s, now); err != nil {
 		return v, err
 	}
 	return v, h.buildTimeline(ctx, s, hr, now, rangeParam, &v)

@@ -19,7 +19,7 @@ The test URL is **configurable**. The global default is in Settings → Servers.
 
 ## Verdict
 
-After each new result, Proxier evaluates the server using, for each check, the latest result that is no older than two of its intervals (self-check and proxy test 10 min, external 60 min) and not marked *inconclusive*. An older result counts as missing. The first matching rule gives the **candidate** state. "Pass" means within the thresholds unless it says "any speed". The self-check is `ok`, `stack-failed`, `unreachable`, or **missing** (no fresh result). External data is **none** (no fresh result, check-host.net unavailable, over its budget, or no node abroad configured) or the number of nodes abroad that connected.
+After each new result, Proxier evaluates the server using, for each check, the latest result that is no older than two of its intervals (self-check and proxy test 10 min, external 60 min), not marked *inconclusive*, and not from before the server's last IP change ([IP change](./ip-change.md)). An older result counts as missing. The first matching rule gives the **candidate** state. "Pass" means within the thresholds unless it says "any speed". The self-check is `ok`, `stack-failed`, `unreachable`, or **missing** (no fresh result). External data is **none** (no fresh result, check-host.net unavailable, over its budget, or no node abroad configured) or the number of nodes abroad that connected.
 
 | # | Condition | Candidate | Reason shown |
 |---|---|---|---|
@@ -75,6 +75,7 @@ When a proxy test fails and no external result newer than 10 minutes exists, an 
 ## Rules
 
 - Only active servers have health. Provisioning, failed and retired servers show their lifecycle state instead.
+- An IP change makes the state `unknown` ("The IP changed: waiting for its first checks") and queues the new IP's checks; its previous IPs get proxy tests of their own, which never touch the verdict ([IP change](./ip-change.md#steps-previous-ips)).
 - Health never changes a subscription's configuration. A subscription with **hide unhealthy** only leaves the server out of its output, and only after its grace period.
 - A changed host key makes the self-check fail with `host-key-changed`, not `unreachable`. The verdict becomes `unknown` with the reason "Host key changed: accept it or investigate", and the security notification is sent ([ADR 0007](../../adr/0007-agentless-ssh-with-pinned-host-keys.md)).
 - External checks respect check-host.net's limits: per server a scheduled check is refused when the last real one is newer than 80 % of the interval (24 min of 30), an on-demand one when it is newer than 10 min, and a global cap per rolling hour (setting) applies. A refused check stores one `skipped` row. When check-host is unavailable (or skipped), there is no external data, rules 8 and 10 apply and the reasons say "unconfirmed".
@@ -107,3 +108,4 @@ When a proxy test fails and no external result newer than 10 minutes exists, an 
 - check-host gets no answer from home and no server is healthy → one `unavailable` row that says so, and the reason says "unconfirmed".
 - A host key changed on the server → `unknown` with "host key changed", plus the security notification. No `down`.
 - A server with two endpoints where one fails and one passes → `degraded` ("Endpoint backup fails").
+- A healthy server's IP changes → `unknown`; an evaluation that has only the results from before the change stays `unknown`, and the new IP's first passing round → `healthy`.

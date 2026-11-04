@@ -26,6 +26,7 @@ Read a flow's document before changing it. When the behaviour changes, the docum
 - [Credential rotation](./servers/credential-rotation.md): replacing a server's credentials, alone or as part of a cut-off.
 - [Server health](./servers/server-health.md): checks, vantage points, verdicts, flap protection, pause.
 - [Server stats](./servers/server-stats.md): metrics collection and display.
+- [IP change](./servers/ip-change.md): moving a server to another IP of its VPS, and testing the previous IPs.
 - [Server retirement](./servers/server-retirement.md): taking a server out of service.
 
 ## Subscriptions

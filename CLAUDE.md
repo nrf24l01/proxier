@@ -153,6 +153,14 @@ _Avoid_: key, password, user id
 Replacing a server's rotatable generated values (the credential and secret path), so that every old connection URI stops working.
 _Avoid_: reset, regenerate, revoke
 
+**IP change**:
+Moving a server to another IP of the same VPS: Proxier checks the new IP over SSH (the same host key) and with the proxy test from home, then repoints DNS. Links keep working, since they name the hostname.
+_Avoid_: re-IP, migration, readdressing
+
+**Previous IP**:
+An IP a server used before an IP change and still answers on. Proxier keeps proxy-testing it from home and notifies when it works again, so the server can switch back.
+_Avoid_: spare IP, secondary IP, backup IP (the IP a server leaves is its old IP; kept, it is a previous IP)
+
 **Retirement**:
 Taking a server out of service for good: its DNS records are removed and it leaves every subscription, but its history is kept.
 _Avoid_: delete, decommission, archive

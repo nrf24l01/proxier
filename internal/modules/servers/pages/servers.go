@@ -121,6 +121,8 @@ type serverView struct {
 	RetireFailed bool
 	RetireStep   string
 	RetireErr    string
+	// Previous are the IPs the server used before, still tested.
+	Previous []store.PreviousIP
 }
 
 func (h *handler) serverID(c *echo.Context) (int64, error) { return h.id(c) }
@@ -233,6 +235,10 @@ func (h *handler) buildServer(ctx context.Context, s store.Server, jobParam int6
 			Key: r.Key, Display: r.DisplayName, Type: r.Type, Address: fmt.Sprintf("%s:%d", r.Host, r.Port),
 			URIHref: serverHref(s.ID) + "/endpoints/" + r.Key + "/uri", QRHref: serverHref(s.ID) + "/endpoints/" + r.Key + "/qr",
 		})
+	}
+
+	if v.Previous, err = store.PreviousIPs(ctx, h.Store.DB.R, s.ID); err != nil {
+		return v, err
 	}
 
 	list, err := events.List(ctx, h.Store.DB.R, events.Filter{Subject: store.ServerSubject(s.ID), Limit: 8})

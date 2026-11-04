@@ -67,6 +67,8 @@ func (s *Service) JobTypes() []jobs.Type {
 		typ(JobReminders, jobs.Checks, step("remind", s.remindersStep)),
 		typ(JobStatsRollup, jobs.Maintenance, step("rollup", s.rollupStep)),
 		typ(JobNodes, jobs.Maintenance, step("refresh", s.nodesStep)),
+		typ(JobPreviousRound, jobs.Checks, step("enqueue", s.previousRoundStep)),
+		typ(JobPreviousTest, jobs.Checks, step("test", s.previousTestStep)),
 	}
 }
 
@@ -81,6 +83,7 @@ func (s *Service) Schedules() []jobs.Schedule {
 		{Name: "servers.reference", Every: time.Minute, Request: req(JobReference, "reference")},
 		{Name: "servers.round", Every: 5 * time.Minute, Jitter: 30 * time.Second, Setting: conf.SelfcheckEvery, Request: req(JobRound, "round")},
 		{Name: "servers.external_round", Every: 30 * time.Minute, Jitter: 3 * time.Minute, Setting: conf.ExternalEvery, Request: req(JobExternalRound, "external_round")},
+		{Name: "servers.previous_round", Every: 30 * time.Minute, Jitter: 3 * time.Minute, Setting: conf.PreviousIPEvery, Request: req(JobPreviousRound, "previous_round")},
 		{Name: "servers.checkhost_nodes", At: "04:10", Request: req(JobNodes, "nodes")},
 		{Name: "servers.reminders", Every: time.Hour, Request: req(JobReminders, "reminders")},
 		{Name: "servers.stats_rollup", Every: time.Hour, Request: req(JobStatsRollup, "rollup")},

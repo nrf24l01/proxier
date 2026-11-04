@@ -23,6 +23,7 @@ const (
 
 	SelfcheckEvery        = "servers.selfcheck_every"
 	ExternalEvery         = "servers.external_every"
+	PreviousIPEvery       = "servers.previous_ip_every"
 	ExternalOnDemandAfter = "servers.external_on_demand_after"
 	ExternalHourlyCap     = "servers.external_hourly_cap"
 	ExternalNodesRU       = "servers.external_nodes_ru"
@@ -106,6 +107,7 @@ var Section = settings.Section{
 		// Health.
 		{Key: SelfcheckEvery, Kind: settings.Duration, Default: "5m0s", Min: int64(time.Minute), Max: int64(time.Hour)},
 		{Key: ExternalEvery, Kind: settings.Duration, Default: "30m0s", Min: int64(5 * time.Minute), Max: int64(24 * time.Hour)},
+		{Key: PreviousIPEvery, Kind: settings.Duration, Default: "30m0s", Min: int64(5 * time.Minute), Max: int64(24 * time.Hour)},
 		{Key: ExternalOnDemandAfter, Kind: settings.Duration, Default: "10m0s", Min: int64(time.Minute), Max: int64(6 * time.Hour)},
 		{Key: ExternalHourlyCap, Kind: settings.Int, Default: "60", Min: 0, Max: 1000},
 		{Key: ExternalNodesRU, Kind: settings.String, Default: "", MaxLen: 500, Validate: nodeList},

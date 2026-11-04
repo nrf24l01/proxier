@@ -62,7 +62,9 @@ type Harness struct {
 	stubbed    bool
 	stallSmoke bool
 	accepts    func(endpoint.Endpoint) bool
-	refused    map[string]bool // IPs whose SSH dial is refused (Unreachable)
+	refused    map[string]bool   // IPs whose SSH dial is refused (Unreachable)
+	blocked    map[string]bool   // IPs the stubbed proxy test fails at (BlockIP)
+	routes     map[string]string // IPs whose SSH dial goes elsewhere (RouteSSH)
 	extra      func(m *servers.Module) []module.Module
 }
 
@@ -132,10 +134,10 @@ func NewHarness(t *testing.T, opts ...Option) *Harness {
 	p.SmokeGap = 5 * time.Millisecond
 	p.RemoteEnv = func(log *jobs.Logger) remote.Env { return remote.Env{Log: log, Poll: time.Millisecond} }
 	if h.stubbed {
-		p.ProxyTest = func(_ context.Context, e endpoint.Endpoint, _ proxy.Options) proxy.Result {
+		p.ProxyTest = func(_ context.Context, e endpoint.Endpoint, o proxy.Options) proxy.Result {
 			h.mu.Lock()
 			defer h.mu.Unlock()
-			if h.stallSmoke {
+			if h.stallSmoke || h.blocked[h.targetIP(e, o)] {
 				return proxy.Result{Class: proxy.Stalled, Error: "no data for 5s after 16 KB received"}
 			}
 			if h.accepts != nil && !h.accepts(e) {
@@ -170,16 +172,21 @@ func NewHarness(t *testing.T, opts ...Option) *Harness {
 		}
 	}
 	mod.Deploy.RebootPoll, mod.Deploy.RebootTimeout, mod.Deploy.CheckGap = time.Millisecond, 3*time.Second, time.Millisecond
+	// The checks after an IP change wait for the records' TTL; here at once.
+	mod.Health.ChangeDelay = time.Millisecond
 
 	// Jobs: workers poll fast and stop quickly.
 	// Every address reaches the one fake VPS, so a test can have many servers.
 	h.App.SSH.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		host, port, _ := net.SplitHostPort(addr)
 		h.mu.Lock()
-		refused := h.refused[host]
+		refused, route := h.refused[host], h.routes[host]
 		h.mu.Unlock()
 		if refused {
 			return nil, &net.OpError{Op: "dial", Net: network, Err: syscall.ECONNREFUSED}
+		}
+		if route != "" {
+			return (&net.Dialer{}).DialContext(ctx, network, route)
 		}
 		return (&net.Dialer{}).DialContext(ctx, network, net.JoinHostPort("127.0.0.1", port))
 	}
@@ -491,6 +498,45 @@ func (h *Harness) Unreachable(ip string, refused bool) {
 		h.refused = map[string]bool{}
 	}
 	h.refused[ip] = refused
+}
+
+// BlockIP makes the stubbed proxy test fail (stall) through an IP, as from
+// home when Russia blocks it: a test aimed at the IP (a previous IP, the IP
+// a change moves to) or whose hostname the fake Cloudflare points there.
+func (h *Harness) BlockIP(ip string, blocked bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.blocked == nil {
+		h.blocked = map[string]bool{}
+	}
+	h.blocked[ip] = blocked
+}
+
+// RouteSSH sends SSH to ip to addr instead of the fake VPS ("" undoes it):
+// another machine answering at the IP.
+func (h *Harness) RouteSSH(ip, addr string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.routes == nil {
+		h.routes = map[string]string{}
+	}
+	h.routes[ip] = addr
+}
+
+// targetIP is where a proxy test goes: the address its options map the
+// endpoint to, else what the fake Cloudflare holds for its host. Called
+// with h.mu held.
+func (h *Harness) targetIP(e endpoint.Endpoint, o proxy.Options) string {
+	if to, ok := o.Resolve[net.JoinHostPort(e.Host, strconv.Itoa(e.Port))]; ok {
+		host, _, _ := net.SplitHostPort(to)
+		return host
+	}
+	for _, r := range h.CF.Records("tikhonnnnn.com") {
+		if r.Name == e.Host {
+			return r.Content
+		}
+	}
+	return e.Host
 }
 
 // AddServer provisions another server on the same fake VPS under another

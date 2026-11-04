@@ -68,6 +68,10 @@ The payload lists the fields beyond the subject. A member's events (`auth.*`, `m
 | `server.retired` | server | dns_removed (names), dns_kept (name, reason), stack_removed | off | Recorded by the retire job's last step. |
 | `server.retire_failed` | server | step, error, cancelled | **on** | "nl-2: retirement failed at …". The server stays out of service (retiring) until a member with `servers: manage` retries; a cancelled job notifies nothing. |
 | `server.notes_changed` | server | — | off | Only when the notes changed. |
+| `server.ip_changed` | server | from, to, kept (the old IP stays a previous IP), back (the new IP was a previous one), forced | off | Recorded by the Change IP job's DNS step, in the transaction that stores the IP ([IP change](./processes/servers/ip-change.md)). |
+| `server.ip_change_failed` | server | to, step, error, cancelled | **on**, except when `cancelled` | "nl-1: moving to 177.202.68.96 failed at Proxy test". Before the DNS step the server is untouched at its IP. |
+| `server.previous_ip_changed` | server | ip, from, to (`unknown` / `works` / `fails`), error (to `fails`) | **on** only from `fails` to `works` | "🟢 nl-1: previous IP 201.58.181.185 works again" / "Switch back to it from the server's Health tab." Activity words it by the state reached. |
+| `server.previous_ip_forgotten` | server | ip | off | **Forget** on the Health tab. |
 | `server.rollout_started` | rollout (`rollout:<id>`) | servers (names), to_version | off | A rolling upgrade began. |
 | `server.rollout_finished` | rollout | state (`done` / `stopped` / `cancelled`), done, failed, not_started, skipped | off | Recorded once, when the rollout is no longer running and no server of it is. |
 | `health.home_offline` | — | reference check results | off | Telegram is unreachable anyway. It's shown on the dashboard. |

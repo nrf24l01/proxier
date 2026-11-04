@@ -33,6 +33,20 @@ func healthGroup(p map[string]any) string {
 	return to
 }
 
+// previousNotifies: a previous IP that failed and works again is worth a
+// message (the server can go back to it); anything else stays in Activity.
+func previousNotifies(p map[string]any) bool {
+	to, _ := p["to"].(string)
+	from, _ := p["from"].(string)
+	return to == "works" && from == "fails"
+}
+
+// previousVariant words a previous IP's change by the state it reached.
+func previousVariant(p map[string]any) string {
+	to, _ := p["to"].(string)
+	return to
+}
+
 // Events is the module's event catalog (docs/events.md#servers).
 var Events = []events.Type{
 	{Name: "template.created", Description: "A template was created."},
@@ -63,6 +77,11 @@ var Events = []events.Type{
 	{Name: "server.retired", Description: "A server was retired."},
 	{Name: "server.retire_failed", Notify: true, NotifyIf: notCancelled, Emoji: "🔴", Description: "Retirement stopped at a step; the server stays out of service until retried."},
 	{Name: "server.notes_changed", Description: "The notes of a server changed."},
+	{Name: "server.ip_changed", Description: "A server moved to another IP of its VPS; DNS points there."},
+	{Name: "server.ip_change_failed", Notify: true, NotifyIf: notCancelled, Emoji: "🔴", Description: "Moving a server to another IP stopped at a step."},
+	{Name: "server.previous_ip_changed", Notify: true, NotifyIf: previousNotifies, Emoji: "🟢", Variant: previousVariant,
+		Description: "A previous IP of a server started or stopped working from home; notifies when one that failed works again."},
+	{Name: "server.previous_ip_forgotten", Description: "A previous IP of a server is no longer tested."},
 	{Name: "server.rollout_started", Description: "A rolling upgrade started."},
 	{Name: "server.rollout_finished", Description: "A rolling upgrade finished, stopped or was cancelled."},
 	{Name: "health.home_offline", Description: "Home has no internet: server verdicts are on hold."},

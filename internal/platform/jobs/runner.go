@@ -236,7 +236,7 @@ func (s *System) runJob(jobCtx context.Context, id int64) {
 		s.stepFailed(bg, run, &t, st.Name, err)
 		return
 	}
-	s.finishSucceeded(bg, run)
+	s.finishSucceeded(bg, run, &t)
 }
 
 func (s *System) safeStep(ctx context.Context, st Step, run *Run) (err error) {
@@ -389,14 +389,28 @@ func (s *System) requeue(ctx context.Context, run *Run, step string, cause error
 	}
 }
 
-func (s *System) finishSucceeded(ctx context.Context, run *Run) {
+func (s *System) finishSucceeded(ctx context.Context, run *Run, t *Type) {
 	_ = run.log.Flush(ctx)
-	err := s.owned(ctx, run, func(tx *sqlx.Tx) error {
-		_, err := tx.ExecContext(ctx, `
-			UPDATE jobs SET state = 'succeeded', finished_at = ?, lease_until = NULL, secrets = NULL, error = '', error_step = ''
-			WHERE id = ?`, s.now(), run.info.ID)
-		return err
-	})
+	var hookErr error
+	mark := func(hook bool) error {
+		return s.owned(ctx, run, func(tx *sqlx.Tx) error {
+			if _, err := tx.ExecContext(ctx, `
+				UPDATE jobs SET state = 'succeeded', finished_at = ?, lease_until = NULL, secrets = NULL, error = '', error_step = ''
+				WHERE id = ?`, s.now(), run.info.ID); err != nil {
+				return err
+			}
+			if hook && t != nil && t.OnSucceeded != nil {
+				hookErr = t.OnSucceeded(ctx, tx, run.info)
+				return hookErr
+			}
+			return nil
+		})
+	}
+	err := mark(true)
+	if hookErr != nil {
+		s.log.Error("jobs: OnSucceeded", "id", run.info.ID, "type", run.info.Type, "error", hookErr)
+		err = mark(false)
+	}
 	s.hub.notify(run.info.ID)
 	if err != nil && !errors.Is(err, errLost) {
 		s.log.Error("jobs: finish", "id", run.info.ID, "error", err)

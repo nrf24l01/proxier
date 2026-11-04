@@ -69,6 +69,9 @@ templ healthPage(s ui.Shell, v healthView) {
 		</section>
 		<div id="pause-slot"></div>
 		@healthMatrix(v)
+		if len(v.Previous) > 0 {
+			@previousArea(v)
+		}
 		@ui.Area(i18n.T(ctx, "health.timeline"), "") {
 			<div class="area-body">
 				<div class="filters">

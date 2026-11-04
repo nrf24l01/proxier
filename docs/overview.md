@@ -69,7 +69,7 @@ flowchart LR
 Not built, roughly in order of value. Each needs an extension point or a new flow; nothing built so far stands in the way.
 
 - More formats: mihomo/Clash YAML (also for the router's mihomo container), sing-box JSON.
-- Replacing a blocked server while keeping its name and credentials, with DNS repointed.
+- Moving a blocked server to another VPS while keeping its name and credentials, with DNS repointed. Another IP of the same VPS is an [IP change](./processes/servers/ip-change.md).
 - Adopting servers built without Proxier.
 - Probe agents on mobile networks and other ISPs.
 - A VLESS Reality endpoint type and template, as a fallback when a domain gets blocked.

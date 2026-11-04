@@ -1,0 +1,121 @@
+package pages
+
+import (
+	"github.com/tikhonp/proxier/internal/platform/i18n"
+	"github.com/tikhonp/proxier/internal/platform/ui"
+)
+
+// ipPageView is the Change IP dialog: what must be set up first, the records
+// that move, the new IP and whether to keep the old one.
+templ ipPageView(s ui.Shell, v ipView) {
+	@ui.Layout(s) {
+		<div class="titleblock">
+			<div class="head">
+				<nav class="crumbs" aria-label="Breadcrumb"><a href="/servers">{ i18n.T(ctx, "servers.title") }</a><span aria-hidden="true">/</span><a href={ templ.SafeURL(serverHref(v.S.ID)) }>{ v.S.Name }</a><span aria-hidden="true">/</span><span>{ i18n.T(ctx, "servers.act.ip") }</span></nav>
+				<h1>{ i18n.T(ctx, "servers.ip.title", i18n.Args{"name": v.S.Name}) }</h1>
+				<p class="subtle">{ i18n.T(ctx, "servers.ip.note", i18n.Args{"name": v.S.Name}) }</p>
+			</div>
+		</div>
+		<form method="post" action={ serverHref(v.S.ID) + "/ip" } class="form">
+			<input type="hidden" name="_csrf" value={ ui.CSRF(ctx) }/>
+			@ui.Area(i18n.T(ctx, "servers.ip.first"), "") {
+				<ol class="area-body plan-steps">
+					<li>{ i18n.T(ctx, "servers.ip.first.provider") }</li>
+					<li>{ i18n.T(ctx, "servers.ip.first.vps") }</li>
+				</ol>
+			}
+			@ui.Area(i18n.T(ctx, "servers.ip.what"), "") {
+				<ol class="area-body plan-steps">
+					<li>{ i18n.T(ctx, "servers.ip.what.ssh") }</li>
+					<li>{ i18n.T(ctx, "servers.ip.what.proxy") }</li>
+					<li>{ i18n.T(ctx, "servers.ip.what.dns") }</li>
+					<li>{ i18n.T(ctx, "servers.ip.what.checks") }</li>
+				</ol>
+				<div class="area-body">
+					for _, r := range v.DNS {
+						<div class="row"><span class="bold">{ r }</span></div>
+					}
+				</div>
+			}
+			if v.NamesIP {
+				@ui.Band("gold") {
+					{ i18n.T(ctx, "servers.ip.names_ip", i18n.Args{"name": v.S.Name}) }
+				}
+			}
+			<div class="field">
+				<label for="ip-new">{ i18n.T(ctx, "servers.ip.new") }</label>
+				<input id="ip-new" class="pc-inp" name="ip" value={ v.IP } inputmode="decimal" autocomplete="off" spellcheck="false" autofocus aria-invalid?={ v.Errs["ip"] != "" } list="ip-previous"/>
+				if len(v.Previous) > 0 {
+					<datalist id="ip-previous">
+						for _, p := range v.Previous {
+							<option value={ p }></option>
+						}
+					</datalist>
+				}
+				if v.Errs["ip"] != "" {
+					<p class="err" role="alert">{ v.Errs["ip"] }</p>
+				} else {
+					<p class="help">{ i18n.T(ctx, "servers.ip.new.help", i18n.Args{"ip": v.S.IP}) }</p>
+				}
+			</div>
+			<div class="field">
+				<label class="check">
+					<input type="checkbox" name="keep" value="1" checked?={ v.Keep }/>
+					{ i18n.T(ctx, "servers.ip.keep", i18n.Args{"ip": v.S.IP}) }
+				</label>
+				<p class="help">{ i18n.T(ctx, "servers.ip.keep.help") }</p>
+			</div>
+			<div class="field">
+				<label class="check">
+					<input type="checkbox" name="force" value="1" checked?={ v.Force }/>
+					{ i18n.T(ctx, "servers.ip.force") }
+				</label>
+				<p class="help">{ i18n.T(ctx, "servers.ip.force.help") }</p>
+			</div>
+			<div class="form-actions">
+				<button type="submit" class="pc-btn pc-pri">{ i18n.T(ctx, "servers.ip.start") }</button>
+				<a href={ templ.SafeURL(serverHref(v.S.ID)) } class="pc-btn pc-ghost" data-cancel>{ i18n.T(ctx, "ui.cancel") }</a>
+			</div>
+		</form>
+	}
+}
+
+// previousArea is the Health tab's table of previous IPs and their actions.
+templ previousArea(v healthView) {
+	@ui.Area(i18n.T(ctx, "servers.previous"), i18n.T(ctx, "servers.previous.note")) {
+		<div class="tbl">
+			<div class="colhead mx" aria-hidden="true">
+				<span>{ i18n.T(ctx, "servers.previous.col.ip") }</span>
+				<span>{ i18n.T(ctx, "health.col.result") }</span>
+				<span>{ i18n.T(ctx, "health.col.detail") }</span>
+				<span>{ i18n.T(ctx, "health.col.when") }</span>
+				<span>{ i18n.T(ctx, "health.col.history") }</span>
+			</div>
+			for _, p := range v.Previous {
+				<div class="row mx">
+					<span class="bold" title={ p.IP }>
+						{ p.IP }
+						<span class="sm subtle">{ i18n.T(ctx, "servers.previous.left", i18n.Args{"at": p.Left}) }</span>
+					</span>
+					<span class="wrap" title={ i18n.T(ctx, "servers.previous.since", i18n.Args{"since": p.Since}) }>@ui.Status(p.Kind, p.Word)</span>
+					<span class="subtle wrap" title={ p.Detail }>{ p.Detail }</span>
+					<span class="sm subtle" title={ p.At }>{ p.When }</span>
+					<span>@ui.Strip(p.Strip, i18n.T(ctx, "health.m.strip"))</span>
+				</div>
+			}
+		</div>
+		<div class="act-rows">
+			for _, p := range v.Previous {
+				{{ back, forget := previousActions(ctx, v.S, p) }}
+				<div class="row act">
+					@ui.ActionButton(back)
+					<span class="sm subtle">{ i18n.T(ctx, "servers.previous.back.note", i18n.Args{"ip": p.IP, "name": v.S.Name}) }</span>
+				</div>
+				<div class="row act">
+					@ui.ActionButton(forget)
+					<span class="sm subtle">{ i18n.T(ctx, "servers.previous.forget.note", i18n.Args{"ip": p.IP}) }</span>
+				</div>
+			}
+		</div>
+	}
+}

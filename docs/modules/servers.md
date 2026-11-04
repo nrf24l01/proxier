@@ -174,8 +174,8 @@ Only **active** servers have a health state ([health](../processes/servers/serve
 
 ## Server page
 
-- **Overview**: flag and name, health badge with "since" and a one-sentence reason, lifecycle state, IP, hostnames, country, template and version (with "update available"), endpoints with their connection URIs (copy, QR, reveal), the subscriptions it is in, notes, and recent events.
-- **Health**: the latest result of each check per vantage point, as a matrix with 24 h strips, plus the verdict explanation and a timeline of health states (24 h / 7 d / 30 d), **Run checks now** and **Pause checks** / **Resume** ([health](../processes/servers/server-health.md)).
+- **Overview**: flag and name, health badge with "since" and a one-sentence reason, lifecycle state, IP and previous IPs, hostnames, country, template and version (with "update available"), endpoints with their connection URIs (copy, QR, reveal), the subscriptions it is in, notes, and recent events.
+- **Health**: the latest result of each check per vantage point, as a matrix with 24 h strips, plus the verdict explanation and a timeline of health states (24 h / 7 d / 30 d), **Run checks now** and **Pause checks** / **Resume** ([health](../processes/servers/server-health.md)). Below the matrix, when there are any, the previous IPs with their state, latest result and strip, and **Switch back** and **Forget** ([IP change](../processes/servers/ip-change.md#steps-previous-ips)).
 - **Stats**: CPU, memory, disk and traffic charts for 24 h / 7 d / 30 d, and container states ([stats](../processes/servers/server-stats.md)).
 - **Stack**: the rendered files of the last deployment (secrets masked until revealed), its template version, and the deployment history with diffs.
 - **Jobs** and **Activity**: filtered to this server.
@@ -190,6 +190,7 @@ Actions:
 | Upgrade | active, newer version exists | Renders the chosen version. Asks for any new parameters, shows the diff, then applies it. |
 | Edit parameters | active | Changes parameters, then redeploys. |
 | Rotate credentials | active | Replaces the rotatable generated values and redeploys ([rotation](../processes/servers/credential-rotation.md)). |
+| Change IP | active | Moves the server to another IP of its VPS. SSH there must show its host key and the proxy test from home must pass before Proxier repoints DNS. The old IP can stay as a previous IP, tested from home ([IP change](../processes/servers/ip-change.md)). |
 | Restart stack | active | `docker compose restart`, then a self-check. |
 | Update images | active | `docker compose pull` + `up -d`, then a self-check and proxy test. |
 | Container logs | active, or failed with an uploaded stack | Shows the last 200 lines of each compose service (a read-only job; the output is its log). |
@@ -200,7 +201,7 @@ Actions:
 | Edit notes | any | — |
 | Retire | provisioning, failed, active | Type the server name to confirm ([retirement](../processes/servers/server-retirement.md)). |
 
-There is no rename, no country change and no IP change: the name is the identity.
+There is no rename and no country change: the name is the identity. The IP can change, within the same VPS ([IP change](../processes/servers/ip-change.md)); moving to another VPS is on the [backlog](../overview.md#backlog).
 
 ## Server list
 
@@ -219,6 +220,7 @@ DNS is a driver; Cloudflare is the one there is ([Cloudflare integration](../int
 - Provisioning creates an **A record** for the management hostname (and for the proxy hostname, once they differ) pointing to the server's IP. It is **DNS-only, never proxied**: clients and Let's Encrypt must reach the server directly. TTL is 60 s, and the record carries the comment `proxier:<server name>`.
 - Proxier only ever changes or deletes records that carry its comment. A different record already at that name stops provisioning with a conflict, unless a member confirms an overwrite.
 - After writing, Proxier waits until 1.1.1.1 and 8.8.8.8 both return the IP (timeout 10 min) before anything needs the name, for example the certificate. It asks them over DNS-over-HTTPS, and over plain UDP port 53 only when DoH cannot be reached, because the home router may intercept port 53.
+- An IP change brings the records to the new IP, after SSH and the proxy test have passed there ([IP change](../processes/servers/ip-change.md)).
 - Retirement deletes the records, if they still point to the server's IP.
 - **Accepted risk:** each server's certificate names its hostname, and every certificate is published in certificate-transparency logs. Anyone, including a censor, can list `*.hosts.tikhonnnnn.com` on crt.sh. The fix in the [backlog](../overview.md#backlog) is wildcard certificates issued centrally through Cloudflare DNS-01 and uploaded to servers, optionally with proxy hostnames on unlinked cover domains. Management and proxy hostnames are separate fields, so it needs no data migration.
 
@@ -227,6 +229,7 @@ DNS is a driver; Cloudflare is the one there is ([Cloudflare integration](../int
 Summarised here, defined in the process docs:
 
 - **Checks**: the self-check over SSH (5 min), the proxy test from home through every endpoint (5 min), check-host.net TCP checks from Russia and abroad (30 min and on demand), and the reference check of home's own internet access.
+- **Previous IPs**: the proxy test from home aimed at each previous IP (30 min), so a member hears when one works again ([IP change](../processes/servers/ip-change.md#steps-previous-ips)).
 - **Verdict** rules and flap protection: [health](../processes/servers/server-health.md). Subscriptions can hide unhealthy servers (per subscription).
 - **Stats**: collected in the same SSH session as the self-check ([stats](../processes/servers/server-stats.md)).
 

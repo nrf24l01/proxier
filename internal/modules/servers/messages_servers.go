@@ -90,6 +90,7 @@ var serverMessages = i18n.Messages{
 	"servers.err.ip_required":       {EN: "Enter the server's IP address.", RU: "Введите IP-адрес сервера."},
 	"servers.err.ip_v4":             {EN: "Enter an IPv4 address such as 203.0.113.24.", RU: "Введите адрес IPv4, например 203.0.113.24."},
 	"servers.err.ip_used":           {EN: "{name} already has this IP address.", RU: "Этот IP-адрес уже у сервера {name}."},
+	"servers.err.ip_previous":       {EN: "{name} keeps this IP as a previous IP. Forget it there first.", RU: "Сервер {name} хранит этот IP как прежний. Сначала забудьте его там."},
 	"servers.err.ssh_port":          {EN: "The SSH port is a number from 1 to 65535.", RU: "Порт SSH — число от 1 до 65535."},
 	"servers.err.password_required": {EN: "Enter the root password.", RU: "Введите пароль root."},
 	"servers.err.notes_long":        {EN: "Notes are at most 10 000 characters.", RU: "Заметки — не больше 10 000 символов."},

@@ -68,6 +68,11 @@ type Type struct {
 	// OnFailed records the module's own failure event, in the transaction that
 	// marks the job failed. Nil: the platform records job.failed.
 	OnFailed func(ctx context.Context, tx *sqlx.Tx, j Info, err error) error
+	// OnSucceeded runs in the transaction that marks the job succeeded, so
+	// what it queues on the job's resource key finds the key free (an IP
+	// change queues the checks of the new IP). An error is logged and the
+	// job is marked succeeded without it.
+	OnSucceeded func(ctx context.Context, tx *sqlx.Tx, j Info) error
 	// OnCancelled updates the module's state in the transaction that marks the
 	// job cancelled (a provisioning server becomes failed).
 	OnCancelled func(ctx context.Context, tx *sqlx.Tx, j Info, by string) error

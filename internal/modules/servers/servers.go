@@ -20,6 +20,7 @@ import (
 	"github.com/tikhonp/proxier/internal/modules/servers/dns/cloudflare"
 	"github.com/tikhonp/proxier/internal/modules/servers/endpoint"
 	"github.com/tikhonp/proxier/internal/modules/servers/health"
+	"github.com/tikhonp/proxier/internal/modules/servers/ipchange"
 	"github.com/tikhonp/proxier/internal/modules/servers/manifest"
 	"github.com/tikhonp/proxier/internal/modules/servers/migrations"
 	"github.com/tikhonp/proxier/internal/modules/servers/pages"
@@ -60,6 +61,8 @@ type Module struct {
 	Health *health.Service
 	// Retire takes servers out of service for good.
 	Retire *retire.Service
+	// IPChange moves servers to another IP and forgets previous ones.
+	IPChange *ipchange.Service
 	// Agent hands template drafts to coding agents.
 	Agent *agent.Service
 	// DNS writes and removes servers' A records; Waiter waits for resolvers to
@@ -134,6 +137,20 @@ func (m *Module) Init(d module.Deps) error {
 			return remote.Env{Log: log}
 		},
 	})
+	m.IPChange = ipchange.New(ipchange.Deps{
+		DB: d.DB, Events: d.Events, Vault: d.Vault, Jobs: d.Jobs, SSH: d.SSH, Settings: d.Settings, Log: d.Log, Health: m.Health,
+		ProxyTestURL: func(ctx context.Context, id int64) (string, error) {
+			cs, err := m.Deploy.CheckSetup(ctx, id)
+			return cs.ProxyTestURL, err
+		},
+		StackNamesIP: m.Deploy.StackNamesIP,
+		// read at use: tests replace the module's driver, waiter and seams
+		DNS: func() dns.Driver { return m.DNS }, Waiter: func() dns.Waiter { return m.Waiter },
+		Seams: func() ipchange.Seams {
+			p := m.Provision
+			return ipchange.Seams{ProxyTest: p.ProxyTest, ProxyOptions: p.ProxyOptions, Attempts: p.SmokeAttempts, Gap: p.SmokeGap}
+		},
+	})
 	m.Agent = agent.New(agent.Deps{
 		DB: d.DB, Events: d.Events, Vault: d.Vault, Templates: m.Templates, Jobs: d.Jobs, Log: d.Log,
 		BaseURL: strings.TrimRight(d.Cfg.BaseURL.String(), "/"),
@@ -168,12 +185,12 @@ func (m *Module) AfterMigrate(ctx context.Context) error {
 func (*Module) EventTypes() []events.Type { return Events }
 
 // JobTypes: provisioning, the changes to active servers, the health
-// checks and retirement.
+// checks, retirement and IP changes.
 func (m *Module) JobTypes() []jobs.Type {
 	types := append([]jobs.Type{m.Provision.JobType()}, m.Deploy.JobTypes()...)
 	types = append(types, m.Health.JobTypes()...)
 	types = append(types, m.Agent.JobTypes()...)
-	return append(types, m.Retire.JobType())
+	return append(types, m.Retire.JobType(), m.IPChange.JobType())
 }
 
 // Subscribers: the rollout advances when a deploy job of its running item ends.
@@ -210,8 +227,13 @@ func (m *Module) Integrations(ctx context.Context) []ui.IntegrationRow {
 
 // Messages merges the module's texts: the core table and the template pages'.
 func (*Module) Messages() i18n.Messages {
-	all := make(i18n.Messages, len(messages)+len(templateMessages)+len(serverMessages)+len(deployMessages)+len(healthMessages)+len(retireMessages)+len(agentMessages))
-	for _, set := range []i18n.Messages{messages, templateMessages, serverMessages, deployMessages, healthMessages, retireMessages, agentMessages} {
+	sets := []i18n.Messages{messages, templateMessages, serverMessages, deployMessages, healthMessages, retireMessages, agentMessages, ipMessages}
+	n := 0
+	for _, set := range sets {
+		n += len(set)
+	}
+	all := make(i18n.Messages, n)
+	for _, set := range sets {
 		for k, v := range set {
 			all[k] = v
 		}
@@ -226,7 +248,8 @@ func (m *Module) Routes(r web.Routes) {
 		Store: m.Store, Templates: m.Templates, Log: m.deps.Log, Settings: m.deps.Settings, DNS: m.DNS,
 		CloudflareClient: func(token string) *cloudflare.Client { return m.CloudflareClient(token) },
 		Vault:            m.deps.Vault, Jobs: m.deps.Jobs, Provision: m.Provision, Deploy: m.Deploy, Retire: m.Retire, Health: m.Health, Stats: m.Stats, Agent: m.Agent,
-		Usage: func() pages.UsageReader { return m.usage },
+		IPChange: m.IPChange,
+		Usage:    func() pages.UsageReader { return m.usage },
 	})
 }
 

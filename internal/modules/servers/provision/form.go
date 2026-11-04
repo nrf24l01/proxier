@@ -131,7 +131,11 @@ func (s *Service) check(ctx context.Context, f Form, withPassword bool) (*checke
 		fe(errs, "ip", "servers.err.ip_v4")
 	default:
 		c.form.IP = addr.String()
-		if other, ok, qerr := store.ServerByIP(ctx, s.DB.R, c.form.IP); qerr == nil && ok {
+		switch other, ok, qerr := store.HolderOfIP(ctx, s.DB.R, c.form.IP); {
+		case qerr != nil || !ok:
+		case other.Previous:
+			fe(errs, "ip", "servers.err.ip_previous", "name", other.Name)
+		default:
 			fe(errs, "ip", "servers.err.ip_used", "name", other.Name)
 		}
 	}

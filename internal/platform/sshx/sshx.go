@@ -68,6 +68,11 @@ type Target struct {
 	// jump host that confirms keys sets both.
 	FirstContact     FirstContact
 	JumpFirstContact FirstContact
+	// SameKeyAs is a pinned address whose key Hop must present when Hop's own
+	// address has no pin yet: a server reached at a new IP proves it is the
+	// same machine, and only then is its key pinned for the new address. A
+	// different key is *OtherHostError and nothing is pinned.
+	SameKeyAs string
 	// NoGlobalRequests: Hop answers an SSH global request with
 	// SSH_MSG_UNIMPLEMENTED (RouterOS 7.24.5), which ends x/crypto's packet
 	// loop and every command on the connection. The keepalive probes the jump
@@ -91,6 +96,17 @@ func (e *HostKeyChangedError) Error() string {
 		what = "host key type changed"
 	}
 	return fmt.Sprintf("sshx: %s for %s (pinned %s, now %s): accept the new key in Settings → SSH", what, e.Address, e.Old, e.New)
+}
+
+// OtherHostError is returned when an address with no pin presents another key
+// than the one pinned for Target.SameKeyAs: another machine answers there.
+type OtherHostError struct {
+	Address, Want, Got string // Want and Got are SHA256 fingerprints
+	Of                 string // the address Want is pinned for
+}
+
+func (e *OtherHostError) Error() string {
+	return fmt.Sprintf("sshx: %s answers with host key %s, not %s, which %s has: it is another machine", e.Address, e.Got, e.Want, e.Of)
 }
 
 // UnknownHostError is returned for an address with no pinned key under

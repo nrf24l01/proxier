@@ -88,6 +88,9 @@ type Service struct {
 	ProxyDelay time.Duration
 	// EvalDelay is how long a waiting evaluation sleeps before it looks again (2 min).
 	EvalDelay time.Duration
+	// ChangeDelay is how long the checks after an IP change wait; 0 means
+	// AfterChangeDelay.
+	ChangeDelay time.Duration
 	// CheckHost returns the external checker's client; nil means the public one.
 	CheckHost func() *checkhost.Client
 	// Dial opens a connection way through a server's endpoint, for reaching
@@ -278,7 +281,10 @@ func (s *Service) Load(ctx context.Context, id int64, now time.Time) (CheckState
 		in.Endpoints = append(in.Endpoints, r.Key)
 	}
 
-	fresh := func(at db.Time, interval time.Duration) bool { return !at.Before(now.Add(-2 * interval)) }
+	// A result from before the IP changed is about another IP.
+	fresh := func(at db.Time, interval time.Duration) bool {
+		return !at.Before(now.Add(-2*interval)) && !at.Before(h.IPChangedAt.Time)
+	}
 
 	self, err := store.LatestResults(ctx, s.DB.R, id, "self")
 	if err != nil {

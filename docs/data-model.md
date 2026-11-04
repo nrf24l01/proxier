@@ -39,6 +39,8 @@ erDiagram
     DEPLOYMENT ||--o{ DEPLOYED_FILE : rendered
     SERVER ||--o{ DNS_RECORD : owns
     SERVER ||--o{ CHECK_RESULT : "is checked by"
+    SERVER ||--o{ PREVIOUS_IP : keeps
+    PREVIOUS_IP ||--o{ PREVIOUS_IP_RESULT : "is tested by"
     SERVER ||--o{ METRIC_SAMPLE : reports
 ```
 
@@ -48,7 +50,7 @@ erDiagram
 | **Template draft** | template, manifest, files, based on version, updated | At most one per template. |
 | **Template version** | template, number (1, 2, …), manifest, notes, published at | Immutable. |
 | **Template file** | version, path, content, mode, validator | Paths relative, no `..`. |
-| **Server** | country, number, name (unique forever), IP, SSH port, management hostname, proxy hostname, lifecycle state, template version, parameters, health state, health since, health detail, checks paused until, notes, created / activated / retired | The country is an ISO 3166-1 alpha-2 code (`NL`); its name and flag are derived, never stored. The name is `<prefix>-<number>`, the prefix the country's code in lower case (a server created when servers had locations keeps its location's code, `ams-1`); the next number is one more than the highest its prefix has used ([ADR 0015](./adr/0015-servers-have-a-country-not-a-location.md)). The old locations are kept as JSON in `servers_meta` (`locations.archive`) only so the migration can be rolled back. |
+| **Server** | country, number, name (unique forever), IP, IP changed at, SSH port, management hostname, proxy hostname, lifecycle state, template version, parameters, health state, health since, health detail, checks paused until, notes, created / activated / retired | The country is an ISO 3166-1 alpha-2 code (`NL`); its name and flag are derived, never stored. The name is `<prefix>-<number>`, the prefix the country's code in lower case (a server created when servers had locations keeps its location's code, `ams-1`); the next number is one more than the highest its prefix has used ([ADR 0015](./adr/0015-servers-have-a-country-not-a-location.md)). The old locations are kept as JSON in `servers_meta` (`locations.archive`) only so the migration can be rolled back. No two non-retired servers share an IP, as their IP or a previous one. Checks older than **IP changed at** don't count in the verdict ([IP change](./processes/servers/ip-change.md)). |
 | **Generated value** | server, key, value 🔒, pending 🔒, created, rotated | Kept for the server's life. Rotation puts the new value in `pending`; it replaces `value` only when the new ones passed the proxy test. Everything that serves a credential reads `value`. |
 | **Endpoint** | server, key (stable across versions), endpoint type, host, port, params 🔒, display name, position | Refreshed on every deployment from the manifest's `endpoints`. |
 | **Deployment** | server, kind (provision / redeploy / upgrade / params / rotate / restore / restart / images / reboot), template version, job, state, `uploaded`, started, finished | `uploaded` is 1 when the deployment uploaded files (it has deployed files). A server's **current files** are those of its latest succeeded deployment with `uploaded = 1`: a restart, an image update or a reboot uploads nothing and leaves them as they are. |
@@ -56,6 +58,8 @@ erDiagram
 | **Rollout** | template, target version, state (running / done / stopped / cancelled), created / finished; items: server, position, version before, state (waiting / running / done / failed / skipped), job, parameters asked before the start (secret ones 🔒) | A rolling upgrade. One item runs at a time; an event subscriber starts the next. |
 | **DNS record** | server, provider, zone, name, type, content, provider record id | Only records Proxier created. |
 | **Check result** | server, endpoint (proxy tests), kind (self / proxy / external / reference), vantage point, time, ok, timings, detail | Retention 30 days. |
+| **Previous IP** | server, IP (unique), since (when it stopped being the server's IP), state (unknown / works / fails), state since, candidate and its count | An IP a server left and still answers on, proxy-tested from home. Deleted by **Forget**, by switching back to it and by retirement. |
+| **Previous IP result** | previous IP, time, ok, class (the first failing endpoint's), inconclusive, detail (per endpoint: timings or the error) | Retention 30 days; deleted with its previous IP. |
 | **Metric sample** | server, time, load, CPU %, memory used/total, disk used/total, rx/tx bytes since the previous sample, uptime | Raw 7 days, hourly rollups 90 days. |
 
 ## Subscriptions
@@ -138,7 +142,7 @@ Lists, routers, Shadowrocket configs, imports and discovery runs have an **owner
 |---|---|
 | Events | forever (they are small; a prune setting exists) |
 | Jobs and logs | 30 days; failed jobs 90 days |
-| Check results | 30 days |
+| Check results and previous IP results | 30 days |
 | Metric samples | raw 7 days, hourly 90 days |
 | Link fetches | `subscriptions.fetch_retention` (default 90 days), pruned by the expiry scan every 15 minutes |
 | Network countries (of fetching networks) | 30 days; an unknown one (lookup off or failed) 1 day, so it is looked up again |

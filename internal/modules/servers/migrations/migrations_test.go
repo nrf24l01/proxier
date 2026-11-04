@@ -55,7 +55,7 @@ func TestServersMigrationsRoundTrip(t *testing.T) {
 	if err := db.MigrateUp(ctx, d, dbtest.Discard, srcs...); err != nil {
 		t.Fatal(err)
 	}
-	for range 4 {
+	for range 5 {
 		if err := db.MigrateDown(ctx, d, dbtest.Discard, source{}); err != nil {
 			t.Fatalf("down: %v", err)
 		}
@@ -93,7 +93,7 @@ func TestOneSSHPortAgain(t *testing.T) {
 			VALUES ('NL', ?, ?, ?, ?, ?, 'h', 'h', ?, NULLIF(?, ''), ?, ?, 1, 1, ?)`,
 			s.name[3:], s.name, "203.0.113."+s.name[3:], s.port, s.setup, s.state, s.step, health, now, now)
 	}
-	if err := db.MigrateUp(ctx, d, dbtest.Discard, source{}); err != nil {
+	if err := db.MigrateUp(ctx, d, dbtest.Discard, upTo{4}); err != nil {
 		t.Fatal(err)
 	}
 	ports := func() map[string]int {
@@ -117,7 +117,7 @@ func TestOneSSHPortAgain(t *testing.T) {
 		t.Fatalf("ssh ports %v, want %v", got, want)
 	}
 
-	if err := db.MigrateDown(ctx, d, dbtest.Discard, source{}); err != nil {
+	if err := db.MigrateDown(ctx, d, dbtest.Discard, upTo{4}); err != nil {
 		t.Fatalf("down: %v", err)
 	}
 	var n int
@@ -195,4 +195,23 @@ func TestCountryAndTemplateConstraints(t *testing.T) {
 	}
 	// a server keeps its template
 	mustFail(t, d, "deleting a template with a server", `DELETE FROM servers_templates WHERE id = 1`)
+}
+
+func TestPreviousIPConstraints(t *testing.T) {
+	d := open(t)
+	mustExec(t, d, insertServer, 1, "nl-1", "203.0.113.1", "active", "healthy", now, now)
+	mustExec(t, d, insertServer, 2, "nl-2", "203.0.113.2", "active", "healthy", now, now)
+	const ins = `INSERT INTO servers_previous_ips (server_id, ip, since, state, state_since) VALUES (?, ?, ?, ?, ?)`
+	mustExec(t, d, ins, 1, "198.51.100.1", now, "unknown", now)
+	mustFail(t, d, "one IP kept by two servers", ins, 2, "198.51.100.1", now, "unknown", now)
+	mustFail(t, d, "a state that isn't one", ins, 2, "198.51.100.2", now, "blocked", now)
+	mustFail(t, d, "a server that doesn't exist", ins, 99, "198.51.100.3", now, "unknown", now)
+	mustExec(t, d, `INSERT INTO servers_previous_ip_results (previous_ip_id, at, ok, class) VALUES (1, ?, 0, 'stalled')`, now)
+	mustFail(t, d, "a result of no previous IP", `INSERT INTO servers_previous_ip_results (previous_ip_id, at, ok) VALUES (99, ?, 1)`, now)
+	// forgetting the IP takes its results with it
+	mustExec(t, d, `DELETE FROM servers_previous_ips WHERE id = 1`)
+	var n int
+	if err := d.R.Get(&n, `SELECT count(*) FROM servers_previous_ip_results`); err != nil || n != 0 {
+		t.Fatalf("results left: %d %v", n, err)
+	}
 }

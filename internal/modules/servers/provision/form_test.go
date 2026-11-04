@@ -11,6 +11,11 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/tikhonp/proxier/internal/modules/servers/store"
+	"github.com/tikhonp/proxier/internal/platform/db"
 
 	"github.com/tikhonp/proxier/internal/modules/servers/provision"
 	"github.com/tikhonp/proxier/internal/modules/servers/serverstest"
@@ -387,5 +392,22 @@ func TestServersFromLocationsKeepTheirNames(t *testing.T) {
 	}
 	if ev := h.Events("server.created"); len(ev) != 1 || ev[0].Payload["country"] != "NL" {
 		t.Errorf("server.created %+v", ev)
+	}
+}
+
+func TestIPKeptAsPreviousIsRefused(t *testing.T) {
+	h := serverstest.NewHarness(t, serverstest.StubProxy())
+	id := h.Provisioned()
+	if err := h.App.DB.Write(bg, func(tx *sqlx.Tx) error {
+		return store.AddPreviousIP(bg, tx, id, "10.77.0.9", db.At(time.Now()))
+	}); err != nil {
+		t.Fatal(err)
+	}
+	f := h.Form()
+	f.IP = "10.77.0.9"
+	_, err := h.Mod.Provision.Create(bg, f, "admin")
+	fe := refused(t, err)
+	if m := fe["ip"]; m.Key != "servers.err.ip_previous" || m.Args["name"] != h.Server(id).Name {
+		t.Fatalf("ip error: %+v", fe)
 	}
 }

@@ -14,7 +14,7 @@ Provisioning turns a freshly issued VPS (an IP and a root password) into an **ac
    - **Notes**.
 2. While the member types, the form shows what will be created: the server name (`nl-2`), the management and proxy hostnames, the DNS record, and the endpoints with their display names. A picker the member hasn't chosen in (empty with nothing suggested yet, or showing what the IP suggested last) follows the IP's country as the summary updates; anything else in it (a half-typed name, an emptied field, a country they picked) is theirs, and the summary never replaces it. Until a country is picked the summary shows no name, and text that names no country is refused only on **Create**.
 3. **Create**. Proxier checks:
-   - no non-retired server has this IP;
+   - no non-retired server has this IP, as its IP or as a previous IP it keeps ([IP change](./ip-change.md));
    - the country is a country (an ISO code in use today), and the template version exists and the template isn't archived;
    - parameters pass validation;
    - Cloudflare is configured and a configured zone covers the hostname;
@@ -80,6 +80,7 @@ The job makes one attempt and never retries by itself: a retry may need input, s
 ## Edge cases (each is a test)
 
 - IP already used by active `nl-1` → refused on the form, nothing created.
+- An IP `nl-1` keeps as a previous IP → refused, "nl-1 keeps this IP as a previous IP. Forget it there first."
 - An IP in the Netherlands, picker empty → "🇳🇱 Netherlands · NL" preselected with "Suggested from the IP (NL)", summary `nl-1`. Another IP in Germany while the suggestion is untouched → Germany. Any country is suggested, not only those with servers; a lookup answer that is no country (or the lookup turned off) suggests nothing.
 - Typing "Neth" in the picker, emptying it, or picking Finland while the IP suggests another country → the field is left as it is; the summary shows no name for "Neth" and no complaint while it is typed.
 - "Atlantis", a withdrawn code (`UK`) or nothing in the picker → refused on **Create** ("Pick a country from the list." / "Pick a country."), the text kept, nothing created. `nl` or "Нидерланды" typed in full → the Netherlands.

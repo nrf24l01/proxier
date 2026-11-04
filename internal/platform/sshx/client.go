@@ -55,11 +55,11 @@ func (s *SSH) Connect(ctx context.Context, t Target, log *jobs.Logger) (*Client,
 	}
 	var jump *ssh.Client
 	if t.Jump != nil {
-		if jump, err = s.dialHop(ctx, *t.Jump, t.Network, nil, t.JumpFirstContact, signer, log); err != nil {
+		if jump, err = s.dialHop(ctx, *t.Jump, t.Network, nil, t.JumpFirstContact, "", signer, log); err != nil {
 			return nil, permanentIfFinal(&HopError{Jump: true, Address: NormalizeAddress(t.Jump.Address), Err: err})
 		}
 	}
-	c, err := s.dialHop(ctx, t.Hop, t.Network, jump, t.FirstContact, signer, log)
+	c, err := s.dialHop(ctx, t.Hop, t.Network, jump, t.FirstContact, t.SameKeyAs, signer, log)
 	if err != nil {
 		if jump != nil {
 			_ = jump.Close()
@@ -91,7 +91,8 @@ func (e *HopError) Unwrap() error { return e.Err }
 func permanentIfFinal(err error) error {
 	var changed *HostKeyChangedError
 	var unknown *UnknownHostError
-	if errors.As(err, &changed) || errors.As(err, &unknown) || errors.Is(err, ErrAuth) ||
+	var other *OtherHostError
+	if errors.As(err, &changed) || errors.As(err, &unknown) || errors.As(err, &other) || errors.Is(err, ErrAuth) ||
 		errors.Is(err, tailnet.ErrOff) || errors.Is(err, ErrNoIdentity) {
 		return jobs.Permanent(err)
 	}
@@ -99,8 +100,9 @@ func permanentIfFinal(err error) error {
 }
 
 // dialHop connects one hop: over via when there is one, otherwise over the
-// target's network. It applies the pinning rules.
-func (s *SSH) dialHop(ctx context.Context, h Hop, network Network, via *ssh.Client, mode FirstContact, signer ssh.Signer, log *jobs.Logger) (*ssh.Client, error) {
+// target's network. It applies the pinning rules; sameKeyAs is
+// Target.SameKeyAs for the last hop.
+func (s *SSH) dialHop(ctx context.Context, h Hop, network Network, via *ssh.Client, mode FirstContact, sameKeyAs string, signer ssh.Signer, log *jobs.Logger) (*ssh.Client, error) {
 	address := NormalizeAddress(h.Address)
 	known, err := s.known(ctx, address)
 	if err != nil {
@@ -112,11 +114,23 @@ func (s *SSH) dialHop(ctx context.Context, h Hop, network Network, via *ssh.Clie
 			TypeChanged: known.PendingKeyType != known.KeyType}
 	}
 
-	algos := firstContactAlgorithms
-	if known != nil {
-		algos = hostKeyAlgorithms(known.KeyType)
-	}
 	check := &hostCheck{address: address, known: known, mode: mode}
+	algos := firstContactAlgorithms
+	switch {
+	case known != nil:
+		algos = hostKeyAlgorithms(known.KeyType)
+	case sameKeyAs != "":
+		of := NormalizeAddress(sameKeyAs)
+		ref, err := s.known(ctx, of)
+		if err != nil {
+			return nil, err
+		}
+		if ref == nil {
+			return nil, fmt.Errorf("sshx: %s has no pinned key to compare %s with", of, address)
+		}
+		check.expect, check.expectOf = ref, of
+		algos = hostKeyAlgorithms(ref.KeyType)
+	}
 	cfg := &ssh.ClientConfig{
 		User: h.User, Auth: authMethods(h, signer),
 		HostKeyCallback: check.callback, HostKeyAlgorithms: algos,
@@ -170,6 +184,8 @@ func (s *SSH) explain(ctx context.Context, err error, check *hostCheck, dial fun
 	switch {
 	case check.unknown != nil:
 		return check.unknown
+	case check.other != nil:
+		return check.other
 	case check.changed:
 		old, werr := s.recordChange(ctx, check.address, check.key)
 		if werr != nil {

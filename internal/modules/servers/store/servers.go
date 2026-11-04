@@ -43,6 +43,9 @@ type Server struct {
 	CreatedAt          db.Time       `db:"created_at"`
 	ActivatedAt        db.Time       `db:"activated_at"`
 	RetiredAt          db.Time       `db:"retired_at"`
+	// IPChangedAt is when the IP last changed; checks from before it are
+	// about another IP.
+	IPChangedAt db.Time `db:"ip_changed_at"`
 
 	TemplateName string `db:"template_name"`
 }
@@ -63,7 +66,7 @@ const serverSelect = `SELECT s.id, s.country, s.number, s.name, s.ip, s.ssh_port
 	s.state, s.template_id, s.template_version, s.params, s.params_secret, s.notes, s.provision_job_id, s.retire_job_id,
 	COALESCE(s.failed_step, '') AS failed_step, COALESCE(s.failed_error, '') AS failed_error,
 	COALESCE(s.health, '') AS health, s.health_since, s.health_reason, s.created_at, s.activated_at, s.retired_at,
-	t.name AS template_name
+	s.ip_changed_at, t.name AS template_name
 	FROM servers_servers s
 	JOIN servers_templates t ON t.id = s.template_id`
 
@@ -81,16 +84,6 @@ func ListServers(ctx context.Context, q sqlx.QueryerContext) ([]Server, error) {
 	var out []Server
 	err := sqlx.SelectContext(ctx, q, &out, serverSelect+` ORDER BY s.id DESC`)
 	return out, err
-}
-
-// ServerByIP returns the non-retired server that has ip.
-func ServerByIP(ctx context.Context, q sqlx.QueryerContext, ip string) (Server, bool, error) {
-	var s Server
-	err := sqlx.GetContext(ctx, q, &s, serverSelect+` WHERE s.ip = ? AND s.state <> 'retired'`, ip)
-	if errors.Is(err, sql.ErrNoRows) {
-		return Server{}, false, nil
-	}
-	return s, err == nil, err
 }
 
 // NewServer is what Create writes.
@@ -516,6 +509,8 @@ func MarkRetired(ctx context.Context, tx sqlx.ExtContext, id int64, at db.Time) 
 	for _, q := range []string{
 		`DELETE FROM servers_generated_values WHERE server_id = ?`,
 		`DELETE FROM servers_endpoints WHERE server_id = ?`,
+		// nothing tests a retired server's previous IPs, and the IPs are free
+		`DELETE FROM servers_previous_ips WHERE server_id = ?`,
 	} {
 		if _, err := tx.ExecContext(ctx, q, id); err != nil {
 			return false, err

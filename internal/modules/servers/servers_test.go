@@ -60,7 +60,7 @@ func TestModuleIsWired(t *testing.T) {
 	}
 	for _, name := range []string{"template.agent_session_opened", "server.provisioning_failed", "server.activated", "server.redeploy_failed",
 		"server.credentials_rotated", "server.health_changed", "server.still_unhealthy", "server.cert_expiring", "server.disk_low",
-		"health.foreign_unreachable", "health.home_recovered", "server.retire_failed"} {
+		"health.foreign_unreachable", "health.home_recovered", "server.retire_failed", "server.ip_change_failed", "server.previous_ip_changed"} {
 		if !notifying[name] {
 			t.Errorf("%s must notify by default", name)
 		}

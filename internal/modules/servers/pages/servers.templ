@@ -417,6 +417,17 @@ templ serverOverviewPage(s ui.Shell, v serverView) {
 				<dd>{ v.Flag } { countryName(ctx, v.S.Country) } · { v.S.Country }</dd>
 				<dt>{ i18n.T(ctx, "servers.kv.ip") }</dt>
 				<dd>{ v.S.IP }:{ strconv.Itoa(v.S.SSHPort) }</dd>
+				if len(v.Previous) > 0 {
+					<dt>{ i18n.T(ctx, "servers.kv.previous") }</dt>
+					<dd>
+						for i, p := range v.Previous {
+							if i > 0 {
+								<span>, </span>
+							}
+							<a href={ templ.SafeURL(serverHref(v.S.ID) + "/health") }>{ p.IP }</a> <span class="sm subtle">{ i18n.T(ctx, "servers.previous.state." + p.State) }</span>
+						}
+					</dd>
+				}
 				<dt>{ i18n.T(ctx, "servers.kv.hosts") }</dt>
 				<dd>
 					{ v.S.ManagementHostname }

@@ -3,9 +3,11 @@ package sshx
 import (
 	"context"
 	"errors"
+	"net"
 	"testing"
 
 	"github.com/tikhonp/proxier/internal/platform/jobs"
+	"github.com/tikhonp/proxier/internal/platform/sshx/sshxtest"
 )
 
 func TestFirstContactPinsHostKey(t *testing.T) {
@@ -182,5 +184,51 @@ func TestAddressesAreNormalized(t *testing.T) {
 		if got := NormalizeAddress(in); got != want {
 			t.Errorf("NormalizeAddress(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// sameMachineEnv reaches srv at a second address, 192.0.2.10, as a VPS
+// answers on an IP added at its provider.
+func sameMachineEnv(t *testing.T, at func() string) *env {
+	e := newEnv(t)
+	e.ssh.Dial = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		if host, _, _ := net.SplitHostPort(addr); host == "192.0.2.10" {
+			addr = at()
+		}
+		return (&net.Dialer{}).DialContext(ctx, network, addr)
+	}
+	return e
+}
+
+func TestNewAddressOfTheSameMachineIsPinned(t *testing.T) {
+	var srv *sshxtest.Server
+	e := sameMachineEnv(t, func() string { return srv.Addr })
+	srv = e.server()
+	e.mustConnect(e.target(srv, "server:4"))
+
+	_, port, _ := net.SplitHostPort(srv.Addr)
+	tg := Target{Hop: Hop{Address: net.JoinHostPort("192.0.2.10", port), User: "root", Subject: "server:4"}, SameKeyAs: srv.Addr}
+	e.mustConnect(tg)
+	h, err := e.ssh.KnownHost(context.Background(), tg.Address)
+	if err != nil || h.Fingerprint != fp(srv.HostKey()) || h.Subject != "server:4" {
+		t.Fatalf("the new address: %+v, %v", h, err)
+	}
+}
+
+func TestNewAddressOfAnotherMachineIsRefused(t *testing.T) {
+	var other *sshxtest.Server
+	e := sameMachineEnv(t, func() string { return other.Addr })
+	srv, other := e.server(), e.server()
+	e.mustConnect(e.target(srv, "server:4"))
+
+	_, port, _ := net.SplitHostPort(srv.Addr)
+	tg := Target{Hop: Hop{Address: net.JoinHostPort("192.0.2.10", port), User: "root", Subject: "server:4"}, SameKeyAs: srv.Addr}
+	_, err := e.connect(tg)
+	var oh *OtherHostError
+	if !errors.As(err, &oh) || oh.Want != fp(srv.HostKey()) || oh.Got != fp(other.HostKey()) || !jobs.IsPermanent(err) {
+		t.Fatalf("want a permanent OtherHostError, got %v", err)
+	}
+	if _, err := e.ssh.KnownHost(context.Background(), tg.Address); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("another machine's key was pinned: %v", err)
 	}
 }

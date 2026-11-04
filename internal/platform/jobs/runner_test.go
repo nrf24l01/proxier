@@ -639,3 +639,32 @@ func TestKickWakesEveryPoolAndKeyWaiters(t *testing.T) {
 		}
 	}
 }
+
+func TestOnSucceededRunsInTheFinishingTransaction(t *testing.T) {
+	h := newH(t)
+	var keyFree bool
+	typ := simple("test.change", func(context.Context, *jobs.Run) error { return nil })
+	typ.OnSucceeded = func(ctx context.Context, tx *sqlx.Tx, j jobs.Info) error {
+		var n int
+		err := tx.GetContext(ctx, &n, `SELECT count(*) FROM jobs WHERE resource_key = ? AND state = 'running'`, j.ResourceKey)
+		keyFree = n == 0
+		return err
+	}
+	reg(t, h.Sys, typ)
+	failing := simple("test.broken_hook", func(context.Context, *jobs.Run) error { return nil })
+	failing.OnSucceeded = func(context.Context, *sqlx.Tx, jobs.Info) error { return errors.New("hook down") }
+	reg(t, h.Sys, failing)
+	h.Start(h.Sys)
+	a := enq(t, h, jobs.Request{Type: "test.change", ResourceKey: "server:1"})
+	b := enq(t, h, jobs.Request{Type: "test.broken_hook", ResourceKey: "server:2"})
+	h.Drain()
+	if !keyFree {
+		t.Fatal("the hook saw its own job still running")
+	}
+	// A hook that fails leaves the job succeeded.
+	for _, id := range []int64{a.ID, b.ID} {
+		if j, _ := h.Sys.Job(bg, id); j.State != jobs.Succeeded {
+			t.Fatalf("job %d: %s", id, j.State)
+		}
+	}
+}

@@ -277,13 +277,25 @@ type hostCheck struct {
 	known   *hostRow
 	mode    FirstContact
 
+	// expect is the pin of Target.SameKeyAs, for an address with none.
+	expect   *hostRow
+	expectOf string
+
 	key     ssh.PublicKey
 	changed bool
 	unknown *UnknownHostError
+	other   *OtherHostError
 }
 
 func (h *hostCheck) callback(_ string, _ net.Addr, key ssh.PublicKey) error {
 	h.key = key
+	if h.known == nil && h.expect != nil {
+		if bytes.Equal(key.Marshal(), h.expect.PublicKey) {
+			return nil
+		}
+		h.other = &OtherHostError{Address: h.address, Want: h.expect.Fingerprint, Got: ssh.FingerprintSHA256(key), Of: h.expectOf}
+		return h.other
+	}
 	if h.known == nil {
 		if h.mode == ConfirmFirstContact {
 			h.unknown = &UnknownHostError{Address: h.address, Fingerprint: ssh.FingerprintSHA256(key), Key: key}

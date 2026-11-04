@@ -111,6 +111,7 @@ All in `internal/platform/module`, found by type assertion; the platform impleme
 
 - Resource keys: `server:<id>` for every job that changes a server or reads it over SSH (the self-check with `SkipIfBusy`; the proxy test takes none and asks `jobs.System.Busy` instead, since `SkipIfBusy` counts queued jobs too). `router:<id>` for every job that connects to a router. `service:<id>` for one service's refresh.
 - Every waiting step selects on `r.Cancelling()`. A job type that writes a deployment marks it failed in `OnCancelled`, and its failure event carries `cancelled: true` (which doesn't notify).
+- Work a job queues for after itself on its own resource key goes in `OnSucceeded`, the transaction that marks it succeeded. Queued from a step, a delayed job that asks `Busy` when it starts would find the job still running and skip itself. The IP change queues the new IP's checks this way.
 - A server's current files are those of its latest succeeded deployment with `uploaded = 1`, never just the latest deployment.
 
 **Remote text in one place**

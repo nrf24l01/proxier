@@ -149,6 +149,8 @@ var healthMessages = i18n.Messages{
 	"settings.field.servers.selfcheck_every.help":          {EN: "The self-check and the proxy test of every active server. Applies from the next round.", RU: "Самопроверка и проверка прокси каждого активного сервера. Применяется со следующего раунда."},
 	"settings.field.servers.external_every":                {EN: "External check every", RU: "Внешняя проверка каждые"},
 	"settings.field.servers.external_every.help":           {EN: "check-host.net is a public service: keep this long.", RU: "check-host.net — публичный сервис, не опрашивайте его часто."},
+	"settings.field.servers.previous_ip_every":             {EN: "Previous IPs tested every", RU: "Прежние IP проверяются каждые"},
+	"settings.field.servers.previous_ip_every.help":        {EN: "A proxy test from home through each previous IP, to tell when it works again.", RU: "Проверка прокси из дома через каждый прежний IP, чтобы узнать, когда он снова заработает."},
 	"settings.field.servers.external_on_demand_after":      {EN: "On-demand external check at most every", RU: "Внеплановая внешняя проверка не чаще чем"},
 	"settings.field.servers.external_on_demand_after.help": {EN: "A failing proxy test asks for an external check unless one was made this recently.", RU: "Неудачная проверка прокси запрашивает внешнюю проверку, если недавно её не было."},
 	"settings.field.servers.external_hourly_cap":           {EN: "External checks per hour, all servers", RU: "Внешних проверок в час, всего"},

@@ -130,6 +130,7 @@ func (h *handler) serverActions(ctx context.Context, s store.Server, canRoll, ot
 	acts = append(acts,
 		ui.Action{ID: "server.params", Label: "servers.act.params", Method: "GET", Href: href + "/params"},
 		ui.Action{ID: "server.rotate", Label: "servers.act.rotate", Method: "GET", Href: href + "/rotate"},
+		ui.Action{ID: "server.ip", Label: "servers.act.ip", Method: "GET", Href: href + "/ip"},
 		ui.Action{
 			ID: "server.restart", Label: "servers.act.restart", Method: "POST", Href: href + "/restart",
 			Confirm: &ui.Confirm{Strength: 1, Title: i18n.T(ctx, "servers.act.restart"), Body: i18n.T(ctx, "servers.restart.body", i18n.Args{"name": s.Name})},

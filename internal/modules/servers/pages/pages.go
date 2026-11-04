@@ -13,6 +13,7 @@ import (
 	"github.com/tikhonp/proxier/internal/modules/servers/dns"
 	"github.com/tikhonp/proxier/internal/modules/servers/dns/cloudflare"
 	"github.com/tikhonp/proxier/internal/modules/servers/health"
+	"github.com/tikhonp/proxier/internal/modules/servers/ipchange"
 	"github.com/tikhonp/proxier/internal/modules/servers/provision"
 	"github.com/tikhonp/proxier/internal/modules/servers/retire"
 	"github.com/tikhonp/proxier/internal/modules/servers/stats"
@@ -51,6 +52,8 @@ type Deps struct {
 	Stats  *stats.Service
 	// Retire takes servers out of service.
 	Retire *retire.Service
+	// IPChange moves servers to another IP and forgets previous ones.
+	IPChange *ipchange.Service
 	// Agent hands template drafts to coding agents.
 	Agent *agent.Service
 	// Usage is the subscriptions port; it returns nil without that module.
@@ -79,6 +82,7 @@ func Register(r web.Routes, d Deps) {
 	h.registerDeploy(r)
 	h.registerHealth(r)
 	h.registerRetire(r)
+	h.registerIP(r)
 	h.registerAgent(r)
 }
 

@@ -26,11 +26,12 @@ type Health struct {
 	RemindedAt     db.Time        `db:"reminded_at"`
 	CertWarned     bool           `db:"cert_warned"`
 	DiskWarned     bool           `db:"disk_warned"`
+	IPChangedAt    db.Time        `db:"ip_changed_at"`
 }
 
 const healthSelect = `SELECT id, state, COALESCE(health, '') AS health, retire_job_id IS NOT NULL AS retiring, health_since, health_reason,
-	health_detail, candidate, candidate_count, counted_proxy_at, checks_paused_until, reminded_at, cert_warned, disk_warned
-	FROM servers_servers`
+	health_detail, candidate, candidate_count, counted_proxy_at, checks_paused_until, reminded_at, cert_warned, disk_warned,
+	ip_changed_at FROM servers_servers`
 
 // PausedForever is checks_paused_until for "until resumed".
 var PausedForever = db.At(mustTime("9999-12-31T00:00:00.000Z"))
@@ -195,6 +196,9 @@ func ExternalChecksSince(ctx context.Context, q sqlx.QueryerContext, since db.Ti
 // PruneResults deletes check results and reference results older than a time.
 func PruneResults(ctx context.Context, tx sqlx.ExtContext, before db.Time) error {
 	if _, err := tx.ExecContext(ctx, `DELETE FROM servers_check_results WHERE at < ?`, before); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM servers_previous_ip_results WHERE at < ?`, before); err != nil {
 		return err
 	}
 	_, err := tx.ExecContext(ctx, `DELETE FROM servers_reference_results WHERE at < ?`, before)
