@@ -44,7 +44,9 @@ Each step is resumable. A retried job starts at the step that didn't finish.
    - TCP BBR: `net.ipv4.tcp_congestion_control = bbr` (and the `fq` qdisc, best effort), kept across reboots in `/etc/sysctl.d/90-proxier-bbr.conf`. The server sends what clients download through it, over long lossy paths, where BBR keeps the throughput CUBIC halves on every loss. It comes before Docker, because a container's network namespace starts with the host's default. A kernel without BBR (OpenVZ, LXC) gets a warning, "TCP stays on cubic", no file, and provisioning goes on.
    - Docker via get.docker.com unless Docker is already installed.
    - Firewall: ufw is reset, then denies every incoming connection but the SSH port's and the manifest's ports, and is turned on. Rules the image came with go, so the rule set is exactly what Proxier means; no template rule is lost, because the template's own steps come later.
-4. **DNS.** Create the A record(s) for the hostname(s): DNS-only, TTL 60, comment `proxier:nl-2`. Wait until 1.1.1.1 and 8.8.8.8 both answer with the IP (timeout 10 min).
+4. **DNS.** Create the A record(s) for the hostname(s): DNS-only, TTL 60, comment `proxier:nl-2`. Then wait for the name to be visible ([Cloudflare](../../integrations/cloudflare.md#behaviour)):
+   - First ask the zone's own nameservers (`gabe.ns.cloudflare.com` and the rest, port 53, without recursion) every 2 s until every one of them answers with the IP. A resolver asked before then gets "no such name" and may keep that answer for the zone's negative TTL (the SOA's minimum: 30 min at Cloudflare). If the nameservers can't be asked (port 53 dropped, an answer without the authoritative flag, no nameservers found), the log says why and the wait pauses 10 s instead.
+   - Then wait until 1.1.1.1 and 8.8.8.8 both answer with the IP (timeout 10 min). A resolver that still answers nothing at 10 min, while the other shows the IP, probably holds a negative answer from before the record existed; the log says so, and it gets until the zone's negative TTL plus a minute has passed since the nameservers had the record.
 5. **Generated values.** Create every generated value the version declares (encrypted).
 6. **Render and upload.** Render the version for this server and upload the files to the manifest's `dir` (`upload-files`). Record the deployment and its rendered files.
 7. **Template install steps**, in order (in the seed template: issue the certificate, `compose up --pull`, wait for the decoy site to answer locally).
@@ -101,6 +103,9 @@ The job makes one attempt and never retries by itself: a retry may need input, s
 - A failure at step 7 → **Activate anyway** isn't offered.
 - A conflicting A record at `nl-2.hosts.tikhonnnnn.com` (not created by Proxier) → DNS step fails, naming its value. **Retry → Overwrite** replaces it.
 - DNS still not visible on 8.8.8.8 after 10 min → DNS step fails. **Retry** resumes at DNS and doesn't recreate the record.
+- The zone's nameservers don't serve the record yet → no resolver is asked until they all do; they never do within 10 min → DNS step fails, naming what each nameserver answered.
+- Port 53 to the zone's nameservers dropped, or answered by something else (no authoritative flag) → the log says so, the wait pauses 10 s, then asks the resolvers.
+- 1.1.1.1 still answers nothing at 10 min while 8.8.8.8 shows the IP (a cached negative answer) → the wait goes on up to the zone's negative TTL plus a minute, and ends when 1.1.1.1 shows the IP. Still nothing then → DNS step fails: "Cloudflare answered nothing (probably a cached negative answer …)".
 - Let's Encrypt rate limit → install step fails with certbot's message.
 - The container restarts during "Install Docker" → the job resumes at base bootstrap, and running it again is harmless.
 - Self-check passes but the proxy test fails 3 times (e.g. the hosting network is already blocked in Russia) → server **failed** at smoke test, with the error.

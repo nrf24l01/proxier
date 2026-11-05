@@ -3,6 +3,7 @@ package serverstest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -57,6 +58,7 @@ type Harness struct {
 
 	mu         sync.Mutex
 	dnsVisible bool
+	nsDown     bool
 	stopJobs   func()
 	stopDisp   func()
 	stubbed    bool
@@ -110,10 +112,17 @@ func NewHarness(t *testing.T, opts ...Option) *Harness {
 		t.Fatal(err)
 	}
 
-	// Resolvers see what the fake Cloudflare holds, unless a test hides it.
+	// The zone's nameservers serve what the fake Cloudflare holds at once,
+	// and resolvers see it too, unless a test hides it. The zone lets no
+	// negative answer be cached, so a hidden record fails at Timeout.
 	mod.Waiter = dns.Waiter{
 		Resolvers: dns.DefaultResolvers, Every: time.Millisecond, Timeout: 3 * time.Second,
+		AuthEvery: time.Millisecond, Settle: time.Millisecond,
 		Lookup: h.lookup,
+		FindZone: func(context.Context, string) (dns.Zone, error) {
+			return dns.Zone{Servers: []dns.NameServer{{Name: "ns.fake", Addr: netip.MustParseAddrPort("127.0.0.1:53")}}}, nil
+		},
+		Ask: h.ask,
 	}
 
 	h.VPS = NewVPS(t)
@@ -361,6 +370,30 @@ func (h *Harness) lookup(_ context.Context, _ dns.Resolver, name string) ([]neti
 func (h *Harness) StallSmoke(stalls bool) {
 	h.mu.Lock()
 	h.stallSmoke = stalls
+	h.mu.Unlock()
+}
+
+func (h *Harness) ask(_ context.Context, _ dns.NameServer, name string) ([]netip.Addr, error) {
+	h.mu.Lock()
+	down := h.nsDown
+	h.mu.Unlock()
+	if down {
+		return nil, errors.New("i/o timeout")
+	}
+	var out []netip.Addr
+	for _, r := range h.CF.Records("tikhonnnnn.com") {
+		if a, err := netip.ParseAddr(r.Content); err == nil && r.Name == name {
+			out = append(out, a)
+		}
+	}
+	return out, nil
+}
+
+// NameserversDown makes the zone's nameservers unreachable, as a home router
+// that drops port 53 would.
+func (h *Harness) NameserversDown(down bool) {
+	h.mu.Lock()
+	h.nsDown = down
 	h.mu.Unlock()
 }
 

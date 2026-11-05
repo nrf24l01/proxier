@@ -399,6 +399,28 @@ func TestDNSWaitTimeoutThenRetry(t *testing.T) {
 	}
 }
 
+// The resolvers are asked only once the zone's nameservers serve the record;
+// with port 53 to them dropped, provisioning pauses instead and goes on.
+func TestDNSWaitAsksTheNameserversFirst(t *testing.T) {
+	h := serverstest.NewHarness(t)
+	id := h.Provisioned()
+	active(t, h, id)
+	log := h.Log(h.Job(id).ID)
+	ns := strings.Index(log, "tikhonnnnn.com's nameservers (ns.fake) answer 127.0.0.1")
+	cf := strings.Index(log, "Cloudflare (doh) answered 127.0.0.1")
+	if ns < 0 || cf < ns {
+		t.Fatalf("the nameservers should be asked first:\n%s", log)
+	}
+
+	h = serverstest.NewHarness(t)
+	h.NameserversDown(true)
+	id = h.Provisioned()
+	active(t, h, id)
+	if log := h.Log(h.Job(id).ID); !strings.Contains(log, "Can't ask ns.fake (127.0.0.1) about nl-1.hosts.tikhonnnnn.com: i/o timeout; asking the public resolvers in 1ms instead") {
+		t.Fatalf("log:\n%s", log)
+	}
+}
+
 func TestCertbotRateLimited(t *testing.T) {
 	h := serverstest.NewHarness(t)
 	h.VPS.CertbotRateLimited = true

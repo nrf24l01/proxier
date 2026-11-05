@@ -42,7 +42,7 @@ The job holds `server:<id>`, so no other job changes the server meanwhile. Until
    - → `server.ip_changed{from, to, kept, back, forced}`.
 
    When **Keep** was off, the host key pinned at the old address is forgotten, so another server built there later is a first contact, not a changed key. The log says when the stack's files use the IP: **Redeploy** brings them to the new one.
-4. **Wait for resolvers.** Wait until 1.1.1.1 and 8.8.8.8 show the new IP (as in provisioning, up to 10 min). The change is already made, so a record that is slow to show is a warning, not a failure.
+4. **Wait for resolvers.** As in provisioning: wait until the zone's own nameservers answer with the new IP (or pause 10 s when they can't be asked), then until 1.1.1.1 and 8.8.8.8 show it (up to 10 min). The name already exists, so a resolver holds no "no such name", only the old IP for up to the record's 60 s TTL. The change is already made, so a record that is slow to show is a warning, not a failure.
 5. The job ends. In the transaction that marks it succeeded, it queues the checks of the new IP. The self-check runs at once. The proxy test, a test of the previous IPs and an on-demand external check (within its budget) run 90 s later, beyond the records' 60 s TTL, so home's resolver no longer answers with the old IP. The first verdict after `unknown` applies at once ([health](./server-health.md)).
 
 A failed or cancelled job → `server.ip_change_failed{to, step, error, cancelled}`, which notifies unless cancelled. The job makes one attempt; the member runs **Change IP** again. A run after a failure at step 4 or later finds the server at the new IP already.
@@ -77,6 +77,7 @@ A failed or cancelled job → `server.ip_change_failed{to, step, error, cancelle
 - Switch back to a previous IP → the server is at it again, it leaves the list, the IP left becomes a previous IP, `back: true` (`TestSwitchBackToAPreviousIP`).
 - The form refuses an empty IP, an IPv6 address, a name, the server's own IP, another server's IP and another server's previous IP, and queues nothing (`TestChangeFormRefusals`).
 - The record at the hostname no longer carries Proxier's comment → fails at **Repoint DNS**, nothing changed (`TestConflictingDNSRecordChangesNothing`).
+- The wait asks the zone's nameservers for the new IP before the resolvers; with port 53 to them dropped it pauses and goes on, and the change succeeds (`TestWaitAsksTheNameserversFirst`).
 - **Forget** → the previous IP, its results and its host key are gone, a second Forget is not found, and a new server can be built at that IP (`TestForgetAPreviousIP`).
 - A template whose stack uses `.Server.IP` → the dialog's band and the job's log ask for a redeploy; the seed template doesn't (`TestStackThatNamesTheIPAsksForARedeploy`, `TestChangeIPPages`).
 - A previous IP that was blocked when it was left → `fails` at once, with the error, and no notification (`TestBlockedPreviousIPFailsAtOnceQuietly`).

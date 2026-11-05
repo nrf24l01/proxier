@@ -318,3 +318,29 @@ func TestStackThatNamesTheIPAsksForARedeploy(t *testing.T) {
 		t.Fatalf("the seed names the IP: %v %v", names, err)
 	}
 }
+
+// The wait asks the zone's nameservers for the new IP before any resolver,
+// and still ends when port 53 to them is dropped.
+func TestWaitAsksTheNameserversFirst(t *testing.T) {
+	f := newFixture(t)
+	j := f.change(ipchange.Form{IP: newIP, Keep: true})
+	if j.State != jobs.Succeeded {
+		t.Fatalf("job %s: %s", j.State, j.Error)
+	}
+	log := f.Log(j.ID)
+	ns := strings.Index(log, "tikhonnnnn.com's nameservers (ns.fake) answer "+newIP)
+	cf := strings.Index(log, "Cloudflare (doh) answered "+newIP)
+	if ns < 0 || cf < ns {
+		t.Fatalf("the nameservers should be asked first:\n%s", log)
+	}
+
+	f.NameserversDown(true)
+	j = f.change(ipchange.Form{IP: "127.0.0.1", Keep: true})
+	if j.State != jobs.Succeeded || f.Server(f.ID).IP != "127.0.0.1" {
+		t.Fatalf("job %s: %s", j.State, j.Error)
+	}
+	if log := f.Log(j.ID); !strings.Contains(log, "Can't ask ns.fake (127.0.0.1) about nl-1.hosts.tikhonnnnn.com: i/o timeout; asking the public resolvers in 1ms instead") ||
+		!strings.Contains(log, "Cloudflare (doh) answered 127.0.0.1") {
+		t.Fatalf("log:\n%s", log)
+	}
+}

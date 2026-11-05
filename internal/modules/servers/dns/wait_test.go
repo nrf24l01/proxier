@@ -41,8 +41,19 @@ func (l *memLog) text() string {
 	return strings.Join(l.lines, "\n")
 }
 
+const waitZone = "tikhonnnnn.com"
+
+// fastWaiter's zone has nameservers that serve the record at once and lets no
+// negative answer be cached.
 func fastWaiter(rs ...dns.Resolver) dns.Waiter {
-	return dns.Waiter{Resolvers: rs, Every: 5 * time.Millisecond, Timeout: 300 * time.Millisecond}
+	return dns.Waiter{Resolvers: rs, Every: 5 * time.Millisecond, Timeout: 300 * time.Millisecond,
+		FindZone: func(context.Context, string) (dns.Zone, error) {
+			return dns.Zone{Servers: []dns.NameServer{{Name: "ns.example", Addr: netip.MustParseAddrPort("192.0.2.53:53")}}}, nil
+		},
+		Ask: func(context.Context, dns.NameServer, string) ([]netip.Addr, error) {
+			return []netip.Addr{netip.MustParseAddr(waitIP)}, nil
+		},
+	}
 }
 
 func TestWaitForBothResolvers(t *testing.T) {
@@ -69,7 +80,7 @@ func TestWaitForBothResolvers(t *testing.T) {
 	w := fastWaiter(cf, g)
 	w.Lookup = lookup
 	log := &memLog{}
-	if err := w.Wait(t.Context(), waitName, waitIP, log); err != nil {
+	if err := w.Wait(t.Context(), waitZone, waitName, waitIP, log); err != nil {
 		t.Fatalf("wait: %v", err)
 	}
 	if !strings.Contains(log.text(), "Cloudflare (doh) answered "+waitIP) || !strings.Contains(log.text(), "Google (doh) answered nothing") {
@@ -85,7 +96,7 @@ func TestWaitForBothResolvers(t *testing.T) {
 		return lookup(ctx, r, n)
 	}
 	start := time.Now()
-	err := w.Wait(t.Context(), waitName, waitIP, nil)
+	err := w.Wait(t.Context(), waitZone, waitName, waitIP, nil)
 	if !errors.Is(err, dns.ErrNotVisible) {
 		t.Fatalf("stale: %v", err)
 	}
@@ -103,16 +114,17 @@ func TestWaitForBothResolvers(t *testing.T) {
 		}
 		return []netip.Addr{ip}, "doh", nil
 	}
-	if err := w.Wait(t.Context(), waitName, waitIP, nil); !errors.Is(err, dns.ErrNotVisible) || !strings.Contains(err.Error(), "Google failed: i/o timeout") {
+	if err := w.Wait(t.Context(), waitZone, waitName, waitIP, nil); !errors.Is(err, dns.ErrNotVisible) || !strings.Contains(err.Error(), "Google failed: i/o timeout") {
 		t.Errorf("failing resolver: %v", err)
 	}
 
 	// a cancel returns at once, long before the timeout
-	slow := dns.Waiter{Resolvers: []dns.Resolver{cf}, Every: time.Hour, Timeout: time.Hour,
-		Lookup: func(context.Context, dns.Resolver, string) ([]netip.Addr, string, error) { return nil, "doh", nil }}
+	slow := fastWaiter(cf)
+	slow.Every, slow.Timeout = time.Hour, time.Hour
+	slow.Lookup = func(context.Context, dns.Resolver, string) ([]netip.Addr, string, error) { return nil, "doh", nil }
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
-	go func() { done <- slow.Wait(ctx, waitName, waitIP, nil) }()
+	go func() { done <- slow.Wait(ctx, waitZone, waitName, waitIP, nil) }()
 	time.Sleep(30 * time.Millisecond)
 	cancel()
 	select {
@@ -124,7 +136,7 @@ func TestWaitForBothResolvers(t *testing.T) {
 		t.Fatal("Wait ignored the cancel")
 	}
 
-	if err := w.Wait(t.Context(), waitName, "not-an-ip", nil); err == nil {
+	if err := w.Wait(t.Context(), waitZone, waitName, "not-an-ip", nil); err == nil {
 		t.Error("a bad IP was accepted")
 	}
 }
@@ -225,7 +237,7 @@ func TestWaitOverDoHWithUDPFallback(t *testing.T) {
 	)
 	w.HTTP = good.Client()
 	log := &memLog{}
-	if err := w.Wait(t.Context(), waitName, waitIP, log); err != nil {
+	if err := w.Wait(t.Context(), waitZone, waitName, waitIP, log); err != nil {
 		t.Fatalf("DoH: %v", err)
 	}
 	if *goodHits < 2 || !strings.Contains(log.text(), "Cloudflare (doh) answered "+waitIP) || !strings.Contains(log.text(), "Google (doh) answered "+waitIP) {
@@ -236,7 +248,7 @@ func TestWaitOverDoHWithUDPFallback(t *testing.T) {
 	w = fastWaiter(dns.Resolver{Name: "Cloudflare", DoH: empty.URL, UDP: udp})
 	w.HTTP = empty.Client()
 	log = &memLog{}
-	err := w.Wait(t.Context(), waitName, waitIP, log)
+	err := w.Wait(t.Context(), waitZone, waitName, waitIP, log)
 	if !errors.Is(err, dns.ErrNotVisible) || !strings.Contains(err.Error(), "Cloudflare answered nothing") || strings.Contains(log.text(), "udp") {
 		t.Errorf("NXDOMAIN: %v\n%s", err, log.text())
 	}
@@ -244,7 +256,7 @@ func TestWaitOverDoHWithUDPFallback(t *testing.T) {
 	// a DoH that cannot be reached: the same resolver is asked over UDP, and the log says so
 	w = fastWaiter(dns.Resolver{Name: "Google", DoH: deadURL, UDP: udp})
 	log = &memLog{}
-	if err := w.Wait(t.Context(), waitName, waitIP, log); err != nil {
+	if err := w.Wait(t.Context(), waitZone, waitName, waitIP, log); err != nil {
 		t.Fatalf("fallback: %v", err)
 	}
 	if !strings.Contains(log.text(), "Google (udp) answered "+waitIP) {
@@ -254,7 +266,7 @@ func TestWaitOverDoHWithUDPFallback(t *testing.T) {
 	// both transports down: the failure names both
 	w = fastWaiter(dns.Resolver{Name: "Google", DoH: deadURL, UDP: "127.0.0.1:1"})
 	w.Timeout = 100 * time.Millisecond
-	err = w.Wait(t.Context(), waitName, waitIP, nil)
+	err = w.Wait(t.Context(), waitZone, waitName, waitIP, nil)
 	if !errors.Is(err, dns.ErrNotVisible) || !strings.Contains(err.Error(), "DoH:") || !strings.Contains(err.Error(), "UDP:") {
 		t.Errorf("both down: %v", err)
 	}
@@ -265,7 +277,7 @@ func TestWaitOverDoHWithUDPFallback(t *testing.T) {
 	w = fastWaiter(dns.Resolver{Name: "Cloudflare", DoH: broken.URL, UDP: udp})
 	w.HTTP = broken.Client()
 	log = &memLog{}
-	if err := w.Wait(t.Context(), waitName, waitIP, log); err != nil || !strings.Contains(log.text(), "(udp)") {
+	if err := w.Wait(t.Context(), waitZone, waitName, waitIP, log); err != nil || !strings.Contains(log.text(), "(udp)") {
 		t.Errorf("HTTP 500: %v\n%s", err, log.text())
 	}
 }

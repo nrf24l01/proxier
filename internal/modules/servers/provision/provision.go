@@ -367,6 +367,7 @@ func (s *Service) dnsStep(ctx context.Context, r *jobs.Run, d *data) error {
 		names = append(names, srv.ProxyHostname)
 	}
 	drv := s.DNS()
+	zones := map[string]string{}
 	for _, name := range names {
 		rec, err := drv.Ensure(ctx, name, srv.IP, srv.Name, d.Payload.OverwriteDNS)
 		var conflict *dns.ConflictError
@@ -385,12 +386,13 @@ func (s *Service) dnsStep(ctx context.Context, r *jobs.Run, d *data) error {
 		if err != nil {
 			return err
 		}
+		zones[name] = rec.Zone
 		r.Log().Info("DNS record %s → %s is in place (DNS only, TTL 60)", name, srv.IP)
 	}
 	w := s.Waiter()
 	for _, name := range names {
 		r.Log().Info("Waiting for resolvers to show %s", name)
-		if err := w.Wait(ctx, name, srv.IP, r.Log()); err != nil {
+		if err := w.Wait(ctx, zones[name], name, srv.IP, r.Log()); err != nil {
 			if errors.Is(err, dns.ErrNotVisible) {
 				return fmt.Errorf("%s is not visible on every resolver: %w", name, err)
 			}

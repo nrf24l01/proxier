@@ -177,6 +177,7 @@ Public routes never set cookies, always send `Cache-Control: no-store` and `X-Ro
 | raw.githubusercontent.com, api.github.com, codeload.github.com | v2fly lists, catalog, reverse index | HTTPS |
 | iplist portals (main, beta, russia) | iplist lists and catalog | HTTPS |
 | Public DNS resolvers (1.1.1.1, 8.8.8.8) | DNS propagation wait | DNS / DoH |
+| The zone's nameservers (`*.ns.cloudflare.com`) | DNS propagation wait: the record is served before a resolver is asked | DNS, port 53 (UDP, then TCP) |
 | IP country lookup (`https://ipinfo.io/{ip}/country` by default) | the country suggested for a new server (its IP); the country of each network that fetched a link (the network's first address, never the person's own; once a month per network) | HTTPS; settings `servers.ip_country_url`, `subscriptions.network_country_url` (empty turns each off) |
 | Reference sites (one domestic, one foreign) | reference checks | HTTPS |
 

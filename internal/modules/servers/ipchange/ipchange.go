@@ -456,10 +456,18 @@ func (s *Service) waitDNS(ctx context.Context, r *jobs.Run) error {
 	if err != nil {
 		return err
 	}
+	recs, err := store.DNSRecords(ctx, s.DB.R, srv.ID)
+	if err != nil {
+		return err
+	}
+	zones := map[string]string{}
+	for _, rec := range recs {
+		zones[rec.Name] = rec.Zone
+	}
 	w := s.Waiter()
 	for _, name := range hostnames(srv) {
 		r.Log().Info("Waiting for resolvers to show %s → %s", name, srv.IP)
-		err := w.Wait(ctx, name, srv.IP, r.Log())
+		err := w.Wait(ctx, zones[name], name, srv.IP, r.Log())
 		switch {
 		case errors.Is(err, dns.ErrNotVisible):
 			r.Log().Warn("%s is not visible on every resolver yet; clients follow once it is", name)
