@@ -251,6 +251,18 @@ func (h *handler) newSummary(c *echo.Context) error {
 	auto := country.Parse(c.FormValue("country_auto"))
 	untouched := text == "" && auto == "" || text != "" && auto != "" && f.Country == auto
 
+	// A version number belongs to its template. On a template change, use
+	// the new template's default instead of carrying over the old selection.
+	if previous, _, ok := strings.Cut(c.FormValue("params_for"), ":"); ok && previous != strconv.FormatInt(f.TemplateID, 10) {
+		f.Version = 0
+		f.Params = map[string]string{}
+	}
+	selection, err := h.newViewOf(ctx, f, auto)
+	if err != nil {
+		return err
+	}
+	f.Version = selection.Version
+
 	sum := h.Provision.Summarize(ctx, f, untouched)
 	hint, swap := "", false
 	if untouched && sum.Suggested != "" && sum.Suggested != auto {

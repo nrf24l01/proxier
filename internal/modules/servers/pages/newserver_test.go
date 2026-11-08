@@ -64,3 +64,55 @@ func TestNewServerRefusedWhenRouted(t *testing.T) {
 		t.Fatalf("without a guard: %d\n%s", rec.Code, rec.Body)
 	}
 }
+
+func TestNewServerTemplateVersionRefresh(t *testing.T) {
+	h := serverstest.NewHarness(t, serverstest.StubProxy())
+	for i := 2; i <= 6; i++ {
+		h.PublishVersion(func(files map[string][]byte) {
+			files["site/index.html"] = append(files["site/index.html"], []byte("<!-- revision -->")...)
+		}, true)
+	}
+	form := url.Values{
+		"template": {sid(h.TemplateID)}, "version": {"1"}, "params_for": {"0:1"}, "country": {"NL"},
+	}
+	// Switching templates replaces the stale dropdown with every version and
+	// selects the new template's default, even when both templates have v1.
+	rec := h.Login.Post("/servers/new/summary", form)
+	if rec.Code != 200 {
+		t.Fatalf("%d\n%s", rec.Code, rec.Body)
+	}
+	body := rec.Body.String()
+	mustContain(t, body, `id="srv-ver"`, `hx-swap-oob="true"`, `name="params_for" value="`+sid(h.TemplateID)+`:6"`)
+	for i := 1; i <= 6; i++ {
+		mustContain(t, body, `<option value="`+strconv.Itoa(i)+`"`)
+	}
+	mustContain(t, body, `<option value="6" selected`)
+
+	// Explicitly selecting an older version of the same template is kept.
+	form.Set("params_for", sid(h.TemplateID)+":6")
+	rec = h.Login.Post("/servers/new/summary", form)
+	mustContain(t, rec.Body.String(), `<option value="1" selected`, `name="params_for" value="`+sid(h.TemplateID)+`:1"`)
+
+	// Ordinary edits leave the dropdown and parameter inputs untouched.
+	form.Set("params_for", sid(h.TemplateID)+":1")
+	rec = h.Login.Post("/servers/new/summary", form)
+	mustNotContain(t, rec.Body.String(), `id="srv-ver"`, `id="params"`)
+
+	// Apply provisions the version selected in the refreshed dropdown.
+	f := h.Form()
+	form.Set("ip", f.IP)
+	form.Set("root_password", f.RootPassword)
+	form.Set("version", "6")
+	form.Set("param.letsencrypt_email", "me@example.com")
+	rec = h.Login.Post("/servers", form)
+	if rec.Code != 303 {
+		t.Fatalf("create: %d\n%s", rec.Code, rec.Body)
+	}
+	srvs, err := store.ListServers(bg, h.App.DB.R)
+	if err != nil || len(srvs) != 1 {
+		t.Fatalf("servers: %v, %v", srvs, err)
+	}
+	if srvs[0].TemplateVersion != 6 {
+		t.Fatalf("provisioned version %d, want 6", srvs[0].TemplateVersion)
+	}
+}

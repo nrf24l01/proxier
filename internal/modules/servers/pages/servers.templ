@@ -78,11 +78,7 @@ templ newServerPage(s ui.Shell, v newView) {
 									<option value={ strconv.FormatInt(t.ID, 10) } selected?={ t.Selected }>{ t.Name }</option>
 								}
 							</select>
-							<select id="srv-ver" class="pc-inp" name="version" aria-label={ i18n.T(ctx, "servers.new.version") }>
-								for _, ver := range v.Versions {
-									<option value={ strconv.Itoa(ver.Number) } selected?={ ver.Selected }>{ ver.Label }</option>
-								}
-							</select>
+							@versionPick(v, false)
 						</div>
 						for _, k := range []string{"template", "version"} {
 							if v.Errs[k] != "" {
@@ -156,6 +152,14 @@ templ countryHint(v newView, oob bool) {
 	} else {
 		<p class="help" id="country-hint" if oob { hx-swap-oob="true" }>{ i18n.T(ctx, "servers.new.country.help") }</p>
 	}
+}
+
+templ versionPick(v newView, oob bool) {
+	<select id="srv-ver" class="pc-inp" name="version" aria-label={ i18n.T(ctx, "servers.new.version") } if oob { hx-swap-oob="true" }>
+		for _, ver := range v.Versions {
+			<option value={ strconv.Itoa(ver.Number) } selected?={ ver.Selected }>{ ver.Label }</option>
+		}
+	</select>
 }
 
 // paramsArea holds the parameters of the chosen version, and the key that says
@@ -261,6 +265,7 @@ templ summaryFragment(v newView, params, country bool) {
 		@countryHint(v, true)
 	}
 	if params {
+		@versionPick(v, true)
 		@paramsArea(v, true)
 	}
 }
