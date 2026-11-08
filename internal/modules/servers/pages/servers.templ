@@ -316,6 +316,7 @@ templ serverHead(v serverView, tab string) {
 				})
 			}
 			if v.RetireFailed {
+                @ui.ActionButton(ui.Action{ID: "server.retire.skip_stack", Label: "servers.retire.skip_stack", Method: "POST", Href: serverHref(v.S.ID) + "/retire/retry?skip_stack=1", Confirm: &ui.Confirm{Strength: 2, Title: i18n.T(ctx, "servers.retire.skip_stack"), Body: i18n.T(ctx, "servers.retire.skip_stack.body")}})
 				@ui.ActionButton(ui.Action{ID: "server.retire.retry", Label: "servers.retire.retry", Method: "POST", Href: serverHref(v.S.ID) + "/retire/retry", Kind: ui.Primary, Key: "r"})
 			}
 			if v.S.State == "active" && !v.Retiring && tab != "health" {

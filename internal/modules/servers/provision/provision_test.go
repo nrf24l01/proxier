@@ -747,3 +747,25 @@ func TestInstallStepsMapToJobSteps(t *testing.T) {
 func openEndpoint(h *serverstest.Harness, row store.EndpointRow) (endpoint.Endpoint, error) {
 	return sealed.OpenEndpoint(h.App.Vault, row)
 }
+
+func TestMissingEndpointsFailsBeforeConnecting(t *testing.T) {
+	h := serverstest.NewHarness(t, serverstest.StubProxy())
+	h.PublishVersion(func(files map[string][]byte) {
+		raw := string(files["manifest.yaml"])
+		start := strings.Index(raw, "endpoints:")
+		if start < 0 {
+			t.Fatal("missing endpoints section")
+		}
+		end := strings.Index(raw[start:], "checks:")
+		if end < 0 {
+			t.Fatal("missing checks section")
+		}
+		files["manifest.yaml"] = []byte(raw[:start] + "endpoints: []\n\n" + raw[start+end:])
+	}, true)
+	id := h.Create(h.Form())
+	h.Drain()
+	failed(t, h, id, "preflight", "the template declares no endpoint")
+	if len(h.VPS.Commands()) != 0 {
+		t.Fatal("invalid template reached the server")
+	}
+}

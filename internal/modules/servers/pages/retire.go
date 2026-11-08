@@ -99,7 +99,7 @@ func (h *handler) retireRetry(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	_, err = h.Retire.RetryFailed(c.Request().Context(), s.ID, web.Actor(c.Request().Context()))
+	_, err = h.Retire.RetryFailed(c.Request().Context(), s.ID, web.Actor(c.Request().Context()), c.QueryParam("skip_stack") == "1")
 	if errors.Is(err, retire.ErrNotRetiring) {
 		return echo.NewHTTPError(http.StatusConflict, "the server's retirement has not failed")
 	}

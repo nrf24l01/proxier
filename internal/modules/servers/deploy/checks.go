@@ -4,8 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/tikhonp/proxier/internal/modules/servers/manifest"
+	"github.com/tikhonp/proxier/internal/modules/servers/render"
+	"github.com/tikhonp/proxier/internal/modules/servers/sealed"
 	"github.com/tikhonp/proxier/internal/modules/servers/store"
 )
 
@@ -58,4 +62,55 @@ func (s *Service) StackNamesIP(ctx context.Context, serverID int64, ip string) (
 	}
 	b, err := json.Marshal(then.Rendered)
 	return !bytes.Equal(a, b), err
+}
+
+// RetirementSetup renders only the uninstall steps. A broken endpoint or file
+// must not prevent cleanup of a stack that provisioning already uploaded.
+func (s *Service) RetirementSetup(ctx context.Context, serverID int64) (CheckSetup, error) {
+	srv, err := store.GetServer(ctx, s.DB.R, serverID)
+	if err != nil {
+		return CheckSetup{}, err
+	}
+	tpl, err := store.GetTemplate(ctx, s.DB.R, srv.TemplateID)
+	if err != nil {
+		return CheckSetup{}, err
+	}
+	m, _, err := s.parseVersion(ctx, srv.TemplateID, srv.TemplateVersion)
+	if err != nil {
+		return CheckSetup{}, err
+	}
+	c := &computed{Srv: srv, Slug: tpl.Slug, Man: m, CurMan: m, Errs: FieldErrors{}}
+	c.Plan.ToVersion = srv.TemplateVersion
+	if err := s.computeParams(ctx, c); err != nil {
+		return CheckSetup{}, err
+	}
+	rows, err := store.GeneratedValues(ctx, s.DB.R, srv.ID)
+	if err != nil {
+		return CheckSetup{}, err
+	}
+	if c.Gen, err = sealed.OpenGenerated(s.Vault, srv.ID, rows); err != nil {
+		return CheckSetup{}, err
+	}
+	renderCtx := c.renderContext()
+	// Preserve .Clients for uninstall scripts when an endpoint still renders,
+	// without requiring endpoints to be valid or even present for retirement.
+	endpoints, _ := render.Render(&manifest.Manifest{Parameters: m.Parameters, Endpoints: m.Endpoints}, nil, renderCtx)
+	for _, ep := range endpoints.Endpoints {
+		if ep.Credential != "" {
+			renderCtx.Clients = []render.Client{{ID: ep.Credential, Name: render.SharedClient}}
+			break
+		}
+	}
+	cleanup := &manifest.Manifest{Parameters: m.Parameters, Steps: manifest.Steps{Uninstall: m.Steps.Uninstall}}
+	rendered, findings := render.Render(cleanup, nil, renderCtx)
+	var problems []string
+	for _, f := range findings {
+		if f.Severity == "error" {
+			problems = append(problems, f.String())
+		}
+	}
+	if len(problems) > 0 {
+		return CheckSetup{}, fmt.Errorf("render uninstall steps: %s", strings.Join(problems, "; "))
+	}
+	return CheckSetup{Server: srv, Dir: m.Dir, Uninstall: rendered.Uninstall}, nil
 }

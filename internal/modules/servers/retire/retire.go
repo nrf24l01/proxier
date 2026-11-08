@@ -233,8 +233,8 @@ func (s *Service) Retire(ctx context.Context, serverID int64, typedName string, 
 }
 
 // RetryFailed retries a retirement that failed or was cancelled, as a new job
-// linked to the old one.
-func (s *Service) RetryFailed(ctx context.Context, serverID int64, actor string) (int64, error) {
+// linked to the old one. skipStack leaves remote cleanup to the member.
+func (s *Service) RetryFailed(ctx context.Context, serverID int64, actor string, skipStack bool) (int64, error) {
 	var id int64
 	err := s.DB.Write(ctx, func(tx *sqlx.Tx) error {
 		srv, err := store.GetServer(ctx, tx, serverID)
@@ -244,7 +244,11 @@ func (s *Service) RetryFailed(ctx context.Context, serverID int64, actor string)
 		if !srv.Retiring() {
 			return ErrNotRetiring
 		}
-		if id, err = s.Jobs.RetryWithTx(ctx, tx, srv.RetireJobID.Int64, actor, jobs.RetryOptions{}); err != nil {
+		opts := jobs.RetryOptions{}
+		if skipStack {
+			opts.Payload = map[string]any{"remove_stack": false}
+		}
+		if id, err = s.Jobs.RetryWithTx(ctx, tx, srv.RetireJobID.Int64, actor, opts); err != nil {
 			if errors.Is(err, jobs.ErrNotRetryable) {
 				return ErrNotRetiring
 			}

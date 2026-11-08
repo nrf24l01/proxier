@@ -124,7 +124,7 @@ func (m *Module) Init(d module.Deps) error {
 	m.Retire = retire.New(retire.Deps{
 		DB: d.DB, Events: d.Events, Jobs: d.Jobs, SSH: d.SSH, Store: m.Store, Log: d.Log,
 		Setup: func(ctx context.Context, id int64) (retire.Setup, error) {
-			cs, err := m.Deploy.CheckSetup(ctx, id)
+			cs, err := m.Deploy.RetirementSetup(ctx, id)
 			return retire.Setup{Server: cs.Server, Dir: cs.Dir, Uninstall: cs.Uninstall}, err
 		},
 		// read at use: tests replace the module's driver and the seams

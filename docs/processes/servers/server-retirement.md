@@ -14,10 +14,10 @@ Retirement takes a server out of service for good: it leaves every subscription,
 2. **Retire** queues the job. The server stops being offered to subscriptions at once, and its checks stop. It is **retiring**: its page says "Retiring…" and offers no action. (Its hostnames and IP stay in `ServerHostnames` until it is retired, because its DNS still points to it.)
 3. Job steps:
    1. Cancel the server's queued jobs and a running provisioning; wait (up to 15 min) for any other running job on the server, such as a check, to finish.
-   2. If chosen and the server is reachable over SSH, run the `uninstall` steps and remove `dir`. If the server is unreachable, log "skipped: unreachable" and continue.
+   2. If chosen and the server is reachable over SSH, render only the `uninstall` steps with the stored parameters and generated values, run them and remove `dir`. Endpoint validation and file rendering do not block cleanup. If the server is unreachable, log "skipped: unreachable" and continue.
    3. Delete each DNS record Proxier created for the server, provided it still points to the server's IP and still carries the comment `proxier:<name>`. A record that changed is kept and reported.
    4. Mark the server **retired**, erase its generated values and drop its previous IPs with their results. → `server.retired{dns_removed, stack_removed}`
-   The job has three attempts (backoff 1 and 5 minutes). When they are used up, `server.retire_failed{step, error}` notifies and the server **stays retiring** (out of service, not offered, not checked), because the stack may already be gone. Its page shows the step and the error with **Retry retirement**, which continues from the step that failed.
+   The job has three attempts (backoff 1 and 5 minutes). When they are used up, `server.retire_failed{step, error}` notifies and the server **stays retiring** (out of service, not offered, not checked), because the stack may already be gone. Its page shows the step and the error with **Retry retirement**, which continues from the step that failed. **Retire without removing stack** retries with stack removal disabled after confirmation; DNS cleanup and final retirement still run.
 4. Subscriptions react to `server.retired` by removing the server from every subscription. → `subscription.servers_changed{removed}` per subscription. From then on, link outputs no longer contain it.
 
 ## Rules
@@ -42,3 +42,6 @@ Retirement takes a server out of service for good: it leaves every subscription,
 - A retired server's page → read-only, with history (Overview, Stack list of deployments, Jobs, Activity). Every action endpoint answers 409.
 - A DNS provider failure (three attempts) → `server.retire_failed`; the server stays retiring and **Retry retirement** finishes it.
 - A queued redeploy of the server → cancelled by the retirement; a running self-check is waited for.
+
+- A template with no endpoints after a failed provisioning → retirement still removes its uploaded stack and DNS.
+- A failed or cancelled retirement retried without stack removal → no further stack removal runs and DNS cleanup finishes. `server.retired` reports `stack_removed: false` unless an earlier attempt already removed it.

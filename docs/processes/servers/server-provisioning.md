@@ -114,3 +114,5 @@ The job makes one attempt and never retries by itself: a retry may need input, s
 - A server fails provisioning as `nl-2` and is retired; the next new server in the Netherlands → `nl-3`.
 - A server created when servers had locations, `ams-1` in NL → keeps its name; the next new server in the Netherlands is numbered after the highest `nl-` number, not after `ams-1`.
 - Success → server active, health `unknown`, first check round within 5 minutes. Subscriptions with "add new servers automatically" include it, and the `server.activated` notification arrives.
+
+- A template with no endpoint fails at preflight before connecting. Rendered endpoints are validated before uploading files, so an invalid endpoint cannot leave a newly started stack behind.

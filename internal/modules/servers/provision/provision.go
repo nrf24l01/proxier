@@ -287,6 +287,9 @@ func rootErr(err error) error {
 // --- the steps
 
 func (s *Service) preflight(ctx context.Context, r *jobs.Run, d *data) error {
+	if len(d.Man.Endpoints) == 0 {
+		return jobs.Permanent(errors.New("the template declares no endpoint"))
+	}
 	pw, ok, _ := r.Secret(rootPasswordSecret)
 	if !ok || pw == "" {
 		return jobs.Permanent(errors.New("the root password is needed; use Retry and enter it"))
@@ -433,6 +436,10 @@ func (s *Service) uploadFiles(ctx context.Context, r *jobs.Run, d *data) error {
 	rendered, err := d.render()
 	if err != nil {
 		return err
+	}
+	// Refuse unusable endpoints before uploading or starting the stack.
+	if _, err := sealed.Endpoints(rendered.Endpoints, flagOf(d.Server.Country), shownName(d.Server.Country), d.Server.Number); err != nil {
+		return jobs.Permanent(err)
 	}
 	srv := d.Server
 	dep, err := s.provisionDeployment(ctx, r, d)

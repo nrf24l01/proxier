@@ -623,7 +623,7 @@ func TestRetireFailureAndRetry(t *testing.T) {
 		t.Errorf("the catalog offers it: %+v", list)
 	}
 
-	second, err := h.Mod.Retire.RetryFailed(bg, id, "admin")
+	second, err := h.Mod.Retire.RetryFailed(bg, id, "admin", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -635,7 +635,7 @@ func TestRetireFailureAndRetry(t *testing.T) {
 	if down := ran(h, remote.OpComposeDown); len(down) != 1 {
 		t.Errorf("the finished steps ran again: %d compose down", len(down))
 	}
-	if _, err := h.Mod.Retire.RetryFailed(bg, id, "admin"); !errors.Is(err, retire.ErrNotRetiring) {
+	if _, err := h.Mod.Retire.RetryFailed(bg, id, "admin", false); !errors.Is(err, retire.ErrNotRetiring) {
 		t.Errorf("retrying a retired server: %v", err)
 	}
 }
@@ -699,4 +699,69 @@ func TestRetireDropsPreviousIPs(t *testing.T) {
 	}
 	// The IP is free for a new server.
 	h.AddServer("10.77.0.9")
+}
+
+func TestRetireWithoutValidEndpoints(t *testing.T) {
+	h, id := stubbed(t)
+	dir := stackDir(t, h, id)
+	version := h.PublishVersion(func(files map[string][]byte) {
+		// Keep installation files unchanged but remove subscription endpoints.
+		raw := string(files["manifest.yaml"])
+		start := strings.Index(raw, "endpoints:")
+		if start < 0 {
+			t.Fatal("seed endpoints missing")
+		}
+		end := strings.Index(raw[start:], "checks:")
+		if start < 0 || end < 0 {
+			t.Fatal("seed manifest sections missing")
+		}
+		files["manifest.yaml"] = []byte(raw[:start] + "endpoints: []\n\n" + raw[start+end:])
+	}, false)
+	if err := h.App.DB.Write(bg, func(tx *sqlx.Tx) error {
+		_, err := tx.Exec("UPDATE servers_servers SET template_version = ? WHERE id = ?", version, id)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.Mod.Deploy.CheckSetup(bg, id); err == nil {
+		t.Fatal("expected deployment validation to reject missing endpoints")
+	}
+	job := mustRetire(t, h, id, true)
+	h.Drain()
+	if s := h.Server(id); s.State != "retired" {
+		t.Fatalf("retirement: %s\n%s", s.State, h.Log(job))
+	}
+	if len(h.VPS.Files(dir)) != 0 {
+		t.Fatal("stack files remain")
+	}
+}
+
+func TestRetryRetirementWithoutStack(t *testing.T) {
+	h, id := stubbed(t)
+	dir := stackDir(t, h, id)
+	h.Mod.Retire.Setup = func(context.Context, int64) (retire.Setup, error) {
+		return retire.Setup{}, jobs.Permanent(errors.New("broken template"))
+	}
+	first := mustRetire(t, h, id, true)
+	h.Drain()
+	if j := retireJob(t, h, id); j.State != jobs.Failed {
+		t.Fatalf("expected failed retirement, got %s", j.State)
+	}
+	h.StopJobs()
+	rec := h.Login.Post("/servers/"+itoa(id)+"/retire/retry?skip_stack=1", nil)
+	if rec.Code != 303 && rec.Code != 200 {
+		t.Fatalf("retry: %d %s", rec.Code, rec.Body)
+	}
+	h.StartJobs()
+	h.Drain()
+	j := retireJob(t, h, id)
+	if j.State != jobs.Succeeded || j.RetryOf != first || h.Server(id).State != "retired" {
+		t.Fatalf("retry: %+v\n%s", j, h.Log(j.ID))
+	}
+	if len(h.VPS.Files(dir)) == 0 {
+		t.Fatal("skip removed the stack")
+	}
+	if len(h.Events("server.retired")) != 1 {
+		t.Fatal("missing retirement event")
+	}
 }
