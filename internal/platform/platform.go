@@ -361,6 +361,7 @@ func (core) SettingsPages() []ui.SettingsPage {
 		{Slug: "general", Area: access.EveryMember, Title: "settings.general", Order: 10},
 		{Slug: "security", Area: access.EveryMember, Title: "settings.security", Order: 20},
 		{Slug: "members", Area: access.Settings, Title: "settings.members", Order: 25},
+		{Slug: "ssh", Area: access.Settings, Title: "settings.ssh", Order: 30},
 		{Slug: "integrations", Area: access.Settings, Title: "settings.integrations", Order: 40},
 		// every member has their own chat and rules
 		{Slug: "notifications", Area: access.EveryMember, Title: "settings.notifications", Order: 22},

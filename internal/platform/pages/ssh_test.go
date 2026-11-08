@@ -60,6 +60,9 @@ func recorded(t *testing.T, s *sitetest.Site, typ string) []events.Event {
 func TestKnownHostActions(t *testing.T) {
 	s, l, srv, old, now, id := pinnedThenChanged(t)
 	idStr := "/settings/ssh/hosts/" + strconv.FormatInt(id, 10)
+	if body := l.Get("/settings/general").Body.String(); !strings.Contains(body, `href="/settings/ssh"`) {
+		t.Fatal("Settings navigation has no link to SSH")
+	}
 
 	// The page shows both fingerprints, the way out, and Proxier's own key.
 	line, fp, _ := s.App.SSH.PublicKey(context.Background())
