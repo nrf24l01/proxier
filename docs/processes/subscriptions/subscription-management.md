@@ -16,7 +16,7 @@ A subscription is the set of servers a group of links gets: "Family", "Friends",
 
    → `subscription.updated{changes}`
 4. **Preview** shows exactly what a link of this subscription would receive now: the headers and the connection URIs (credentials masked until revealed), with hidden servers listed and the reason, and members not in service. A preview records nothing.
-5. **Delete** works only when no link points to the subscription, a deleted link counting until its tombstone ends. Otherwise the dialog lists the links (and the day each deleted one stops holding it) and offers **Move links to…**, which moves the links the member may change to another subscription they may change. → `subscription.deleted`
+5. **Delete** works only when no non-deleted link points to the subscription. Otherwise the dialog lists the non-deleted links and offers **Move links to…**, which moves the links the member may change to another subscription they may change. → `subscription.deleted`
 
 ## Steps: reactions to servers
 
@@ -50,3 +50,5 @@ A subscription is the set of servers a group of links gets: "Family", "Friends",
 - Turn off the `uri-plain` format while it is the default → refused until another default is chosen.
 - Two members at `own` → each lists and searches only their own subscriptions; the other's by URL, its delete page or a change → 404.
 - `view_all` on another member's subscription → shown without Add servers, ordering, removing, settings or delete; its delete forged → 403, nothing changed.
+
+- Delete a subscription whose only link was deleted 10 days ago → deleted; the link’s URL serves “⛔ Link removed” until its tombstone ends, then `404` (`TestDeletedLinkTombstone`).

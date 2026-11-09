@@ -428,7 +428,7 @@ templ deletePage(s ui.Shell, v deleteView) {
 		}
 		<form method="post" action={ subHref(v.S.ID) + "/delete" } class="form">
 			<input type="hidden" name="_csrf" value={ ui.CSRF(ctx) }/>
-			if len(v.Live) == 0 && len(v.Tombs) == 0 {
+			if len(v.Live) == 0 {
 				<p>{ i18n.T(ctx, "subs.delete.body", i18n.Args{"name": v.S.Name, "n": v.Servers}) }</p>
 			} else {
 				@ui.Band("gold") {
@@ -441,16 +441,9 @@ templ deletePage(s ui.Shell, v deleteView) {
 						}
 					}
 				}
-				if len(v.Tombs) > 0 {
-					@ui.Area(i18n.T(ctx, "subs.delete.tombs"), "") {
-						for _, n := range v.Tombs {
-							<div class="row"><span>{ n }</span></div>
-						}
-					}
-				}
 			}
 			<div class="form-actions">
-				<button type="submit" class="pc-btn pc-dng" disabled?={ len(v.Live) > 0 || len(v.Tombs) > 0 }>{ i18n.T(ctx, "subs.delete") }</button>
+				<button type="submit" class="pc-btn pc-dng" disabled?={ len(v.Live) > 0 }>{ i18n.T(ctx, "subs.delete") }</button>
 				<a href={ templ.SafeURL(subHref(v.S.ID)) } class="pc-btn pc-ghost" data-cancel>{ i18n.T(ctx, "ui.cancel") }</a>
 			</div>
 		</form>

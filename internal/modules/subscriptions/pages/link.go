@@ -97,7 +97,10 @@ func (h *handler) linkView(c *echo.Context, l links.Link) (linkView, error) {
 			v.Format = l.Format
 		}
 	}
-	v.Line = v.SubName + " · " + v.Expiry + " · " + v.Lang + " · " + loc.T("links.created_on", i18n.Args{"date": v.Created}) + web.OwnerNote(ctx, l.OwnerID)
+	v.Line = v.Expiry + " · " + v.Lang + " · " + loc.T("links.created_on", i18n.Args{"date": v.Created}) + web.OwnerNote(ctx, l.OwnerID)
+	if v.SubName != "" {
+		v.Line = v.SubName + " · " + v.Line
+	}
 	v.CanChange = !v.Deleted && scope(ctx).Writes(l.OwnerID)
 
 	period, err := h.Links.Tombstone(ctx)
@@ -135,6 +138,9 @@ func (h *handler) linkView(c *echo.Context, l links.Link) (linkView, error) {
 			return v, err
 		}
 		v.Preview, v.HasPreview = responseView(ctx, sv.Response, sv.Format), true
+		if l.SubscriptionID == 0 {
+			v.Format = sv.Format
+		}
 	}
 
 	if v.Who, err = h.whoView(ctx, l, c.QueryParam("window") == "7d"); err != nil {

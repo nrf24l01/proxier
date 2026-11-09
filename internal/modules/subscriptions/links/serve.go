@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/tikhonp/proxier/internal/modules/subscriptions/output"
+	"github.com/tikhonp/proxier/internal/modules/subscriptions/subs"
 	"github.com/tikhonp/proxier/internal/platform/access"
 	"github.com/tikhonp/proxier/internal/platform/i18n"
 )
@@ -24,23 +25,32 @@ type Served struct {
 // the subscription doesn't allow.
 func (s *Service) Serve(ctx context.Context, l Link, query string, masked bool) (Served, error) {
 	// The link is already found; its subscription may be another member's.
-	sub, err := s.d.Subs.Get(ctx, l.SubscriptionID, access.All)
-	if err != nil {
-		return Served{}, err
+	var sub subs.Subscription
+	var served []output.Server
+	if l.State == "deleted" && l.SubscriptionID == 0 {
+		// A tombstone outlives its subscription. Accept every supported format
+		// so an app can still refresh its list with the removal message.
+		sub.Formats, sub.DefaultFormat, sub.UpdateHours = output.Names(), "uri-plain", 12
+		sub.Title = l.Name
+	} else {
+		var err error
+		sub, err = s.d.Subs.Get(ctx, l.SubscriptionID, access.All)
+		if err != nil {
+			return Served{}, err
+		}
+		members, err := s.d.Subs.Members(ctx, sub.ID, access.All)
+		if err != nil {
+			return Served{}, err
+		}
+		for _, m := range members {
+			if m.InService {
+				served = append(served, m.Server)
+			}
+		}
 	}
 	format, err := output.PickFormat(query, sub.Formats, sub.DefaultFormat, l.Format)
 	if err != nil {
 		return Served{}, err
-	}
-	members, err := s.d.Subs.Members(ctx, sub.ID, access.All)
-	if err != nil {
-		return Served{}, err
-	}
-	var served []output.Server
-	for _, m := range members {
-		if m.InService {
-			served = append(served, m.Server)
-		}
 	}
 	contact, err := s.d.Settings.Get(ctx, "general.admin_contact")
 	if err != nil {

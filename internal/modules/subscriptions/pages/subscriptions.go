@@ -281,13 +281,11 @@ type deleteView struct {
 	S       subs.Subscription
 	Servers int
 	Live    []string
-	Tombs   []string   // "Mom (until 7 Nov 2026)"
 	Others  []subs.Row // where Move links to… can move the live ones
 	Err     string
 }
 
 func (h *handler) deleteView(ctx context.Context, s subs.Subscription) (deleteView, error) {
-	loc := i18n.From(ctx)
 	v := deleteView{S: s}
 	members, err := h.Subs.Members(ctx, s.ID, scope(ctx))
 	if err != nil {
@@ -299,12 +297,9 @@ func (h *handler) deleteView(ctx context.Context, s subs.Subscription) (deleteVi
 		return v, err
 	}
 	for _, x := range holders {
-		if x.State == "deleted" {
-			v.Tombs = append(v.Tombs, i18n.T(ctx, "subs.delete.tomb", i18n.Args{"name": x.Name, "date": loc.Date(x.Ends)}))
-		} else {
-			v.Live = append(v.Live, x.Name)
-		}
+		v.Live = append(v.Live, x.Name)
 	}
+
 	if len(v.Live) > 0 {
 		all, err := h.Subs.List(ctx, scope(ctx).Writable())
 		if err != nil {

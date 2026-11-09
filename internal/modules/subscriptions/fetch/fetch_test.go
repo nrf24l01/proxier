@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -254,12 +255,28 @@ func TestDisabledWinsOverExpired(t *testing.T) {
 }
 
 func TestDeletedLinkTombstone(t *testing.T) {
-	h, _, id, token := family(t)
+	h, sub, id, token := family(t)
 	if err := h.Mod.Links.Delete(bg, id, access.All, "admin"); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Mod.Subs.Delete(bg, sub, access.All, "admin"); err != nil {
 		t.Fatal(err)
 	}
 	h.Advance(10 * 24 * time.Hour)
 	mustStub(t, h, token, "⛔ Link removed")
+	for _, format := range output.Names() {
+		rec := h.Fetch("GET", "/s/"+token+"?format="+format, "", "")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s tombstone: %d %s", format, rec.Code, rec.Body.String())
+		}
+	}
+	rec := browse(h, "GET", "/s/"+token, windows, htmlAccept)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Link removed") {
+		t.Fatalf("browser tombstone: %d %s", rec.Code, rec.Body.String())
+	}
+	if rec := h.Login.Get("/links/" + strconv.FormatInt(id, 10)); rec.Code != http.StatusOK {
+		t.Fatalf("deleted link page: %d", rec.Code)
+	}
 	h.Advance(21 * 24 * time.Hour)
 	if rec := h.Fetch("GET", "/s/"+token, "", ""); rec.Code != 404 {
 		t.Errorf("31 days later: %d", rec.Code)

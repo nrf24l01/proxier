@@ -335,7 +335,7 @@ func TestTombstoneSettingApplies(t *testing.T) {
 	if rec.Code != 200 || strings.TrimSpace(rec.Body.String()) != output.StubURI("⛔ Link removed") {
 		t.Errorf("inside the default 30 days: %d %q", rec.Code, rec.Body.String())
 	}
-	// past the tombstone the subscription can go; the link has none left
+	// Extending the tombstone also applies after the subscription is deleted.
 	h.Advance(23 * 24 * time.Hour)
 	if err := h.Mod.Subs.Delete(bg, sub, access.All, "admin"); err != nil {
 		t.Fatal(err)
@@ -346,8 +346,8 @@ func TestTombstoneSettingApplies(t *testing.T) {
 	if l, _ := h.Mod.Links.Get(bg, id, access.All); l.SubscriptionID != 0 {
 		t.Fatalf("subscription %d", l.SubscriptionID)
 	}
-	if rec := h.Fetch("GET", "/s/"+token, "", ""); rec.Code != 404 {
-		t.Errorf("without a subscription: %d", rec.Code)
+	if rec := h.Fetch("GET", "/s/"+token, "", ""); rec.Code != 200 || strings.TrimSpace(rec.Body.String()) != output.StubURI("⛔ Link removed") {
+		t.Errorf("without a subscription: %d %q", rec.Code, rec.Body.String())
 	}
 	if rec := h.Login.Get("/links/1"); rec.Code != 200 {
 		t.Errorf("its page: %d", rec.Code)

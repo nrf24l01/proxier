@@ -176,7 +176,7 @@ func (h *handler) linkList(c *echo.Context) error {
 			if !r.Expires.IsZero() && r.Expires.Sub(now) <= 7*24*time.Hour {
 				expiring++
 			}
-		case st == "deleted" && r.SubscriptionID != 0 && now.Before(r.TombstoneEnds(period)):
+		case st == "deleted" && now.Before(r.TombstoneEnds(period)):
 			v.Tombs++
 		}
 	}

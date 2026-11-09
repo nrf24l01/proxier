@@ -25,7 +25,7 @@ Rules:
 - **Hide unhealthy**: a server whose health state has been one of the hidden states for at least the grace period is left out of the output, and comes back as soon as it leaves those states. If hiding would leave the output with no servers, nothing is hidden and `subscription.all_unhealthy` is raised. A subscription never serves an empty list because of health ([fetch](../processes/subscriptions/subscription-fetch.md)).
 - A server's display name in the output is its country's flag and English name and its number ("🇳🇱 Netherlands 1"), as the servers module stores it with the endpoint, whatever the link's language: a link's language changes only its stub entries.
 - A member the servers module no longer serves (retiring, or without endpoints) stays in the list, shown "not in service", and is never served; its retirement removes it.
-- A subscription with links can't be deleted. Its links must be moved to another subscription or deleted first. A deleted link holds its subscription until its tombstone ends.
+- A subscription with links can't be deleted. Its links must be moved to another subscription or deleted first. Deleted links do not block deletion; their URLs keep serving the removal message until their tombstones end.
 
 Flows: [subscription management](../processes/subscriptions/subscription-management.md).
 
@@ -110,7 +110,7 @@ Section `subscriptions`, on **Settings → Subscriptions**:
 | `subscriptions.alert_networks` | 10 | Shared-link alert above this many networks in 24 h. |
 | `subscriptions.alert_apps` | 5 | The same for apps. |
 | `subscriptions.network_country_url` | `https://ipinfo.io/{ip}/country` | Country lookup of a network's first address; empty turns it off. |
-| `subscriptions.tombstone` | 30 days | How long a deleted link serves "⛔ Link removed" (and holds its subscription) before it answers `404` (1–365 days). |
+| `subscriptions.tombstone` | 30 days | How long a deleted link serves "⛔ Link removed" before it answers `404` (1–365 days). |
 | `subscriptions.fetch_retention` | 90 days | Fetches older than this are deleted (at least 7 days). |
 | `subscriptions.cutoff_rotates` | off | Whether Cut off also rotates every server of the link's subscription. Off: it only disables the link ([cut-off](../processes/servers/credential-rotation.md#steps-cut-off-rotating-for-a-link)). |
 

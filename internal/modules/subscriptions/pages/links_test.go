@@ -378,3 +378,21 @@ func TestLinkListAlerts(t *testing.T) {
 	body = page(t, h, "/links")
 	mustNotContain(t, body, "looks shared", "with an alert")
 }
+
+func TestTombstoneCountAfterSubscriptionDeleted(t *testing.T) {
+	h := substest.New(t)
+	sub := h.Subscription("Family", 1)
+	id, _ := h.Link(sub, "Mom")
+	if err := h.Mod.Links.Delete(t.Context(), id, access.All, "admin"); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.Mod.Subs.Delete(t.Context(), sub, access.All, "admin"); err != nil {
+		t.Fatal(err)
+	}
+	mustContain(t, page(t, h, "/links"), "1 deleted link still serves “Link removed”", `href="/links?state=deleted"`)
+	body := page(t, h, "/links/"+strconv.FormatInt(id, 10))
+	mustContain(t, body, "Deleted on", "Link removed", "uri-plain")
+	mustNotContain(t, body, `class="subtle"> · `)
+	h.Advance(31 * 24 * time.Hour)
+	mustNotContain(t, page(t, h, "/links"), "still serves")
+}

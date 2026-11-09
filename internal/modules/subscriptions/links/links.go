@@ -46,7 +46,7 @@ const (
 type Link struct {
 	ID             int64
 	OwnerID        int64 // a member
-	SubscriptionID int64 // 0 only for a deleted link whose tombstone ended before its subscription was deleted
+	SubscriptionID int64 // 0 for a deleted link whose subscription was deleted
 	Name, Note     string
 	State          string    // active, disabled, deleted
 	Expires        time.Time // the first moment it is expired; zero: never
@@ -167,13 +167,10 @@ func (s *Service) Tombstone(ctx context.Context) (time.Duration, error) {
 }
 
 // Ended reports whether a deleted link's URL answers 404 now: its tombstone
-// passed, or it has no subscription left.
+// passed.
 func (s *Service) Ended(ctx context.Context, l Link) (bool, error) {
 	if l.State != "deleted" {
 		return false, nil
-	}
-	if l.SubscriptionID == 0 {
-		return true, nil
 	}
 	period, err := s.Tombstone(ctx)
 	if err != nil {

@@ -16,7 +16,6 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/tikhonp/proxier/internal/modules/servers"
-	"github.com/tikhonp/proxier/internal/modules/subscriptions/conf"
 	"github.com/tikhonp/proxier/internal/modules/subscriptions/output"
 	"github.com/tikhonp/proxier/internal/modules/subscriptions/store"
 	"github.com/tikhonp/proxier/internal/platform/access"
@@ -390,33 +389,21 @@ func (s *Service) Update(ctx context.Context, id int64, scope access.Scope, st S
 	return changed, err
 }
 
-// Holder is a link that keeps a subscription from being deleted.
+// Holder is a non-deleted link that keeps a subscription from being deleted.
 type Holder struct {
 	Name  string
-	State string    // active, disabled, deleted
-	Ends  time.Time // deleted: when its tombstone ends
+	State string // active, disabled
 }
 
-// holders: the live links, and the deleted ones still inside the tombstone
-// period in force now.
 func (s *Service) holders(ctx context.Context, q sqlx.QueryerContext, id int64) ([]Holder, error) {
-	tomb, err := s.d.Settings.GetDuration(ctx, conf.Tombstone)
-	if err != nil {
-		return nil, err
-	}
 	links, err := store.LinksOf(ctx, q, id)
 	if err != nil {
 		return nil, err
 	}
-	now := s.d.Now()
 	var out []Holder
 	for _, l := range links {
 		if l.State != "deleted" {
 			out = append(out, Holder{Name: l.Name, State: l.State})
-			continue
-		}
-		if ends := l.DeletedAt.Add(tomb); ends.After(now) {
-			out = append(out, Holder{Name: l.Name, State: l.State, Ends: ends})
 		}
 	}
 	return out, nil

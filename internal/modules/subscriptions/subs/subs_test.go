@@ -195,7 +195,7 @@ func TestUpdateRecordsChanges(t *testing.T) {
 	}
 }
 
-func TestDeleteWaitsForLinksAndTombstones(t *testing.T) {
+func TestDeleteWaitsOnlyForLiveLinks(t *testing.T) {
 	h := substest.New(t)
 	id := h.Subscription("Family", 1, 2)
 	day := 24 * time.Hour
@@ -207,29 +207,12 @@ func TestDeleteWaitsForLinksAndTombstones(t *testing.T) {
 		t.Fatalf("with a live link: %v", err)
 	}
 	h.Exec(`UPDATE subs_links SET state = 'deleted', deleted_at = ? WHERE name = 'Mom'`, at(10*day))
-	if err := h.Mod.Subs.Delete(bg, id, access.All, "admin"); !errors.Is(err, subs.ErrHasLinks) {
-		t.Fatalf("with a link deleted 10 days ago: %v", err)
-	}
 	holders, err := h.Mod.Subs.Holders(bg, id, access.All)
-	if err != nil || len(holders) != 1 || !holders[0].Ends.Equal(h.Now.Add(20*day)) {
+	if err != nil || len(holders) != 0 {
 		t.Fatalf("holders: %+v %v", holders, err)
 	}
-	if got := h.App.I18n.Localizer(i18n.EN, h.App.Cfg.TZ).Date(holders[0].Ends); got != "27 Oct 2026" {
-		t.Errorf("tombstone ends %s", got)
-	}
-	// a shorter tombstone period frees it
-	if err := h.App.Settings.Set(bg, "admin", "subscriptions", map[string]string{"subscriptions.tombstone": "168h0m0s"}); err != nil {
-		t.Fatal(err)
-	}
-	if holders, _ := h.Mod.Subs.Holders(bg, id, access.All); len(holders) != 0 {
-		t.Errorf("with a 7-day tombstone: %+v", holders)
-	}
-	if err := h.App.Settings.Set(bg, "admin", "subscriptions", map[string]string{"subscriptions.tombstone": "720h0m0s"}); err != nil {
-		t.Fatal(err)
-	}
-	h.Exec(`UPDATE subs_links SET deleted_at = ? WHERE name = 'Mom'`, at(31*day))
 	if err := h.Mod.Subs.Delete(bg, id, access.All, "admin"); err != nil {
-		t.Fatalf("with only a link deleted 31 days ago: %v", err)
+		t.Fatalf("with a link deleted 10 days ago: %v", err)
 	}
 	if ev := h.Events("subscription.deleted"); len(ev) != 1 || ev[0].Payload["name"] != "Family" {
 		t.Errorf("deleted: %+v", ev)

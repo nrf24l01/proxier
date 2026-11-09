@@ -134,10 +134,8 @@ var messages = i18n.Messages{
 	// Delete
 	"subs.delete.title":   {EN: "Delete {name}?", RU: "Удалить «{name}»?"},
 	"subs.delete.body":    {EN: "{name} and its order of {n} servers are deleted. No link uses it.", RU: "«{name}» и порядок её серверов ({n}) будут удалены. Её не использует ни одна ссылка."},
-	"subs.delete.held":    {EN: "Links still point to it, so it can't be deleted. Move or delete them first; deleted links keep it until their tombstone ends.", RU: "На неё ещё указывают ссылки, удалить нельзя. Сначала перенесите или удалите их; удалённые ссылки держат её до конца своего срока."},
+	"subs.delete.held":    {EN: "Links still point to it, so it can't be deleted. Move or delete them first.", RU: "На неё ещё указывают ссылки, удалить нельзя. Сначала перенесите или удалите их."},
 	"subs.delete.live":    {EN: "Links", RU: "Ссылки"},
-	"subs.delete.tombs":   {EN: "Deleted links", RU: "Удалённые ссылки"},
-	"subs.delete.tomb":    {EN: "{name}: keeps it until {date}", RU: "{name}: держит её до {date}"},
 	"subs.delete.refused": {EN: "Not deleted: a link points to it now.", RU: "Не удалено: на неё теперь указывает ссылка."},
 
 	// Links: nav, list, search
@@ -352,7 +350,7 @@ var messages = i18n.Messages{
 	// Move links (the subscription's delete page)
 	"links.move":         {EN: "Move links", RU: "Перенести ссылки"},
 	"links.move.title":   {EN: "Move links to…", RU: "Перенести ссылки в…"},
-	"links.move.note":    {EN: "Its {n} live link moves; deleted links stay until their tombstone ends.|Its {n} live links move; deleted links stay until their tombstone ends.", RU: "Перенесётся {n} ссылка; удалённые останутся до конца срока заглушки.|Перенесутся {n} ссылки; удалённые останутся до конца срока заглушки.|Перенесутся {n} ссылок; удалённые останутся до конца срока заглушки."},
+	"links.move.note":    {EN: "Its {n} live link moves; deleted links do not prevent deletion.|Its {n} live links move; deleted links do not prevent deletion.", RU: "Перенесётся {n} ссылка; удалённые не мешают удалению подписки.|Перенесутся {n} ссылки; удалённые не мешают удалению подписки.|Перенесутся {n} ссылок; удалённые не мешают удалению подписки."},
 	"links.move.to":      {EN: "Subscription to move them to", RU: "Подписка, куда перенести"},
 	"links.move.submit":  {EN: "Move links", RU: "Перенести ссылки"},
 	"links.move.nowhere": {EN: "There is no other subscription. Create one to move them to, or delete the links.", RU: "Другой подписки нет. Создайте её, чтобы перенести ссылки, или удалите их."},

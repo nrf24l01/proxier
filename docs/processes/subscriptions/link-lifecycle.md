@@ -61,7 +61,7 @@ Expiry itself is applied **at fetch time** by comparing with the clock, so a fet
 - **Cut off** rotates servers every member's links share, so it needs `servers: manage` as well as the right to change the link. Without it the action isn't shown and its page and POST answer 403; **Disable** still works.
 - Names are unique among non-deleted links, whoever owns them.
 - A token is shown only on the link page, and in the bot's answer to the member who made the link from Telegram ([ADR 0019](../../adr/0019-members-give-the-bot-commands-in-their-own-chat.md)). It is never in a notification, an event or a log.
-- Exactly one subscription per link.
+- Each non-deleted link points to one subscription. Deleted links keep serving their tombstone even if the subscription is deleted.
 - "Expired" isn't a separate state: it is an active link past its expiry. Clearing or extending the expiry is enough to bring it back.
 - The expiry is stored as the **first moment the link is expired**: a date alone (1 Dec in Europe/Moscow) is 00:00 of the next day there; a date and time is that minute.
 - A deleted link's page is read-only: "Deleted on 8 Oct 2026. Its URL serves “⛔ Link removed” until 7 Nov 2026." (or, after that, the day its tombstone ended). The tombstone period is the setting `subscriptions.tombstone` (30 days by default), the one in force at fetch time.

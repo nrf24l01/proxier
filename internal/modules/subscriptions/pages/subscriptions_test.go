@@ -304,12 +304,13 @@ func TestCreateAndDeletePages(t *testing.T) {
 	h.Exec(`INSERT INTO subs_links (subscription_id, name, state, language, created_at) VALUES (1, 'Mom', 'active', 'ru', '2026-10-01T00:00:00.000Z')`)
 	h.Exec(`INSERT INTO subs_links (subscription_id, name, state, language, created_at, deleted_at) VALUES (1, 'Dad', 'deleted', 'ru', '2026-09-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z')`)
 	body = page(t, h, "/subscriptions/1/delete")
-	mustContain(t, body, "Delete Family?", "Links still point to it", "Mom", "Dad: keeps it until 31 Oct 2026", `class="pc-btn pc-dng" disabled`)
+	mustContain(t, body, "Delete Family?", "Links still point to it", "Mom", `class="pc-btn pc-dng" disabled`)
+	mustNotContain(t, body, "Dad", "Deleted links")
 	noInline(t, body)
 	if rec := h.Login.Post("/subscriptions/1/delete", nil); rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), "Not deleted") {
 		t.Fatalf("refused: %d", rec.Code)
 	}
-	h.Exec(`DELETE FROM subs_links`)
+	h.Exec(`DELETE FROM subs_links WHERE state <> 'deleted'`)
 	body = page(t, h, "/subscriptions/1/delete")
 	mustContain(t, body, "Family and its order of 2 servers are deleted. No link uses it.")
 	mustNotContain(t, body, "disabled>Delete")
