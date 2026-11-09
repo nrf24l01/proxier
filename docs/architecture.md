@@ -2,7 +2,7 @@
 
 ## Runtime shape
 
-Proxier is **one Go binary** (`proxier`) in one container, with its data in one SQLite file ([ADR 0001](./adr/0001-single-binary-sqlite-in-process-jobs.md)). It runs on blackberry. Only discovery uses the headless Chromium sidecar. `proxier serve` runs the HTTP server, the scheduler and every worker pool in one process. `proxier manage …` holds the one-off commands (create the first member, reset a member's password or second factor, run migrations, back up).
+Proxier is **one Go binary** (`proxier`) in one container, with its data in one SQLite file ([ADR 0001](./adr/0001-single-binary-sqlite-in-process-jobs.md)). It runs on a machine in Russia, usually a home server ([deployment](./deployment.md)). Only discovery uses the headless Chromium sidecar. `proxier serve` runs the HTTP server, the scheduler and every worker pool in one process. `proxier manage …` holds the one-off commands (create the first member, reset a member's password or second factor, run migrations, back up).
 
 ```mermaid
 flowchart LR
@@ -15,21 +15,21 @@ flowchart LR
         UP[v2fly / GitHub<br/>iplist portals]
         SRV[Proxy servers<br/>nl-1, de-1…]
     end
-    subgraph sh-main [sh-main gateway]
-        NGX[nginx<br/>TLS for proxier.tikhonnnnn.com]
+    subgraph gateway [reverse proxy]
+        NGX[TLS for the public host]
     end
-    subgraph blackberry [blackberry - home, Russia]
+    subgraph home [Proxier's machine, Russia]
         PX[proxier serve<br/>HTTP · scheduler · workers]
         DB[(SQLite<br/>/data/proxier.db)]
         CHR[Chromium<br/>headless sidecar]
     end
-    subgraph tailnet [headscale tailnet]
+    subgraph tailnet [tailnet]
         JH[Jump hosts]
         RTR[MikroTik routers]
     end
     APPS -- GET /s/token, /r/token --> NGX
     ADMINB -- HTTPS --> NGX
-    NGX -- SSH reverse tunnel --> PX
+    NGX -- HTTP --> PX
     PX --- DB
     PX -- CDP --> CHR
     PX -- SSH, proxy tests --> SRV
@@ -37,7 +37,7 @@ flowchart LR
     PX -- tsnet node: SSH --> JH --> RTR
 ```
 
-Proxier makes every outbound connection from home, so its checks see the Russian network ([ADR 0005](./adr/0005-home-is-the-russian-vantage-point.md)). Home has a MikroTik with selective VPN routing, so one rule holds everywhere: **traffic from Proxier to its servers must never enter the router's VPN**, or the proxy test measures the tunnel instead of the Russian path. Proxier refuses routing lists that cover a server's hostname ([routing lists](./processes/routing/routing-lists.md)).
+Proxier makes every outbound connection from its own machine, so its checks see the Russian network ([ADR 0005](./adr/0005-home-is-the-russian-vantage-point.md)). That machine usually sits behind a MikroTik with selective VPN routing, so one rule holds everywhere: **traffic from Proxier to its servers must never enter the router's VPN**, or the proxy test measures the tunnel instead of the Russian path. Proxier refuses routing lists that cover a server's hostname ([routing lists](./processes/routing/routing-lists.md)).
 
 ## Platform and modules
 
@@ -192,22 +192,22 @@ Public routes never set cookies, always send `Cache-Control: no-store` and `X-Ro
 
 ## Observability
 
-- Structured JSON logs (`log/slog`) to stdout. Dozzle on blackberry shows them.
+- Structured JSON logs (`log/slog`) to stdout.
 - Job history, the event log and check results inside Proxier are the operational record.
 - `/healthz` for container health checks.
 
 ## Configuration
 
-Environment variables hold what Proxier needs before the database is readable, and what is easier to keep in the `secrets/` submodule. Everything else is in Settings, stored in the database with secrets encrypted.
+Environment variables hold what Proxier needs before the database is readable, and the secrets that must live outside it. Everything else is in Settings, stored in the database with secrets encrypted.
 
 | Variable | Meaning | Default |
 |---|---|---|
 | `PROXIER_DATA_DIR` | Database, tailnet state, backups | `/data` |
 | `PROXIER_MASTER_KEY` | 32-byte key (base64) that encrypts every secret. Losing it loses the secrets. | required |
 | `PROXIER_LISTEN` | HTTP listen address | `:8080` |
-| `PROXIER_BASE_URL` | Public base URL for the UI and public routes | required, e.g. `https://proxier.tikhonnnnn.com` |
-| `PROXIER_TRUSTED_PROXIES` | Addresses whose `X-Real-IP` is believed | the tunnel's address |
-| `PROXIER_TS_CONTROL_URL` | headscale URL for the tailnet node | `https://hs.tikhonnnnn.com` |
+| `PROXIER_BASE_URL` | Public base URL for the UI and public routes | required, e.g. `https://proxier.example.com` |
+| `PROXIER_TRUSTED_PROXIES` | Addresses or CIDRs whose `X-Real-IP` is believed: the reverse proxy's | empty: the TCP peer is the client |
+| `PROXIER_TS_CONTROL_URL` | Control server of the tailnet: `https://controlplane.tailscale.com` for Tailscale, or a headscale URL | the author's headscale: set your own when the tailnet is on |
 | `PROXIER_TS_AUTHKEY` | Pre-auth key for the first tailnet login | empty: tailnet off |
 | `PROXIER_TS_HOSTNAME` | Tailnet node name | `proxier` |
 | `PROXIER_CHROMIUM_URL` | CDP endpoint of the sidecar | empty: headless visit off |
@@ -219,17 +219,17 @@ Environment variables hold what Proxier needs before the database is readable, a
 | Concern | Choice | Note |
 |---|---|---|
 | Language | Go 1.27 | |
-| Database | SQLite through `modernc.org/sqlite` (no CGO) | as in vk2tg |
+| Database | SQLite through `modernc.org/sqlite` (no CGO) | |
 | Migrations | goose, embedded, one version table per module | |
 | SSH / file upload | `golang.org/x/crypto/ssh` + SFTP | jump hosts by dialing through the first client |
-| Tailnet | `tailscale.com/tsnet` with headscale | [ADR 0008](./adr/0008-tsnet-node-for-router-reachability.md) |
+| Tailnet | `tailscale.com/tsnet` (Tailscale or headscale) | [ADR 0008](./adr/0008-tsnet-node-for-router-reachability.md) |
 | Proxy client | `github.com/xtls/xray-core` as a library | proxy tests, discovery dialer, xray config validation |
 | Compose validation | `compose-spec/compose-go` | |
 | Headless browser | Chromium sidecar (`chromedp/headless-shell`) driven over CDP | discovery only |
 | Public suffix list | `golang.org/x/net/publicsuffix` | registrable-domain grouping |
 | UI | templ components + htmx (SSE for live logs), plain JS for the keymap, search pop-up, reorder, code editor and charts; styles from [ui/design/tokens.css](./ui/design/tokens.css) | [ADR 0014](./adr/0014-server-rendered-ui-templ-htmx.md) |
 | i18n | message catalogs per module, EN and RU | |
-| Images | multi-stage Dockerfile, distroless, non-root; Forgejo Actions on code.tikhonnnnn.com: build/vet/test/lint/govulncheck, then push to its registry, `code.tikhonnnnn.com/tikhon/proxier` | |
+| Images | multi-stage Dockerfile, distroless, non-root; Forgejo Actions: build, vet, test, lint and govulncheck, then push `code.tikhonnnnn.com/tikhon/proxier` ([deployment](./deployment.md#images-and-ci)) | |
 
 ## Code layout
 

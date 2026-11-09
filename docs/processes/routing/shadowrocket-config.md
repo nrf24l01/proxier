@@ -8,7 +8,7 @@ The phone, away from home, should tunnel the same domains as the home router. Pr
 
 1. Routing → Shadowrocket → **New config**: name (also the file name, e.g. `iphone`: lower case, and a name that isn't a file name yet is made one as a custom service's tag is, so "iPhone Mom" is `iphone-mom`; the form shows "File name: iphone-mom.conf" as it is typed, and refuses only a name with no Latin letter or digit), routing list, rule policy (default `PROXY`), and the base config (paste, upload, or **Import from URL**, which reads it once, e.g. from copyparty).
 2. The base config is validated: it must have a `[Rule]` section. Otherwise saving is refused, with "no [Rule] section to add the services to".
-3. Saving creates base config version 1 and the token, and shows the URL `https://proxier.tikhonnnnn.com/r/{token}/iphone.conf` with **Copy** and a **QR code**. → `routing.shadowrocket_created`
+3. Saving creates base config version 1 and the token, and shows the URL `https://proxier.example.com/r/{token}/iphone.conf` with **Copy** and a **QR code**. → `routing.shadowrocket_created`
 4. In Shadowrocket: Config → add the URL, then use it.
 
 ## Steps: serving

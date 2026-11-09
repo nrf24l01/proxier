@@ -45,8 +45,8 @@ A routing list is the set of services a target follows: "Main" for the home rout
 - `mine` (first) has suffix `api.example.com`, and `other` (later) has suffix `example.com` → both are installed, whatever the order. Remove `other` → `mine` is unchanged.
 - `mail` (first) has suffix `mail.google.com`, and `google` (later) has `google.com` and `mail.google.com` → `mail` owns `mail.google.com`, and `google` installs `google.com`.
 - `anthropic` (first) has exact `claude.ai`, and `mine` (later) has suffix `claude.ai` → the exact entry is dropped from `anthropic` ("mine has it as a suffix"), and `mine` installs the suffix.
-- Add a custom service with `hosts.tikhonnnnn.com` to "Main" while `nl-1.hosts.tikhonnnnn.com` exists → refused, naming nl-1.
-- New server `nl-3.hosts.tikhonnnnn.com` while "Main" contains suffix `tikhonnnnn.com` → provisioning refused on the form, naming the list and service.
+- Add a custom service with `hosts.example.com` to "Main" while `nl-1.hosts.example.com` exists → refused, naming nl-1.
+- New server `nl-3.hosts.example.com` while "Main" contains suffix `example.com` → provisioning refused on the form, naming the list and service.
 - Delete "Parents" with one router → refused, offering to move the router.
 - Switch the home router from "Main" to "Parents" → the next sync removes tags missing from "Parents" and keeps or updates the rest.
 - Delete the default list → refused.

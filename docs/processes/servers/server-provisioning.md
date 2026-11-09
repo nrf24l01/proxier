@@ -18,7 +18,7 @@ Provisioning turns a freshly issued VPS (an IP and a root password) into an **ac
    - the country is a country (an ISO code in use today), and the template version exists and the template isn't archived;
    - parameters pass validation;
    - Cloudflare is configured and a configured zone covers the hostname;
-   - no routing list covers the hostname (when the routing module is enabled): a list holding `tikhonnnnn.com`, or the hostname itself, would send Proxier's checks of the server into the router's tunnel. Any name listed in any list counts, even one the list doesn't install. The live summary says it too: "nl-3.hosts.tikhonnnnn.com is covered by tikhonnnnn.com (my-sites) in Main: Proxier's checks would go into the tunnel. Take it out of the list first."
+   - no routing list covers the hostname (when the routing module is enabled): a list holding `example.com`, or the hostname itself, would send Proxier's checks of the server into the router's tunnel. Any name listed in any list counts, even one the list doesn't install. The live summary says it too: "nl-3.hosts.example.com is covered by example.com (my-sites) in Main: Proxier's checks would go into the tunnel. Take it out of the list first."
 
    Failures are shown on the form and nothing is created.
 4. The server is created in **provisioning** with its name reserved, the root password goes encrypted into the job payload, and the job is queued. The browser goes to the server page, which shows the steps and the live log. → `server.created{ip, country, template_version}`
@@ -86,7 +86,7 @@ The job makes one attempt and never retries by itself: a retry may need input, s
 - An IP in the Netherlands, picker empty → "🇳🇱 Netherlands · NL" preselected with "Suggested from the IP (NL)", summary `nl-1`. Another IP in Germany while the suggestion is untouched → Germany. Any country is suggested, not only those with servers; a lookup answer that is no country (or the lookup turned off) suggests nothing.
 - Typing "Neth" in the picker, emptying it, or picking Finland while the IP suggests another country → the field is left as it is; the summary shows no name for "Neth" and no complaint while it is typed.
 - "Atlantis", a withdrawn code (`UK`) or nothing in the picker → refused on **Create** ("Pick a country from the list." / "Pick a country."), the text kept, nothing created. `nl` or "Нидерланды" typed in full → the Netherlands.
-- "Main" holds a custom service with suffix `tikhonnnnn.com`; the new server would be `nl-3.hosts.tikhonnnnn.com` → refused on the form, naming the list and the service, nothing created.
+- "Main" holds a custom service with suffix `example.com`; the new server would be `nl-3.hosts.example.com` → refused on the form, naming the list and the service, nothing created.
 - Wrong root password → fails at preflight with "authentication failed". The password stays encrypted for retry. **Retry** asks for it again.
 - IP unreachable (timeout) → fails at preflight. The DNS is untouched.
 - Port 443 already in use on the VPS → fails at preflight, naming the process from `ss`.
@@ -101,7 +101,7 @@ The job makes one attempt and never retries by itself: a retry may need input, s
 - Self-check passes but every smoke-test attempt stalls after 16 KB → **failed**, with **Retry**, **Activate anyway** and **Retire** offered.
 - **Activate anyway** → active. The first round gives `blocked`. A subscription that hides `blocked` servers hides it like any other, once it has been blocked for that subscription's grace period.
 - A failure at step 7 → **Activate anyway** isn't offered.
-- A conflicting A record at `nl-2.hosts.tikhonnnnn.com` (not created by Proxier) → DNS step fails, naming its value. **Retry → Overwrite** replaces it.
+- A conflicting A record at `nl-2.hosts.example.com` (not created by Proxier) → DNS step fails, naming its value. **Retry → Overwrite** replaces it.
 - DNS still not visible on 8.8.8.8 after 10 min → DNS step fails. **Retry** resumes at DNS and doesn't recreate the record.
 - The zone's nameservers don't serve the record yet → no resolver is asked until they all do; they never do within 10 min → DNS step fails, naming what each nameserver answered.
 - Port 53 to the zone's nameservers dropped, or answered by something else (no authoritative flag) → the log says so, the wait pauses 10 s, then asks the resolvers.

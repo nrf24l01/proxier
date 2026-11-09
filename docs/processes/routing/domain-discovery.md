@@ -73,7 +73,7 @@ A member types a website, and Proxier finds the domains it uses so they can be t
 - 450 distinct hostnames (a heavy news site) → stops at 300 with a note.
 - Chromium not configured → only the catalog lookup runs, with the explanation.
 - Chromium unreachable mid-run → `routing.discovery_failed`, and the suggestions stay.
-- **Create custom service** with a ticked `tikhonnnnn.com` (covers a server hostname) → refused by the guard, naming the server.
+- **Create custom service** with a ticked `example.com` (covers a server hostname) → refused by the guard, naming the server.
 - Two runs started together → the second waits until the first finishes.
 - A run 31 days old → deleted with its screenshots.
 - Another member's run at `routing: own` → not found, and not among the recent runs; a Viewer saving from it → refused; its owner saving → the service is theirs.

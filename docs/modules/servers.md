@@ -6,7 +6,7 @@ The servers module turns a freshly issued VPS into a working proxy server from a
 
 - A server's **country** is an ISO 3166-1 alpha-2 code (`NL`), chosen when the server is created and never changed. It is all the server stores of where it is: the country's name (English and Russian) and its flag (🇳🇱, the two regional-indicator letters) are derived from the code, never stored ([ADR 0015](../adr/0015-servers-have-a-country-not-a-location.md)). There is nothing to manage: no Locations page, nothing to add, rename or delete. Withdrawn codes (`UK`, `DD`, `SU`…) are not countries.
 - A new server gets the **server name** `<code in lower case>-<number>` (`nl-2`), where the number is one more than the highest number its name prefix has ever used. Numbers are **never reused**, not even after a failed provisioning or a retirement: a server is never deleted, so its row keeps its number taken. A name means one server for good. A server created when servers had locations keeps its name and its location's code as its prefix (`ams-1` in NL); new servers of that country count under the country's code.
-- The **management hostname** comes from the hostname pattern in Settings, default `{country}-{number}.hosts.tikhonnnnn.com` → `nl-1.hosts.tikhonnnnn.com`. `{country}` is the name prefix; `{location}`, its earlier spelling, still works in a saved pattern.
+- The **management hostname** comes from the hostname pattern in Settings, a name in one of your Cloudflare zones, e.g. `{country}-{number}.hosts.example.com` → `nl-1.hosts.example.com`. `{country}` is the name prefix; `{location}`, its earlier spelling, still works in a saved pattern.
 - The **proxy hostname** is the name in connection URIs and the TLS certificate. It is always the management hostname. The two are separate fields, so proxy hostnames on other domains would need no data migration ([DNS](#dns)).
 - When a member pastes an IP into the new-server form, Proxier looks up the IP's country and preselects it in the country picker. It is only a suggestion.
 
@@ -128,7 +128,7 @@ Files, step arguments, endpoint fields and check arguments are Go templates. Mis
 | `.Server.Country.Code`, `.Name`, `.Flag` | `NL`, `Netherlands`, `🇳🇱` (the English name) |
 | `.Server.Location.Code`, `.Name`, `.Country` | `nl`, `Netherlands`, `NL`: what templates saw before servers had a country, kept so they still render; `Code` is the first half of the server name |
 | `.Server.IP`, `.Server.SSHPort` | `203.0.113.10`, `22` |
-| `.Server.ManagementHostname`, `.Server.ProxyHostname` | `nl-1.hosts.tikhonnnnn.com` |
+| `.Server.ManagementHostname`, `.Server.ProxyHostname` | `nl-1.hosts.example.com` |
 | `.Params.<key>` | parameters |
 | `.Gen.<key>` | generated values |
 | `.Clients` | the client identities the stack must accept: a list of `{ID, Name}`. It holds one entry: the endpoint credential, named `shared`. |
@@ -222,7 +222,7 @@ DNS is a driver; Cloudflare is the one there is ([Cloudflare integration](../int
 - After writing, Proxier waits until the zone's own nameservers serve the record, then until 1.1.1.1 and 8.8.8.8 both return the IP (timeout 10 min, longer while a resolver may still hold a "no such name" from before the record existed), before anything needs the name, for example the certificate. It asks the resolvers over DNS-over-HTTPS, and over plain UDP port 53 only when DoH cannot be reached, because the home router may intercept port 53. The nameservers only speak port 53; when they can't be asked, the wait pauses 10 s instead ([Cloudflare](../integrations/cloudflare.md#behaviour)).
 - An IP change brings the records to the new IP, after SSH and the proxy test have passed there ([IP change](../processes/servers/ip-change.md)).
 - Retirement deletes the records, if they still point to the server's IP.
-- **Accepted risk:** each server's certificate names its hostname, and every certificate is published in certificate-transparency logs. Anyone, including a censor, can list `*.hosts.tikhonnnnn.com` on crt.sh. The fix in the [backlog](../overview.md#backlog) is wildcard certificates issued centrally through Cloudflare DNS-01 and uploaded to servers, optionally with proxy hostnames on unlinked cover domains. Management and proxy hostnames are separate fields, so it needs no data migration.
+- **Accepted risk:** each server's certificate names its hostname, and every certificate is published in certificate-transparency logs. Anyone, including a censor, can list `*.hosts.example.com` on crt.sh. The fix in the [backlog](../overview.md#backlog) is wildcard certificates issued centrally through Cloudflare DNS-01 and uploaded to servers, optionally with proxy hostnames on unlinked cover domains. Management and proxy hostnames are separate fields, so it needs no data migration.
 
 ## Health and stats
 

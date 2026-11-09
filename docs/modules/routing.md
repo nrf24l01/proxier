@@ -62,8 +62,8 @@ Type a website. Proxier first looks it up in the catalog, suggesting existing se
   - A name that several services share in the same form goes to the first of them in list order that installs it.
   - Every other name is installed, also one under another service's suffix or under the service's own: the router resolves only the names it is given ([ADR 0016](../adr/0016-every-listed-name-reaches-the-router.md)).
 
-  A list's services show **owned / total**: the names the service installs there, and the names in its snapshot. The service page says, per list, why the others aren't installed ("owned by anthropic (first in Main)", "mine has it as a suffix", "left out: covers nl-1.hosts.tikhonnnnn.com (nl-1)"). Removing, editing or reordering services moves ownership, and every affected tag is re-synced ([ADR 0013](../adr/0013-one-owner-service-per-domain.md)).
-- **Server hostname guard**: a list can't contain a domain that equals or covers a server's management or proxy hostname (e.g. a custom service with `tikhonnnnn.com` would cover `nl-1.hosts.tikhonnnnn.com`). Routing those names would send Proxier's own checks, and the router's mihomo connection, into the tunnel. Adding a service to a list and saving a custom service that is in a list are refused, naming the server and domain; a refresh that brings such a name is accepted, and the name is left out of what targets get, with a warning on the list. Provisioning asks routing (`RoutingGuard`) and refuses a hostname any listed name covers.
+  A list's services show **owned / total**: the names the service installs there, and the names in its snapshot. The service page says, per list, why the others aren't installed ("owned by anthropic (first in Main)", "mine has it as a suffix", "left out: covers nl-1.hosts.example.com (nl-1)"). Removing, editing or reordering services moves ownership, and every affected tag is re-synced ([ADR 0013](../adr/0013-one-owner-service-per-domain.md)).
+- **Server hostname guard**: a list can't contain a domain that equals or covers a server's management or proxy hostname (e.g. a custom service with `example.com` would cover `nl-1.hosts.example.com`). Routing those names would send Proxier's own checks, and the router's mihomo connection, into the tunnel. Adding a service to a list and saving a custom service that is in a list are refused, naming the server and domain; a refresh that brings such a name is accepted, and the name is left out of what targets get, with a warning on the list. Provisioning asks routing (`RoutingGuard`) and refuses a hostname any listed name covers.
 
 Flows: [routing lists](../processes/routing/routing-lists.md).
 
@@ -83,7 +83,7 @@ Target kinds are pluggable. There are two:
 | DoH forwarder | RouterOS DNS forwarder name. Must match the router script. | `vpn-doh` |
 | State | `awaiting setup` (registered through `routers.Register`, never connected, no failure alerts, probed every 10 min for 7 days), `active`, `paused` (no syncs, previews or drift checks), or `removing` (a removal sync cleans what Proxier installed, then the router is deleted). | active, or awaiting setup when created by router scripts |
 
-**Shadowrocket config**: a name, a routing list, a base config (versioned), a rule policy (default `PROXY`), and a secret URL `https://proxier.tikhonnnnn.com/r/{token}/{name}.conf`.
+**Shadowrocket config**: a name, a routing list, a base config (versioned), a rule policy (default `PROXY`), and a secret URL `https://proxier.example.com/r/{token}/{name}.conf`.
 
 ## Router sync
 

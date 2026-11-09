@@ -14,7 +14,7 @@ Every module is built and runs on the real deployment. The facts that only real 
 | [development.md](./development.md) | Code layout, module interfaces, the rules every change follows, test harnesses, checking pages in a real browser. |
 | [data-model.md](./data-model.md) | Every module's entities and how they relate; retention. |
 | [events.md](./events.md) | Every event Proxier records, and which ones send a Telegram notification by default. |
-| [deployment.md](./deployment.md) | How Proxier runs on blackberry behind sh-main: containers, CI, the data volume, backups. |
+| [deployment.md](./deployment.md) | How to run Proxier: where, the compose file, the reverse proxy, the tailnet, the data volume, backups, CI. |
 | [open-questions.md](./open-questions.md) | Facts not yet confirmed on the real deployment. |
 | [modules/](./modules/) | One document per module: platform, servers, subscriptions, routing, router scripts. |
 | [processes/](./processes/README.md) | Every flow step by step, with its rules and its edge cases (each one a test). |

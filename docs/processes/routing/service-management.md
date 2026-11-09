@@ -71,7 +71,7 @@ A service is a named set of domains from one source, and the unit that goes into
 - Custom domains `example.com` (suffix) and `full:api.example.com` → both are kept and installed. `example.com` twice, or as suffix and exact → one suffix row, with a note.
 - A custom service in "Main" after `openai` (suffix `openai.com`, exact `chatgpt.com`), with `openai.com`, `api.openai.com` and `full:sora.com` → hints "not installed in Main: openai has it" on `openai.com`, "installed; also covered by openai in Main" on `api.openai.com`, none on `sora.com`.
 - `пример.рф` → stored as `xn--e1afmkfd.xn--p1ai`, shown with its Unicode form.
-- A custom service with `tikhonnnnn.com` in a list (it covers `nl-1.hosts.tikhonnnnn.com`) → save refused, naming nl-1.
+- A custom service with `example.com` in a list (it covers `nl-1.hosts.example.com`) → save refused, naming nl-1.
 - New custom service "My Test Service" with no tag → the tag field shows `my-test-service`, which it gets; with tag `mytest` its page headlines "My Test Service" with "Tag mytest" under it.
 - Rename custom tag `mine` to `personal` → routers drop `mine` and install `personal` on the next sync.
 - **Remove** a service that is in "Main" → refused until it is taken out of "Main".

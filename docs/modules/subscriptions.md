@@ -35,7 +35,7 @@ Flows: [subscription management](../processes/subscriptions/subscription-managem
 |---|---|---|
 | Name | Who or what it is for: "Mom — iPhone", "Router — Parents". Unique. | — |
 | Subscription | Exactly one. | the only one, if there is one |
-| Token | ≥ 128 random bits, URL-safe. The URL is `https://proxier.tikhonnnnn.com/s/{token}`. | generated |
+| Token | ≥ 128 random bits, URL-safe. The URL is `https://proxier.example.com/s/{token}`. | generated |
 | State | `active`, `disabled` or `deleted`. "Expired" is an active link past its expiry. | active |
 | Expiry | Optional date and time; after it the link serves its stub entry. | none |
 | Language | Language of its stub entry text. | Settings default |
@@ -49,8 +49,8 @@ Flows: [subscription management](../processes/subscriptions/subscription-managem
 |---|---|
 | active, not expired | The subscription's connection URIs, in order, minus hidden servers. |
 | active, but the subscription has no servers | One stub entry: "⚠️ No servers yet". |
-| active, past expiry | One stub entry: "⏳ Expired on 1 Dec 2026 · @tikhonp" (the last day it worked, in the link's language). |
-| disabled | One stub entry: "⛔ Link disabled · @tikhonp". |
+| active, past expiry | One stub entry: "⏳ Expired on 1 Dec 2026 · @owner" (the last day it worked, in the link's language). |
+| disabled | One stub entry: "⛔ Link disabled · @owner". |
 | deleted, within the tombstone period (`subscriptions.tombstone`, 30 days) | One stub entry: "⛔ Link removed". |
 | deleted, after the tombstone period, or a token that never existed | `404`. |
 

@@ -28,11 +28,11 @@ The apps tried on the real deployment honour the first four.
 A single connection URI that can't connect, whose name carries the message:
 
 ```
-vless://00000000-0000-0000-0000-000000000000@127.0.0.1:1?encryption=none&type=tcp&security=none#%E2%9B%94%20Link%20disabled%20%C2%B7%20%40tikhonp
+vless://00000000-0000-0000-0000-000000000000@127.0.0.1:1?encryption=none&type=tcp&security=none#%E2%9B%94%20Link%20disabled%20%C2%B7%20%40owner
 ```
 
 - It is served with `200` and the normal headers. Apps take it as a successful refresh and **replace** their list with it. An error or empty body would make most apps keep the old list.
-- Seen on real devices: Shadowrocket, Hiddify, Happ (Android 4.9.0) and v2rayNG (2.3.11) replace their list with the stub. v2rayNG shows its whole name. Happ fits about 27 characters of a name on a 360 px phone, so the stub names the contact without a word before it ("⛔ Ссылка отключена · @tikhonp"), and a long contact may still lose its end there. On a `404` (a regenerated token), Happ, v2rayNG and Hiddify (Android 4.1.1) keep their last list and show an error: Happ a toast with the status, v2rayNG a count of failed updates, Hiddify a dialog with the HTTP exception. v2rayNG refreshes only the group whose tab is open.
+- Seen on real devices: Shadowrocket, Hiddify, Happ (Android 4.9.0) and v2rayNG (2.3.11) replace their list with the stub. v2rayNG shows its whole name. Happ fits about 27 characters of a name on a 360 px phone, so the stub names the contact without a word before it ("⛔ Ссылка отключена · @owner"), and a long contact may still lose its end there. On a `404` (a regenerated token), Happ, v2rayNG and Hiddify (Android 4.1.1) keep their last list and show an error: Happ a toast with the status, v2rayNG a count of failed updates, Hiddify a dialog with the HTTP exception. v2rayNG refreshes only the group whose tab is open.
 - Texts (in the link's language):
 
 | Case | EN | RU |

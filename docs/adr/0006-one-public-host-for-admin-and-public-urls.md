@@ -1,6 +1,6 @@
 # The UI and the public URLs share one public host, with password sign-in
 
-The UI members sign in to and the token URLs (`/s/`, `/r/`, `/f/`) are served on one public host, `proxier.tikhonnnnn.com`, through sh-main's nginx and the existing SSH tunnel. The UI is reachable from anywhere with a password; an authenticator app code and passkeys are opt-in ([ADR 0017](./0017-passkeys-sign-in-alone.md)). Reach and simplicity were chosen over tailnet-only access. The risk is reduced by lockout per IP, a notification on every sign-in from a new IP, short sessions and CSRF protection. The fixed route prefixes let a later gateway change move the UI to a private host, or the public URLs to another name, without code changes.
+The UI members sign in to and the token URLs (`/s/`, `/r/`, `/f/`) are served on one public host, `PROXIER_BASE_URL`, through a reverse proxy. The UI is reachable from anywhere with a password; an authenticator app code and passkeys are opt-in ([ADR 0017](./0017-passkeys-sign-in-alone.md)). Reach and simplicity were chosen over tailnet-only access. The risk is reduced by lockout per IP, a notification on every sign-in from a new IP, short sessions and CSRF protection. The fixed route prefixes let a later reverse proxy change move the UI to a private host, or the public URLs to another name, without code changes.
 
 When this was decided, one person signed in. Several members now do, each with their own password and a level in each area ([ADR 0018](./0018-several-members-with-per-area-access.md)); the decision holds for all of them.
 

@@ -40,10 +40,10 @@ The generation page says when the link's URL changed after the generation (its t
 ## Steps: getting it onto the router
 
 1. **Download** (a signed-in member who reads the generation) → `fresh-router-<router>-v<version>.rsc`, `no-store`. It records nothing (the request log has it).
-2. **Create fetch URL** (the generation page's Fetch URL area; **New fetch URL…** with a confirmation while one waits: "A new URL makes this one stop working.") → a token (`vault.NewToken()`, sealed as `fetch_url:<id>:token`, found by its lookup) valid for **1 hour** and **one** successful download. In the same transaction a URL of the generation that still waited ends first: as *replaced* when it still worked, as *expired* (with its `routerscript.fetch_url_expired`) when its hour had passed before the scan saw it. A generation of an archived script can still get one. The page shows the URL masked (`https://proxier.tikhonnnnn.com/f/••••••••`) with **Reveal** / **Hide** and **Copy**, the state line ("expires at 17:30 · in 58 min"), and the commands to paste into the new router's terminal, each with **Copy**, and **Copy both lines** (`y`):
+2. **Create fetch URL** (the generation page's Fetch URL area; **New fetch URL…** with a confirmation while one waits: "A new URL makes this one stop working.") → a token (`vault.NewToken()`, sealed as `fetch_url:<id>:token`, found by its lookup) valid for **1 hour** and **one** successful download. In the same transaction a URL of the generation that still waited ends first: as *replaced* when it still worked, as *expired* (with its `routerscript.fetch_url_expired`) when its hour had passed before the scan saw it. A generation of an archived script can still get one. The page shows the URL masked (`https://proxier.example.com/f/••••••••`) with **Reveal** / **Hide** and **Copy**, the state line ("expires at 17:30 · in 58 min"), and the commands to paste into the new router's terminal, each with **Copy**, and **Copy both lines** (`y`):
 
    ```
-   /tool fetch url="https://proxier.tikhonnnnn.com/f/<token>" dst-path=fresh-router.rsc
+   /tool fetch url="https://proxier.example.com/f/<token>" dst-path=fresh-router.rsc
    /import fresh-router.rsc
    ```
 

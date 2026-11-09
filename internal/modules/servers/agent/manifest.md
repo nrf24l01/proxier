@@ -108,7 +108,7 @@ Files, step arguments, endpoint fields and check arguments are Go templates. Mis
 | `.Server.Country.Code`, `.Name`, `.Flag` | `NL`, `Netherlands`, `🇳🇱` (the English name) |
 | `.Server.Location.Code`, `.Name`, `.Country` | `nl`, `Netherlands`, `NL`: what templates saw before servers had a country, kept so they still render; `Code` is the first half of the server name |
 | `.Server.IP`, `.Server.SSHPort` | `203.0.113.10`, `22` |
-| `.Server.ManagementHostname`, `.Server.ProxyHostname` | `nl-1.hosts.tikhonnnnn.com` |
+| `.Server.ManagementHostname`, `.Server.ProxyHostname` | `nl-1.hosts.example.com` |
 | `.Params.<key>` | parameters |
 | `.Gen.<key>` | generated values |
 | `.Clients` | the client identities the stack must accept: a list of `{ID, Name}`. It holds one entry: the endpoint credential, named `shared`. |

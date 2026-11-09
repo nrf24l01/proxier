@@ -83,6 +83,6 @@ Not built, roughly in order of value. Each needs an extension point or a new flo
 ## Assumptions
 
 - The blocking Proxier must detect is Russian. Home, where Proxier runs, is in Russia, so Proxier is itself a Russian vantage point ([ADR 0005](./adr/0005-home-is-the-russian-vantage-point.md)).
-- Proxier runs on the home server (blackberry) behind the sh-main gateway. The UI and the public URLs share one public host with password sign-in ([ADR 0006](./adr/0006-one-public-host-for-admin-and-public-urls.md)).
+- Proxier runs on a machine at home, behind an HTTPS reverse proxy ([deployment](./deployment.md)). The UI and the public URLs share one public host with password sign-in ([ADR 0006](./adr/0006-one-public-host-for-admin-and-public-urls.md)).
 - DNS is Cloudflare. Notifications go to Telegram. Servers run Debian or Ubuntu with Docker.
-- Go and SQLite in one binary ([ADR 0001](./adr/0001-single-binary-sqlite-in-process-jobs.md)), images built by Forgejo Actions on code.tikhonnnnn.com, a server-rendered UI with templ and htmx ([ADR 0014](./adr/0014-server-rendered-ui-templ-htmx.md)).
+- Go and SQLite in one binary ([ADR 0001](./adr/0001-single-binary-sqlite-in-process-jobs.md)), images built by Forgejo Actions, a server-rendered UI with templ and htmx ([ADR 0014](./adr/0014-server-rendered-ui-templ-htmx.md)).

@@ -10,7 +10,7 @@ The external checker. It tells whether a server's port 443 is reachable over TCP
 
 ## Reaching it
 
-From home, check-host.net's own addresses get no answer. On 2026-11-01 on blackbox, `check-host.net` resolved to Cloudflare's `104.21.74.214` and `172.67.163.103`. TCP connected to both, and the TLS handshake hung after the Client Hello whatever the SNI. Cloudflare answered the same request on another of its addresses, `104.16.123.96`, so the block is on the addresses and not on the name.
+From home, check-host.net's own addresses get no answer. On 2026-11-01, `check-host.net` resolved to Cloudflare's `104.21.74.214` and `172.67.163.103`. TCP connected to both, and the TLS handshake hung after the Client Hello whatever the SNI. Cloudflare answered the same request on another of its addresses, `104.16.123.96`, so the block is on the addresses and not on the name.
 
 Each check's client tries the direct way first. When a request fails before any HTTP answer, such as a timeout, a hung handshake or a refused connection, the client opens one route through a server. That request and the rest of the check go through the route. The route is an xray client on the first endpoint of the first active, healthy server by ID. The checked server comes last, because a blocked server can't carry the question of whether it is blocked. The job log names the server.
 

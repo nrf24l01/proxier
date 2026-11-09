@@ -65,7 +65,7 @@ The page is `200` with `Content-Type: text/html; charset=utf-8`, `Cache-Control:
 - `?format=mihomo` (not a format) → `400`.
 - A token that doesn't exist → `404`, nothing recorded.
 - A regenerated link's old token → `404`.
-- Disabled link → `200`, one stub entry named "⛔ Link disabled · @tikhonp".
+- Disabled link → `200`, one stub entry named "⛔ Link disabled · @owner".
 - Expired link with language RU → `200`, one stub entry in Russian with the date.
 - A deleted link 10 days after deletion → "⛔ Link removed". 31 days after → `404`.
 - A subscription with no servers → "⚠️ No servers yet".

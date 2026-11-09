@@ -4,5 +4,5 @@ Every secret in the database (generated values, link and config tokens, deployed
 
 ## Consequences
 
-- Losing the master key loses every secret. It is kept in the secrets submodule and in Vaultwarden. Backups are useless without it, which is also what makes them safe to copy around.
+- Losing the master key loses every secret. Keep a copy outside Proxier's machine, in a password manager. Backups are useless without it, which is also what makes them safe to copy around.
 - A provisioning job that fails before key login keeps the password, encrypted, until it is retried, cancelled or the server is retired. A retry after that point asks for it again.

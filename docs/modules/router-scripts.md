@@ -71,7 +71,7 @@ Then:
 - **Create fetch URL** gives a URL that works **once** and for **1 hour**, plus the commands to paste into the new router:
 
   ```
-  /tool fetch url="https://proxier.tikhonnnnn.com/f/<token>" dst-path=fresh-router.rsc
+  /tool fetch url="https://proxier.example.com/f/<token>" dst-path=fresh-router.rsc
   /import fresh-router.rsc
   ```
 

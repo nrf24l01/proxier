@@ -17,7 +17,7 @@ The dialog lists both steps.
 
 ## Steps: the dialog
 
-1. Server page → Actions → **Change IP** (active servers only). The dialog shows the two provider steps, what the job will do, the DNS records it will repoint (`nl-1.hosts.tikhonnnnn.com → 201.58.181.185`), and a band when the template's stack uses `.Server.IP` (a redeploy is needed after the change).
+1. Server page → Actions → **Change IP** (active servers only). The dialog shows the two provider steps, what the job will do, the DNS records it will repoint (`nl-1.hosts.example.com → 201.58.181.185`), and a band when the template's stack uses `.Server.IP` (a redeploy is needed after the change).
 2. Fields:
    - **New IP**, an IPv4 address. The field suggests the server's previous IPs.
    - **Keep the old IP as a previous IP and test it from home**, checked. Unchecked when the provider takes the IP away.
