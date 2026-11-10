@@ -716,7 +716,7 @@
     $$('[data-depends]').forEach(function (el) {
       var name = el.getAttribute('data-depends');
       var want = el.getAttribute('data-when');
-      var all = $$('[name="' + name + '"]');
+      var all = $$('[name="' + name + '"]', el.closest('form') || document);
       var chosen = all.filter(function (i) {
         return i.tagName === 'SELECT' ? i.value === want : i.checked && i.value === want;
       })[0];
@@ -727,6 +727,7 @@
   }
   document.addEventListener('change', syncDepends);
   document.addEventListener('DOMContentLoaded', syncDepends);
+  document.addEventListener('htmx:afterSwap', syncDepends);
 
   // dialog: esc closes natively; a click on the backdrop closes too
   document.addEventListener('mousedown', function (e) {

@@ -44,7 +44,7 @@ const (
 	OpStats          Op = "proxier-stats"
 )
 
-// DeployUser is the account Proxier works as after the first login.
+// DeployUser is the SSH account that password-access provisioning creates.
 const DeployUser = "proxier"
 
 // SudoersLine is what /etc/sudoers.d/proxier holds.

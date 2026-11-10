@@ -143,7 +143,7 @@ type NewServer struct {
 	Name, IP string
 	SSHPort  int
 	// AccessMode is AccessPassword ("" takes it) or AccessKey; SSHUser is the
-	// account Proxier logs in as in key mode ("" takes root); Setup is
+	// account Proxier logs in as. InsertServer defaults it to proxier. Setup is
 	// SetupFull ("" takes it) or SetupMinimal.
 	AccessMode                        string
 	SSHUser                           string

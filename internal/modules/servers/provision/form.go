@@ -58,12 +58,11 @@ type Form struct {
 	// Hostname is the server's management and proxy hostname; "" takes the
 	// name the hostname pattern gives.
 	Hostname string
-	// CheckDNS asks the summary to check a record made by hand now (the
-	// Check button). Create always checks it.
+	// CheckDNS asks the live summary to check a record the member manages.
+	// Create checks it too. SkipDNS disables both checks.
 	CheckDNS bool
-	// SkipDNS skips the check of a record made by hand and provisioning's
-	// wait for it: the member manages the record (a proxied one, or one
-	// pointed somewhere else).
+	// SkipDNS skips the form check and provisioning wait for a record the
+	// member manages. Certificate issuance and connection tests still run.
 	SkipDNS bool
 }
 

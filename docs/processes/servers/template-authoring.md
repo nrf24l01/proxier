@@ -105,7 +105,8 @@ The nginx check parses the rendered file with a Go parser; nothing runs. `*.temp
 - A version used by any server, retired ones included, can't be deleted. A template that has never built a server can be deleted, with all its versions.
 - **Archive** hides a template from the new-server form. It changes nothing for existing servers, and can be undone. → `template.archived`
 - Endpoint keys must stay stable between versions. Subscriptions refer to servers, and the output includes each server's endpoints by key ([servers module](../../modules/servers.md#manifest)).
-- The seed template "VLESS XHTTP behind nginx" is created on first start as version 1 and is an ordinary template from then on.
+- The seed template "VLESS XHTTP behind nginx" starts at version 1. Its OS requirements accept Debian 12 and later Debian releases, and Ubuntu 22.04 and later Ubuntu releases.
+- An existing `vless-xhttp` template gets version 2 when it still defaults to version 1, has no later version, and its manifest contains the original OS list `os: [debian-12, debian-13, ubuntu-22.04, ubuntu-24.04]`. The migration copies its files and replaces that list with `os: [debian-12+, ubuntu-22.04+]`. It makes version 2 the default for new servers. Existing servers keep their version. Rolling back and reapplying the migration preserves the published version and its files.
 
 ## Edge cases (each is a test)
 

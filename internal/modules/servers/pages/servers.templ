@@ -47,52 +47,59 @@ templ newServerPage(s ui.Shell, v newView) {
 						}
 					</div>
 					<div class="field">
-						<label>{ i18n.T(ctx, "servers.new.access.how") }</label>
-						<div class="inline">
-							<label class="inline"><input type="radio" name="access" value="password" checked?={ v.Access != "key" }/> <span>{ i18n.T(ctx, "servers.new.access.password") }</span></label>
-							<label class="inline"><input type="radio" name="access" value="key" checked?={ v.Access == "key" }/> <span>{ i18n.T(ctx, "servers.new.access.key") }</span></label>
-						</div>
-						<p class="help">{ i18n.T(ctx, "servers.new.access.help") }</p>
+						<label for="srv-access">{ i18n.T(ctx, "servers.new.access.how") }</label>
+						<select id="srv-access" class="pc-inp" name="access" aria-invalid?={ v.Errs["access"] != "" }>
+							<option value="password" selected?={ v.Access != "key" }>{ i18n.T(ctx, "servers.new.access.password") }</option>
+							<option value="key" selected?={ v.Access == "key" }>{ i18n.T(ctx, "servers.new.access.key") }</option>
+						</select>
 						if v.Errs["access"] != "" {
 							<p class="err" role="alert">{ v.Errs["access"] }</p>
 						}
 					</div>
-					<div class="field" data-depends="access" data-when="password">
+					<div class={ "field", templ.KV("hidden", v.Access == "key") } data-depends="access" data-when="password">
 						<label for="srv-pw">{ i18n.T(ctx, "servers.new.password") }</label>
-						<input id="srv-pw" class="pc-inp" type="password" name="root_password" autocomplete="new-password" aria-invalid?={ v.Errs["root_password"] != "" }/>
+						<input id="srv-pw" class="pc-inp" type="password" name="root_password" autocomplete="new-password" disabled?={ v.Access == "key" } aria-invalid?={ v.Errs["root_password"] != "" }/>
 						if v.Errs["root_password"] != "" {
 							<p class="err" role="alert">{ v.Errs["root_password"] }</p>
 						} else {
 							<p class="help">{ i18n.T(ctx, "servers.new.password.help") }</p>
 						}
 					</div>
-					<div class="field" data-depends="access" data-when="key">
+					<div class={ "field", templ.KV("hidden", v.Access != "key") } data-depends="access" data-when="key">
 						<label for="srv-user">{ i18n.T(ctx, "servers.new.ssh_user") }</label>
-						<input id="srv-user" class="pc-inp" name="ssh_user" value={ v.SSHUser } autocomplete="off" spellcheck="false" autocapitalize="none" aria-invalid?={ v.Errs["ssh_user"] != "" }/>
+						<input id="srv-user" class="pc-inp" name="ssh_user" value={ v.SSHUser } disabled?={ v.Access != "key" } autocomplete="off" spellcheck="false" autocapitalize="none" aria-invalid?={ v.Errs["ssh_user"] != "" }/>
 						if v.Errs["ssh_user"] != "" {
 							<p class="err" role="alert">{ v.Errs["ssh_user"] }</p>
 						} else {
 							<p class="help">{ i18n.T(ctx, "servers.new.ssh_user.help") }</p>
 						}
 					</div>
-					<div class="field">
-						<label>{ i18n.T(ctx, "servers.new.setup") }</label>
-						<div class="inline">
-							<label class="inline"><input type="radio" name="setup" value="full" checked?={ v.Setup != "minimal" }/> <span>{ i18n.T(ctx, "servers.new.setup.full") }</span></label>
-							<label class="inline"><input type="radio" name="setup" value="minimal" checked?={ v.Setup == "minimal" }/> <span>{ i18n.T(ctx, "servers.new.setup.minimal") }</span></label>
+					<details class="srv-options" open?={ v.Setup == "minimal" || v.Port != "" && v.Port != "22" || v.Errs["setup"] != "" || v.Errs["ssh_port"] != "" }>
+						<summary>
+							{ i18n.T(ctx, "servers.new.options") }
+							<span class={ "sm subtle", templ.KV("hidden", v.Setup == "minimal") } data-depends="setup" data-when="full"> · { i18n.T(ctx, "servers.setup.full") }</span>
+							<span class={ "sm subtle", templ.KV("hidden", v.Setup != "minimal") } data-depends="setup" data-when="minimal"> · { i18n.T(ctx, "servers.new.setup.minimal") }</span>
+						</summary>
+						<div class="field">
+							<label for="srv-setup">{ i18n.T(ctx, "servers.new.setup") }</label>
+							<select id="srv-setup" class="pc-inp" name="setup" aria-invalid?={ v.Errs["setup"] != "" }>
+								<option value="full" selected?={ v.Setup != "minimal" }>{ i18n.T(ctx, "servers.new.setup.full") }</option>
+								<option value="minimal" selected?={ v.Setup == "minimal" }>{ i18n.T(ctx, "servers.new.setup.minimal") }</option>
+							</select>
+							if v.Errs["setup"] != "" {
+								<p class="err" role="alert">{ v.Errs["setup"] }</p>
+							}
+							<p class={ "help", templ.KV("hidden", v.Setup == "minimal") } data-depends="setup" data-when="full">{ i18n.T(ctx, "servers.new.setup.full.help") }</p>
+							<p class={ "help", templ.KV("hidden", v.Setup != "minimal") } data-depends="setup" data-when="minimal">{ i18n.T(ctx, "servers.new.setup.minimal.help") }</p>
 						</div>
-						<p class="help">{ i18n.T(ctx, "servers.new.setup.help") }</p>
-						if v.Errs["setup"] != "" {
-							<p class="err" role="alert">{ v.Errs["setup"] }</p>
-						}
-					</div>
-					<div class="field">
-						<label for="srv-port">{ i18n.T(ctx, "servers.new.port") }</label>
-						<input id="srv-port" class="pc-inp" name="ssh_port" value={ v.Port } placeholder="22" inputmode="numeric" autocomplete="off" aria-invalid?={ v.Errs["ssh_port"] != "" }/>
-						if v.Errs["ssh_port"] != "" {
-							<p class="err" role="alert">{ v.Errs["ssh_port"] }</p>
-						}
-					</div>
+						<div class="field">
+							<label for="srv-port">{ i18n.T(ctx, "servers.new.port") }</label>
+							<input id="srv-port" class="pc-inp" name="ssh_port" value={ v.Port } placeholder="22" inputmode="numeric" autocomplete="off" aria-invalid?={ v.Errs["ssh_port"] != "" }/>
+							if v.Errs["ssh_port"] != "" {
+								<p class="err" role="alert">{ v.Errs["ssh_port"] }</p>
+							}
+						</div>
+					</details>
 					<h2 class="grp">{ i18n.T(ctx, "servers.new.country") }</h2>
 					@countryPick(v, false)
 					<datalist id="countries">
@@ -111,10 +118,6 @@ templ newServerPage(s ui.Shell, v newView) {
 						} else {
 							<p class="help">{ i18n.T(ctx, "servers.new.hostname.help") }</p>
 						}
-					</div>
-					<div class="field">
-						<label class="check"><input type="checkbox" name="skip_dns" value="1" checked?={ v.SkipDNS }/> <span>{ i18n.T(ctx, "servers.new.skip_dns") }</span></label>
-						<p class="help">{ i18n.T(ctx, "servers.new.skip_dns.help") }</p>
 					</div>
 					<h2 class="grp">{ i18n.T(ctx, "servers.new.template") }</h2>
 					<div class="field">
@@ -289,6 +292,7 @@ templ summaryBody(v newView) {
 					}
 					<button
 						type="button"
+						disabled?={ v.SkipDNS }
 						class="pc-btn pc-sm"
 						hx-post="/servers/new/summary"
 						hx-vals='{"check_dns": "1"}'
@@ -297,6 +301,10 @@ templ summaryBody(v newView) {
 						hx-swap="innerHTML"
 						data-action="srv.check_dns"
 					>{ i18n.T(ctx, "servers.new.sum.dns.check") }</button>
+					<div class="field">
+						<label class="check"><input type="checkbox" name="skip_dns" value="1" checked?={ v.SkipDNS } aria-describedby="skip-dns-help"/> <span>{ i18n.T(ctx, "servers.new.skip_dns") }</span></label>
+						<p id="skip-dns-help" class="help">{ i18n.T(ctx, "servers.new.skip_dns.help") }</p>
+					</div>
 				} else {
 					<div class="sm subtle">proxier:{ v.Sum.Name }</div>
 				}

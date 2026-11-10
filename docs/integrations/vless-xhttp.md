@@ -30,13 +30,13 @@ What `setup.sh` did interactively and Proxier now does itself:
 
 | `setup.sh` | Proxier |
 |---|---|
-| `bootstrap-system.sh` (Docker, docker group, SSH password hardening) | `base-bootstrap` step, plus key installation and the firewall |
-| Asks for the domain and checks that it resolves | The hostname comes from the server name. DNS is created through Cloudflare and waited for. |
+| `bootstrap-system.sh` (Docker, docker group, SSH password hardening) | The server's setup mode controls `base-bootstrap`. Password access installs keys. Full setup also hardens SSH and configures the firewall. Deploy only installs prerequisites and Docker. |
+| Asks for the domain and checks that it resolves | The hostname comes from the configured pattern or the new-server form. Proxier manages records in configured Cloudflare zones. The member manages other records and can skip their provisioning DNS checks. |
 | Asks for the Let's Encrypt email | Template parameter `letsencrypt_email` |
 | `uuidgen`, `openssl rand -hex 8`, `openssl rand -hex 2` | Generated values `client_uuid`, `xhttp_path` (16 hex characters with a leading `/`), `container_postfix` (4 hex characters) |
 | Asks for the link's tag name | The endpoint's display name (`🇳🇱 Netherlands 1`) |
 | `credentials.txt` | The server page and subscription outputs |
-| `newgrp docker` subshell | Not needed: Proxier runs Docker through `sudo -n` as its `proxier` deploy user |
+| `newgrp docker` subshell | Proxier runs Docker as root, directly for root SSH access or through `sudo -n` for other accounts |
 
 ## Connection URI
 

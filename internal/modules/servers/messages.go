@@ -20,13 +20,13 @@ var messages = i18n.Messages{
 	"settings.field.servers.ip_country_url": {EN: "IP → country lookup", RU: "Страна по IP"},
 	"settings.field.servers.default_access": {EN: "New servers' access", RU: "Доступ новых серверов"},
 	"settings.field.servers.default_access.help": {
-		EN: "What the new-server form starts with. A server keeps the choice it was created with.",
-		RU: "С чего начинается форма нового сервера. Сервер сохраняет выбор, сделанный при создании.",
+		EN: "The initial selection in the new-server form. Changing it does not affect existing servers.",
+		RU: "Начальный выбор в форме нового сервера. Изменение не влияет на существующие серверы.",
 	},
 	"settings.field.servers.default_setup": {EN: "New servers' setup", RU: "Настройка новых серверов"},
 	"settings.field.servers.default_setup.help": {
-		EN: "Full hardens SSH, resets the firewall and turns on TCP BBR; deploy only installs Docker and its prerequisites.",
-		RU: "Полная закрывает SSH, сбрасывает файрвол и включает TCP BBR; «только развёртывание» ставит Docker и зависимости.",
+		EN: "Full hardens SSH, resets the firewall and enables TCP BBR when supported. Deploy only installs prerequisites and Docker if missing. This default applies to new servers.",
+		RU: "Полная настройка отключает вход по паролю и под root через SSH, сбрасывает файрвол и включает TCP BBR при поддержке ядром. Только развёртывание ставит зависимости и Docker, если их нет. Этот выбор применяется к новым серверам.",
 	},
 	"settings.option.servers.default_access.password": {EN: "Root password", RU: "Пароль root"},
 	"settings.option.servers.default_access.key":      {EN: "SSH key", RU: "SSH-ключ"},

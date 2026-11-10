@@ -21,7 +21,7 @@ Read a flow's document before changing it. When the behaviour changes, the docum
 ## Servers
 
 - [Template authoring](./servers/template-authoring.md): drafts, validation, publishing, versions, import and export.
-- [Server provisioning](./servers/server-provisioning.md): from an IP and root password, or an account that trusts Proxier's key, to an active server.
+- [Server provisioning](./servers/server-provisioning.md): Create a server with a root password or a pre-installed SSH key. Choose full or deploy-only setup.
 - [Server redeploy](./servers/server-redeploy.md): redeploy, upgrade (single and rolling), parameter changes, restart, update images.
 - [Credential rotation](./servers/credential-rotation.md): replacing a server's credentials, alone or as part of a cut-off.
 - [Server health](./servers/server-health.md): checks, vantage points, verdicts, flap protection, pause.

@@ -31,8 +31,7 @@ type Env struct {
 	// User is the account Proxier logs in as, and the owner of the stack's
 	// files; "" is DeployUser.
 	User string
-	// NoSudo: the login user is root, so commands that name `sudo -n` run
-	// without it.
+	// NoSudo removes the sudo prefix when the login account is root.
 	NoSudo bool
 }
 

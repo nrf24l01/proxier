@@ -561,6 +561,9 @@ a.row.tpl { text-decoration: none; color: inherit; }
 .row.srv-card > .bold { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .newcols { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 0; }
 .newform { max-width: 640px; }
+.srv-options > summary { cursor: pointer; color: var(--subtle); }
+.srv-options > summary:hover { color: var(--text); }
+.srv-options > .field { margin-top: 12px; }
 .newform .grp, .newsum .grp { margin: 8px 0 0; font-size: var(--fs-label); line-height: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
 .newsum { border-left: 1px solid var(--overlay); }
 .newsum > .stick { padding: 16px; }

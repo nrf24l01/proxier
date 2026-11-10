@@ -1,6 +1,6 @@
 ### Manifest
 
-The seed template, converted from `servers-templates/proxy` ([VLESS XHTTP integration](../../../../docs/integrations/vless-xhttp.md)), shows every part. `requires.os` and `requires.arch` gate preflight: an entry ending in `+` (`ubuntu-22.04+`) allows that release and every later one of the same distribution, so a new Ubuntu release needs no template change.
+The seed template comes from `servers-templates/proxy`. See the [VLESS XHTTP integration](../../../../docs/integrations/vless-xhttp.md). Preflight checks the server against `requires.os` and `requires.arch`. In `requires.os`, `ubuntu-22.04+` accepts Ubuntu 22.04 and later Ubuntu releases. An entry without `+` accepts only the listed release.
 
 ```yaml
 name: VLESS XHTTP behind nginx
@@ -79,7 +79,7 @@ proxy_test:                          # optional; overrides Settings → Servers 
 
 | Step | What it does |
 |---|---|
-| `base-bootstrap` | Works as the `proxier` deploy user that provisioning created (passwordless sudo, Proxier's and your personal SSH keys). Turns off password login and root login over SSH. Writes `.hushlogin`, installs the apt prerequisites `curl ca-certificates openssl ufw` (waiting for apt's lock, which a fresh VPS often holds), turns on TCP BBR when the kernel has it (a warning otherwise), and installs Docker (get.docker.com) if missing. Resets the firewall (ufw) to deny every incoming connection but the SSH port plus `ports` (rules the image came with go), and turns it on. Docker's published ports bypass ufw; the manifest's ports are opened in ufw anyway so the rule set says what is meant, and nothing else listens. Never locks Proxier out: each SSH change is verified with a fresh key login and rolled back if that fails. |
+| `base-bootstrap` | Uses the server's stored SSH account. Root commands use `sudo -n` unless that account is root. Both setup modes install `curl ca-certificates openssl ufw` and Docker if missing, and wait for apt's lock. Full setup also disables password and root login over SSH, writes `.hushlogin`, enables TCP BBR when supported, and resets and enables ufw with only the SSH port and manifest `ports` allowed. It verifies SSH changes with a new key login and rolls them back if verification fails. Deploy only leaves SSH configuration, firewall rules and TCP settings unchanged. Docker's published ports bypass ufw. |
 | `upload-files` | Renders every file and uploads each one to a temporary name before renaming it into place, so no file is half-written. Deletes files that an earlier deployment of this server put there and this version no longer has. Never touches anything else in `dir` (runtime data such as `certbot/`). |
 | `run` | Runs a command or a bundled script in `dir`, with a timeout (default 10 min). Exit code 0 is success. Output goes to the job log. |
 | `compose-up` | `docker compose up -d --remove-orphans`, with `pull: true` pulling images first. |

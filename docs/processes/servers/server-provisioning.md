@@ -2,20 +2,18 @@
 
 **Actors**: a member with `servers: manage`; the provisioning job (queue `provisioning`); the new VPS; Cloudflare, or the member's own DNS provider for a hostname outside the Cloudflare zones; Let's Encrypt (through the template's steps); the proxy test client.
 
-Provisioning turns a freshly issued VPS (an IP and a root password) or an existing SSH account that already trusts Proxier's key into an **active** server built from a template version. The member fills in one form and watches the job. There is nothing to type over SSH. There is nothing to do in DNS either, unless the member types a hostname that none of the Cloudflare zones covers. A server only becomes active once a real proxy connection from home works through it.
+Provisioning creates a server from a template version. Proxier connects with a root password or a pre-installed SSH key. The member chooses full or deploy-only setup and watches the job's progress. Proxier manages DNS in its configured Cloudflare zones. The member manages records for other hostnames. Activation requires a passing proxy test from home unless the member selects Activate anyway after a smoke-test failure.
 
 ## Steps: the form
 
 1. Servers → **New server**. Fields:
-   - **IP address** (IPv4) and **SSH port** (default 22, under "advanced").
-   - **How Proxier signs in**, either:
-     - **Root password**, used once to create the deploy user and install Proxier's key, then erased; never shown again; or
-     - **SSH key**: the member has already put Proxier's public key (Settings → SSH) into the **SSH account**'s `authorized_keys`. The account defaults to `root`; any other account needs passwordless sudo. Nothing is created on the machine for access.
-     Both are picked per server; Settings → Servers chooses what the form starts with.
-   - **Server setup**, either **Full** (hardens SSH, resets the firewall, turns on TCP BBR, installs the prerequisites and Docker) or **Deploy only** (installs the prerequisites and Docker if missing, and leaves SSH, the firewall and the kernel alone). Picked per server; Settings → Servers chooses the default.
+   - **IP address** accepts IPv4. **SSH port**, under Setup options, defaults to 22.
+   - **SSH access** selects Root password or SSH key. With Root password, Proxier creates the `proxier` account, installs its key and passwordless sudo, then erases the password after verifying access. With SSH key, first copy Proxier's public key from Settings → SSH into the SSH account's `authorized_keys`. The account defaults to `root`. Other accounts need passwordless sudo. Proxier does not create an account or install keys in key mode.
+   - **Server setup**, under Setup options, selects Full or Deploy only. Full disables password and root login over SSH, resets the firewall, enables TCP BBR when supported, and installs the prerequisites and Docker. Deploy only installs the prerequisites and Docker if missing. It leaves SSH configuration, firewall rules and TCP settings unchanged.
+   - Settings → Servers controls the initial access and setup selections. The defaults are Root password and Full. Each server stores its own choices.
    - **Country**, a searchable picker: typing filters the list of every country by name (in the member's language) or code, and the field takes "🇳🇱 Netherlands · NL"; a code (`nl`) or a name in English or Russian typed in full counts too. It is preselected from the IP's country. The country's lower-case code is the first half of the server name ([ADR 0015](../../adr/0015-servers-have-a-country-not-a-location.md)).
    - **Hostname**, optional: the management and proxy hostname, e.g. `vpn.example.com`. Left empty, the server gets the name the hostname pattern gives (`nl-2.hosts.example.com`). Proxier trims it, writes it in lower case and drops a trailing dot. When none of the Cloudflare zones covers it, the member creates its A record by hand at their DNS provider (a **record made by hand**).
-   - **Skip the DNS record check**, optional: for a record made by hand, create the server even when the name does not point to its IP yet, and do not wait for it during provisioning. It exists for a proxied record or a name the member will point later; the record stays theirs. It has no effect on a name in a Cloudflare zone.
+   - **Skip DNS check** appears beside a manually managed record in the live summary. It skips the form check and provisioning wait for a record the member manages. Use it for a proxied record or a hostname that will point to the server later. It has no effect on records in configured Cloudflare zones. Certificate issuance, self-checks and the smoke test still run. The seed template still needs a hostname that passes the ACME challenge.
    - **Template** and **version** (default version preselected), then the version's **parameters** as form fields with labels, help and defaults.
    - **Notes**.
 2. While the member types, the form shows what will be created: the server name (`nl-2`), the management and proxy hostnames, the DNS record, and the endpoints with their display names. A picker the member hasn't chosen in (empty with nothing suggested yet, or showing what the IP suggested last) follows the IP's country as the summary updates; anything else in it (a half-typed name, an emptied field, a country they picked) is theirs, and the summary never replaces it. Until a country is picked the summary shows no name, and text that names no country is refused only on **Create**. For a record made by hand, the summary shows the record to create (`A vpn.example.org → 203.0.113.10`, not proxied, short TTL) and a **Check the record** button. The summary asks no DNS server about the name until the member presses it.
@@ -27,13 +25,13 @@ Provisioning turns a freshly issued VPS (an IP and a root password) or an existi
    - a typed hostname is a full DNS name: two labels or more, letters, digits and hyphens, no wildcard;
    - no non-retired server has the hostname, as its management or proxy hostname. Create checks it again in its transaction, so two servers created at once never share one;
    - for the pattern's name: Cloudflare is configured and a configured zone covers it;
-   - for a record made by hand (a typed hostname that no zone covers, or any typed hostname while Cloudflare is not configured): the name points to the IP and to nothing else. Proxier finds the zone from the name's parents (`example.org` for `vpn.example.org`) and asks its own nameservers, which cache nothing, so a check made before the record exists does not delay it later. When the nameservers can't be asked, it asks 1.1.1.1 and 8.8.8.8 instead. **Check the record** runs the same check. With **Skip the DNS record check** in place, neither runs and Create goes ahead;
+   - for a record made by hand (a typed hostname that no zone covers, or any typed hostname while Cloudflare is not configured): the name points to the IP and to nothing else. Proxier finds the zone from the name's parents (`example.org` for `vpn.example.org`) and asks its own nameservers, which cache nothing, so a check made before the record exists does not delay it later. When the nameservers can't be asked, it asks 1.1.1.1 and 8.8.8.8 instead. **Check the record** runs the same check. With **Skip DNS check** in place, neither runs and Create goes ahead;
    - no routing list covers the hostname (when the routing module is enabled): a list holding `example.com`, or the hostname itself, would send Proxier's checks of the server into the router's tunnel. Any name listed in any list counts, even one the list doesn't install. The live summary says it too: "nl-3.hosts.example.com is covered by example.com (my-sites) in Main: Proxier's checks would go into the tunnel. Take it out of the list first."
 
-   With key access, the SSH account must be a plain account name (lower-case letters, digits, `_` and `-`) and the root password field is ignored. In password access it must be left alone: the server gets the `proxier` account provisioning creates. Full setup turns root login off, so a key-access server whose account is `root` is refused: choose Deploy only, or another account.
+   With key access, the SSH account must start with a lower-case letter or `_`, contain only lower-case letters, digits, `_` and `-`, and be at most 32 characters. Proxier ignores the root password field. With password access, Proxier ignores the SSH account field and uses `proxier`. Key access as `root` requires Deploy only. Full setup would disable root login.
 
    Failures are shown on the form and nothing is created.
-4. The server is created in **provisioning** with its name reserved and the access and setup choices stored on it. In password access the root password goes encrypted into the job payload; in key access the payload holds no secret. The job is queued. The browser goes to the server page, which shows the steps and the live log. → `server.created{ip, country, hostname, manual_dns, template_version, access, setup}`
+4. Proxier creates the server in the `provisioning` state, reserves its name and stores its access and setup choices. Password access stores the root password encrypted in the job payload. Key access stores no root password. The job payload also stores `skip_dns`, which retries preserve. Proxier queues the job and opens the server page with its steps and live log. The transaction records `server.created{ip, country, hostname, manual_dns, template_version, access, setup}`.
 
 ## Steps: the job
 
@@ -45,24 +43,22 @@ Each step is resumable. A retried job starts at the step that didn't finish.
    - Read `/etc/os-release` and the architecture, and compare them with the template's `requires`.
    - Check that the manifest's TCP ports (e.g. 80, 443) are free (`ss -ltn`).
 2. **Install access.** With key access this step changes nothing: the account already trusts Proxier's key, and every later connection uses it.
-   With password access, Proxier never works as root after this step. It uses a deploy user called **`proxier`**.
+   With password access, later SSH connections use the `proxier` account. Commands that need root use `sudo -n`. The remaining actions in this step apply only to password access.
    - Install `sudo` if the image lacks it, then create the user `proxier` if it doesn't exist: a home directory, a login shell and a locked password.
    - Give it passwordless sudo through `/etc/sudoers.d/proxier` (`proxier ALL=(ALL) NOPASSWD:ALL`). Check the file with `visudo -cf` before moving it into place.
    - Append Proxier's public key and your personal keys to `~proxier/.ssh/authorized_keys`, skipping keys already there. The directory gets mode `700` and the file `600`, owned by `proxier`.
    - Open a **new** connection as `proxier` with Proxier's key, and run `sudo -n true`.
    - Once both work, erase the password from the job payload. From here on, nothing can use or show it.
-3. **Base bootstrap** (the template's `base-bootstrap` step). Commands that need root run through `sudo -n`, or directly when the login account is root.
-   - **Full setup**: SSH hardening, `.hushlogin`, the apt prerequisites, TCP BBR, Docker and the firewall, as below.
-   - **Deploy only**: the apt prerequisites and Docker if missing; nothing else.
-   - SSH hardening: `PasswordAuthentication no`, `KbdInteractiveAuthentication no`, `PermitRootLogin no`, via a drop-in file. sshd is reloaded, then key login as the account and `sudo -n` are verified again. If verification fails, the change is reverted and the step fails.
-   - `.hushlogin` and the apt prerequisites.
-   - TCP BBR: `net.ipv4.tcp_congestion_control = bbr` (and the `fq` qdisc, best effort), kept across reboots in `/etc/sysctl.d/90-proxier-bbr.conf`. The server sends what clients download through it, over long lossy paths, where BBR keeps the throughput CUBIC halves on every loss. It comes before Docker, because a container's network namespace starts with the host's default. A kernel without BBR (OpenVZ, LXC) gets a warning, "TCP stays on cubic", no file, and provisioning goes on.
-   - Docker via get.docker.com unless Docker is already installed.
-   - Firewall: ufw is reset, then denies every incoming connection but the SSH port's and the manifest's ports, and is turned on. Rules the image came with go, so the rule set is exactly what Proxier means; no template rule is lost, because the template's own steps come later.
+3. **Base bootstrap** runs the template's `base-bootstrap` step as the stored SSH account. Commands that need root use `sudo -n` unless the account is root.
+   - Both setup modes install `curl`, `ca-certificates`, `openssl` and `ufw`. Apt waits for its lock. Docker installs through get.docker.com if missing.
+   - Full setup first writes an SSH drop-in with `PasswordAuthentication no`, `KbdInteractiveAuthentication no` and `PermitRootLogin no`. Proxier reloads sshd and verifies key login and sudo through a new connection. If verification fails, it removes the drop-in, reloads sshd and fails the step.
+   - Full setup writes `.hushlogin` and enables TCP BBR when the kernel supports it. It saves the TCP settings in `/etc/sysctl.d/90-proxier-bbr.conf` before installing Docker. If BBR is unavailable, it logs a warning and continues.
+   - Full setup resets and enables ufw. It allows the SSH port and the manifest's ports and denies other incoming connections. This replaces existing rules. Docker's published ports bypass ufw.
+   - Deploy only skips SSH hardening, `.hushlogin`, BBR configuration and firewall configuration. Installing prerequisites and Docker can still change installed packages and Docker's network rules.
 4. **DNS.** Create the A record(s) for the hostname(s): DNS-only, TTL 60, comment `proxier:nl-2`. Then wait for the name to be visible ([Cloudflare](../../integrations/cloudflare.md#behaviour)):
    - First ask the zone's own nameservers (`gabe.ns.cloudflare.com` and the rest, port 53, without recursion) every 2 s until every one of them answers with the IP. A resolver asked before then gets "no such name" and may keep that answer for the zone's negative TTL (the SOA's minimum: 30 min at Cloudflare). If the nameservers can't be asked (port 53 dropped, an answer without the authoritative flag, no nameservers found), the log says why and the wait pauses 10 s instead.
    - Then wait until 1.1.1.1 and 8.8.8.8 both answer with the IP (timeout 10 min). A resolver that still answers nothing at 10 min, while the other shows the IP, probably holds a negative answer from before the record existed; the log says so, and it gets until the zone's negative TTL plus a minute has passed since the nameservers had the record.
-   - A record made by hand: Proxier writes nothing. The log says the record is made by hand, and the step waits for it the same way, with the zone found from the name's parents. When it doesn't show, the step fails and names the record to create. With **Skip the DNS record check**, the step logs that it is skipped and goes on.
+   - A record made by hand: Proxier writes nothing. The log says the record is made by hand, and the step waits for it the same way, with the zone found from the name's parents. When it doesn't show, the step fails and names the record to create. With **Skip DNS check**, the step logs that it is skipped and goes on.
 5. **Generated values.** Create every generated value the version declares (encrypted).
 6. **Render and upload.** Render the version for this server and upload the files to the manifest's `dir` (`upload-files`). Record the deployment and its rendered files.
 7. **Template install steps**, in order (in the seed template: issue the certificate, `compose up --pull`, wait for the decoy site to answer locally).
@@ -76,7 +72,7 @@ The job makes one attempt and never retries by itself: a retry may need input, s
 ## Steps: after a failure
 
 1. **Retry** resumes at the failed step.
-   - If the server uses password access and the failed step was preflight or install access (before Proxier's key works), it **always** asks for the root password again; the new one replaces any kept one. Later failures ask for nothing, and a key-access server never asks.
+   - Password access asks for the root password again after a failure at preflight or install access. The new password replaces any kept one. Later failures need no password. Key access never asks for a root password.
    - If the template's default version moved on in the meantime, it still uses the version the server was created with.
 2. **Activate anyway** is offered only when every step up to the self-check passed and only the smoke test failed. A typical case is a VPS whose hosting network is already blocked in Russia, which can still be useful to link holders abroad. The dialog shows the proxy test's error and asks for a confirmation.
    - The server becomes **active** and the scheduler starts its checks. Its health state comes from the first check round, usually `blocked` or `down`, never `healthy` by default.
@@ -87,16 +83,16 @@ The job makes one attempt and never retries by itself: a retry may need input, s
 ## Rules
 
 - The name is reserved at **Create** and never reused, even if provisioning fails and the server is retired.
-- The root password exists only encrypted in the job payload, and only until Proxier's key login works (step 2). It never appears in logs, events or the UI. A provisioning job that fails before step 2 keeps it, encrypted, until it is retried, cancelled or the server is retired. A key-access server has no root password at all: its job payload holds no secret.
-- Access and setup are the server's and stay so: a redeploy, a health check, an IP change and retirement connect the same way, and never re-run the base setup. With key access they use the account stored at creation; with password access they use `proxier` and its key.
-- Every remote change is verified before the next step depends on it: key login after installing keys, key login after the sshd change, DNS answers before certificate issuance.
+- Proxier encrypts the root password in the provisioning job payload and erases it after verifying key login and sudo in step 2. It never logs the password or includes it in an event. A failure before step 2 keeps the encrypted password until retry, cancellation or retirement. Proxier does not collect a root password for key access.
+- Each server keeps its access and setup choices. Redeploys, health checks, IP changes and retirement use its stored SSH account and Proxier's key. They do not repeat the base setup.
+- Proxier verifies key login after installing keys and after changing sshd. It checks DNS before certificate issuance unless the member skips the check for a record they manage. Skipping DNS checks does not skip certificate issuance, self-checks or the smoke test.
 - Proxier never writes, changes or deletes a record made by hand. [IP change](./ip-change.md) checks that the member pointed it at the new IP, and [retirement](./server-retirement.md) leaves it and says to delete it at the DNS provider.
 - Provisioning never overwrites a DNS record that Proxier didn't create. A conflicting record fails step 4 with the record's current value. **Retry** then offers **Overwrite** as an explicit choice.
 - At most two provisioning jobs run at once. Each server's jobs run one at a time.
 - Health checks don't run until the server is active.
 - The smoke test is the definition of done: a server whose self-check passes but whose proxy test fails from home is **failed**, with the proxy test's error in the log. Only an explicit **Activate anyway** makes it active, and the event records `forced`.
-- Root is used once, with the password, to create the `proxier` user. After that every connection is `proxier` with Proxier's key, root login over SSH is off, and root commands go through `sudo -n`. Your personal keys are installed for `proxier` too.
-- With key access, Proxier creates nothing for access: the account is the member's, already trusting Proxier's key and (unless it is root) already having passwordless sudo. Full setup still hardens sshd and resets the firewall, so the account and root must survive that; deploy only leaves them as they are.
+- Password access uses root SSH access to create `proxier` and install Proxier's key and the personal keys from Settings → SSH. Later SSH connections use `proxier`. Root commands use `sudo -n`. Only full setup disables password and root login over SSH.
+- Key access uses an existing account and its installed key. Proxier does not add personal keys in this mode. A non-root account must already have passwordless sudo. Full setup still changes sshd and resets the firewall. Deploy only skips those changes.
 
 ## Edge cases (each is a test)
 
@@ -111,7 +107,7 @@ The job makes one attempt and never retries by itself: a retry may need input, s
 - Hostname `vpn.example.org` where no configured zone covers `example.org` → the summary shows `A vpn.example.org → 127.0.0.1`, "Create this record at your DNS provider…" and **Check the record**, with no error.
 - That record missing, pointing to `198.51.100.1`, or holding a second address → **Check the record** and **Create** say "vpn.example.org does not point to 127.0.0.1 yet (ns1 answered nothing). Create the record A vpn.example.org → 127.0.0.1 at your DNS provider and check again." Nothing is created.
 - That record in place → **Check the record** says "The record is in place: ns1 answered 127.0.0.1." **Create** creates the server. The job writes no record of its own, waits for the resolvers to show it, and the server goes active. `server.created` has `manual_dns: true`.
-- That record missing with **Skip the DNS record check** → Create goes ahead, the job logs "The DNS check is skipped" at the DNS step and the server can go active before the name points at it. The record is untouched.
+- With Skip DNS check selected, Create accepts a missing or mismatched record. The job skips its DNS wait and leaves the record unchanged. Certificate issuance, self-checks and the smoke test still have to pass.
 - The record made by hand is deleted between **Create** and the DNS step → the DNS step fails: "… Make sure the record A vpn.example.org → 127.0.0.1 exists at your DNS provider, then retry".
 - The zone's nameservers can't be asked (port 53 dropped) → the check asks 1.1.1.1 and 8.8.8.8 instead. No nameservers found from the name's parents → the same.
 - Cloudflare not configured → every typed hostname is a record made by hand, in any zone. A server without a typed hostname is refused: "Cloudflare is not configured…".
@@ -126,7 +122,7 @@ The job makes one attempt and never retries by itself: a retry may need input, s
 - IP unreachable (timeout) → fails at preflight. The DNS is untouched.
 - Port 443 already in use on the VPS → fails at preflight, naming the process from `ss`.
 - Ubuntu 20.04 against `requires: ubuntu-22.04+` → fails at preflight with the OS found.
-- Ubuntu 26.04 against the seed's `requires: [debian-12+, ubuntu-22.04+]` → allowed: a `+` entry takes that release and every later one of the same distribution.
+- The seed's `requires.os: [debian-12+, ubuntu-22.04+]` accepts Ubuntu 26.04. The `+` suffix accepts the listed release and later releases of the same distribution.
 - The new key login fails after keys were installed (e.g. `authorized_keys` permissions) → install access fails. The password is kept for retry.
 - The sshd reload breaks key login → the drop-in is removed, sshd reloaded, the step fails, and Proxier can still log in.
 - Docker already installed → that sub-step is skipped and logged as such.
@@ -150,12 +146,12 @@ The job makes one attempt and never retries by itself: a retry may need input, s
 - A server fails provisioning as `nl-2` and is retired; the next new server in the Netherlands → `nl-3`.
 - A server created when servers had locations, `ams-1` in NL → keeps its name; the next new server in the Netherlands is numbered after the highest `nl-` number, not after `ams-1`.
 - Success → server active, health `unknown`, first check round within 5 minutes. Subscriptions with "add new servers automatically" include it, and the `server.activated` notification arrives.
-- Key access with Proxier's key missing from the account → preflight fails with "the server refused Proxier's key for <user>" and nothing is changed; Retry asks for no password.
-- Key access to a non-root account without passwordless sudo → preflight fails before any change.
-- Key access, deploy only → the `proxier` user is not created, sshd is not hardened, ufw stays off, BBR stays off, and the stack still runs.
-- Key access, full setup → sshd is hardened and the firewall reset as for password access; the account's key login is verified before the step ends.
-- The SSH account field says `not a user`, `Root`, or `a b` → refused on the form, nothing created. `root` and `_deploy` pass.
-- Access or setup not one of the stored values (a hand-made POST) → refused on the form.
-- Key access as `root` with full setup → refused on the form: hardening would turn root login off and lock Proxier out.
+- If the SSH account does not accept Proxier's key, preflight fails with "the server refused Proxier's key for <user>" before changing the server. Retry asks for no password.
+- If a non-root SSH account lacks passwordless sudo, preflight fails before changing the server.
+- With key access and Deploy only, Proxier deploys the stack without creating `proxier`, hardening sshd, configuring ufw or changing TCP settings. Existing firewall and BBR settings remain in place.
+- With key access and Full setup, Proxier hardens sshd and resets the firewall. It verifies the stored account's key login after changing sshd.
+- The form rejects SSH account names such as `not a user`, `Root` and `a b` without creating a server. It accepts `root` and `_deploy`.
+- The form rejects unknown access or setup values without creating a server.
+- The form rejects key access as `root` with Full setup because hardening would disable root login.
 
 - A template with no endpoint fails at preflight before connecting. Rendered endpoints are validated before uploading files, so an invalid endpoint cannot leave a newly started stack behind.

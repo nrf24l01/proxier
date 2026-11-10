@@ -11,7 +11,7 @@ import (
 	"github.com/tikhonp/proxier/internal/modules/servers/manifest"
 )
 
-// Reconnect opens a new connection as the deploy user with Proxier's key.
+// Reconnect opens a new connection as the stored SSH account with Proxier's key.
 type Reconnect func(ctx context.Context) (Conn, error)
 
 // BaseBootstrap is the template's base-bootstrap step: SSH hardening verified
@@ -43,9 +43,8 @@ func BaseBootstrap(ctx context.Context, env Env, c Conn, reconnect Reconnect, ss
 	return err
 }
 
-// MinimalBootstrap is the template's base-bootstrap step without hardening: it
-// installs the prerequisites the stack's steps rely on and Docker if missing,
-// and touches nothing else (no SSH hardening, no firewall, no BBR).
+// MinimalBootstrap installs prerequisites and Docker if missing. It skips
+// SSH hardening, firewall configuration and TCP BBR configuration.
 func MinimalBootstrap(ctx context.Context, env Env, c Conn) error {
 	if err := prerequisites(ctx, env, c); err != nil {
 		return err

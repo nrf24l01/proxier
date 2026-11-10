@@ -17,8 +17,8 @@ type Facts struct {
 
 // Preflight reads the operating system, the architecture and the listening
 // TCP ports, and checks them against the template: the supported systems and
-// architectures, and that the template's TCP ports are free. It runs as root
-// before anything is changed.
+// architectures, and that the template's TCP ports are free. It uses the
+// initial SSH account before provisioning changes the server.
 func Preflight(ctx context.Context, env Env, c Conn, req manifest.Requires, ports []manifest.Port) (Facts, error) {
 	var f Facts
 	out, err := env.run(ctx, c, "read /etc/os-release", CmdOSRelease(), RunOpts{})

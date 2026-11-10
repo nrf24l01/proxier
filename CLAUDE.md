@@ -130,7 +130,7 @@ What a template version puts on a server: the rendered files and the containers 
 _Avoid_: deployment (for the files), install
 
 **Provisioning**:
-Turning a fresh VPS (IP and root password) into an active server: base setup, DNS, stack, smoke test.
+Creating an active server from a template. Proxier connects with a root password or a pre-installed SSH key, runs the chosen base setup, handles DNS, deploys the stack and runs the smoke test.
 _Avoid_: setup, bootstrap, install
 
 **Redeploy**:

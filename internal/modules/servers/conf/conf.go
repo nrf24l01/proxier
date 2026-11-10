@@ -17,8 +17,8 @@ import (
 const (
 	HostnamePatternKey = "servers.hostname_pattern"
 	IPCountryURLKey    = "servers.ip_country_url"
-	// DefaultAccessKey and DefaultSetupKey are what the new-server form starts
-	// with; each server stores its own choice.
+	// DefaultAccessKey and DefaultSetupKey set the initial selections in the
+	// new-server form. Existing servers keep their stored choices.
 	DefaultAccessKey = "servers.default_access"
 	DefaultSetupKey  = "servers.default_setup"
 	ProxyTestURLKey  = "servers.proxy_test_url"
@@ -87,8 +87,7 @@ var Section = settings.Section{
 				_, err := render.Hostname(v, "xx", 1)
 				return err
 			}},
-		// DefaultAccessKey and DefaultSetupKey are what the new-server form starts
-		// with; each server stores its own choice.
+		// These defaults apply only to new servers.
 		{Key: DefaultAccessKey, Kind: settings.Enum, Default: "password", Options: []string{"password", "key"}},
 		{Key: DefaultSetupKey, Kind: settings.Enum, Default: "full", Options: []string{"full", "minimal"}},
 		// Empty turns the lookup off. The answer only preselects a country.
