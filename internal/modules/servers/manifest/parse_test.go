@@ -19,7 +19,7 @@ func TestParseSeedManifest(t *testing.T) {
 		t.Errorf("header: %+v", m)
 	}
 	if !reflect.DeepEqual(m.Requires, manifest.Requires{
-		OS: []string{"debian-12", "debian-13", "ubuntu-22.04", "ubuntu-24.04"}, Arch: []string{"amd64", "arm64"}}) {
+		OS: []string{"debian-12+", "ubuntu-22.04+"}, Arch: []string{"amd64", "arm64"}}) {
 		t.Errorf("requires: %+v", m.Requires)
 	}
 	if len(m.Ports) != 2 || m.Ports[0].Number != 80 || m.Ports[1].Proto != "tcp" {

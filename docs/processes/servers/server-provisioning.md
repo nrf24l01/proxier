@@ -126,6 +126,7 @@ The job makes one attempt and never retries by itself: a retry may need input, s
 - IP unreachable (timeout) → fails at preflight. The DNS is untouched.
 - Port 443 already in use on the VPS → fails at preflight, naming the process from `ss`.
 - Ubuntu 20.04 against `requires: ubuntu-22.04+` → fails at preflight with the OS found.
+- Ubuntu 26.04 against the seed's `requires: [debian-12+, ubuntu-22.04+]` → allowed: a `+` entry takes that release and every later one of the same distribution.
 - The new key login fails after keys were installed (e.g. `authorized_keys` permissions) → install access fails. The password is kept for retry.
 - The sshd reload breaks key login → the drop-in is removed, sshd reloaded, the step fails, and Proxier can still log in.
 - Docker already installed → that sub-step is skipped and logged as such.

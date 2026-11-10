@@ -106,7 +106,7 @@ func TestStepOrderRules(t *testing.T) {
 }
 
 func TestMissingRequiresWarns(t *testing.T) {
-	fs := verify(t, "requires:\n  os: [debian-12, debian-13, ubuntu-22.04, ubuntu-24.04]\n  arch: [amd64, arm64]\n", "")
+	fs := verify(t, "requires:\n  os: [debian-12+, ubuntu-22.04+]\n  arch: [amd64, arm64]\n", "")
 	for _, f := range fs {
 		if f.Severity == finding.Warning && strings.Contains(f.Message, "requires is missing") {
 			return

@@ -1,13 +1,13 @@
 ### Manifest
 
-The seed template, converted from `servers-templates/proxy` ([VLESS XHTTP integration](../../../../docs/integrations/vless-xhttp.md)), shows every part:
+The seed template, converted from `servers-templates/proxy` ([VLESS XHTTP integration](../../../../docs/integrations/vless-xhttp.md)), shows every part. `requires.os` and `requires.arch` gate preflight: an entry ending in `+` (`ubuntu-22.04+`) allows that release and every later one of the same distribution, so a new Ubuntu release needs no template change.
 
 ```yaml
 name: VLESS XHTTP behind nginx
 description: VLESS over XHTTP, hidden behind nginx with a Let's Encrypt certificate and a decoy site.
 
 requires:
-  os: [debian-12, debian-13, ubuntu-22.04, ubuntu-24.04]
+  os: [debian-12+, ubuntu-22.04+]
   arch: [amd64, arm64]
 dir: /opt/proxier/vless-xhttp        # where the stack lives on the server
 ports: [80/tcp, 443/tcp]             # opened in the firewall, besides SSH

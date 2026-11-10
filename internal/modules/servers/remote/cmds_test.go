@@ -145,6 +145,8 @@ func TestOSAndArchChecks(t *testing.T) {
 		{"ubuntu-20.04", []string{"ubuntu-22.04+"}, false},
 		{"ubuntu-22.04", []string{"ubuntu-22.04+"}, true},
 		{"ubuntu-24.04", []string{"ubuntu-22.04+"}, true},
+		{"ubuntu-26.04", []string{"debian-12+", "ubuntu-22.04+"}, true},
+		{"debian-13", []string{"debian-12+", "ubuntu-22.04+"}, true},
 		{"debian-13", []string{"ubuntu-22.04+"}, false},
 		{"ubuntu-9.04", []string{"ubuntu-22.04+"}, false},
 		{"alpine-3.20", nil, true},
