@@ -50,7 +50,7 @@ type Param struct {
 	Name        string
 	Line        int    // 1-based
 	Default     string // the literal's value, escapes resolved
-	Literal     string // as written: `"10.230.1"`, `7024005`
+	Literal     string // as written: `"10.20.1"`, `7024005`
 	Bare        bool
 	Description string
 	Annotations Annotations

@@ -19,7 +19,7 @@ const (
 
 // Hop is a row of a connect failure's per-hop table. The page words it:
 // Kind (tailnet, jump, router) and Label name the hop ("tailnet node
-// proxier", "jump host parents-pi", "router 10.230.2.1").
+// proxier", "jump host parents-pi", "router 10.20.2.1").
 type Hop struct {
 	Kind   string
 	Label  string

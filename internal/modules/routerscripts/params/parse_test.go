@@ -70,10 +70,10 @@ func TestTodaysScriptWithEndMarker(t *testing.T) {
 		}
 	}
 	lan := mustParam(t, s, "lanNet")
-	if lan.Default != "10.230.1" || lan.Literal != `"10.230.1"` || lan.Bare || lan.Line != 24 {
+	if lan.Default != "10.20.1" || lan.Literal != `"10.20.1"` || lan.Bare || lan.Line != 24 {
 		t.Errorf("lanNet: %+v", lan)
 	}
-	if v := s.Values(); len(v) != 18 || v["subUrl"] != "https://files....t" {
+	if v := s.Values(); len(v) != 18 || v["subUrl"] != "https://files.example.com/subscription" {
 		t.Errorf("values: %v", v)
 	}
 }
@@ -107,7 +107,7 @@ func TestDuplicateParameter(t *testing.T) {
 	if got := text(t, errs[0]); got != "Duplicate parameter lanNet." {
 		t.Errorf("text: %q", got)
 	}
-	if mustParam(t, s, "lanNet").Default != "10.230.1" {
+	if mustParam(t, s, "lanNet").Default != "10.20.1" {
 		t.Error("the first lanNet must stay")
 	}
 }
@@ -172,7 +172,7 @@ func TestBlockLines(t *testing.T) {
 	// CRLF lines read like LF
 	crlf := []byte(strings.ReplaceAll(string(paramstest.WithEnd(paramstest.Today())), "\n", "\r\n"))
 	s = params.Parse(crlf)
-	if len(s.Findings) != 0 || !slices.Equal(names(s), todaysNames) || mustParam(t, s, "lanNet").Literal != `"10.230.1"` || s.End != 58 {
+	if len(s.Findings) != 0 || !slices.Equal(names(s), todaysNames) || mustParam(t, s, "lanNet").Literal != `"10.20.1"` || s.End != 58 {
 		t.Errorf("CRLF: %s %v", keys(s.Findings), names(s))
 	}
 	// the block runs to the end of the file without a marker

@@ -2,7 +2,9 @@
 
 **Actors**: Member; Proxier; `proxier manage` (the container shell).
 
-Every account is a member, and each member signs in on their own: their own password, sessions, authenticator app and passkeys. The command line makes the first member; the others are added on Settings → Members and choose their password at a setup link ([members](./members.md)). Sign-in is a password on a public host, so the rules focus on lockout, short sessions and telling about every sign-in from a new IP. Two ways in are opt-in: an **authenticator app** whose code a password sign-in then also needs, and **passkeys**, each of which signs in alone ([ADR 0017](../../adr/0017-passkeys-sign-in-alone.md)). With neither, sign-in is the password alone.
+Each member has their own password, sessions, authenticator app and passkeys. The CLI creates the first member. Others join through Settings → Members and choose a password through a setup link. See [members](./members.md).
+
+The sign-in page is public. Per-IP lockout, short sessions and notifications for new-IP sign-ins limit the risk. An optional authenticator app adds a code to password sign-in. An optional passkey signs in by itself. With neither enabled, a password is enough. See [ADR 0017](../../adr/0017-passkeys-sign-in-alone.md).
 
 ## Steps: the first member and the command line
 

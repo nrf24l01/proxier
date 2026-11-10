@@ -1,6 +1,8 @@
 # Several members share one Proxier, each with a level in each area
 
-Proxier started with one admin, and the rule was enforced in the CLI, the auth service and the table. Now several **members** sign in to one Proxier. The first, made by `proxier manage create-admin`, has the Owner preset and adds the others on Settings → Members. Each member has their own password, sessions, authenticator app, passkeys, language and Telegram chat, and a **level** in each **area**. Things in the owned areas belong to a member, and each member sees and changes only what their level reaches. The flows and every rule are in [members](../processes/platform/members.md) and [notifications](../processes/platform/notifications.md).
+Several members can sign in to one Proxier. `proxier manage create-admin` creates the first member with the Owner preset. That member adds others on Settings → Members.
+
+Each member has their own password, sessions, authenticator app, passkeys, language, Telegram chat and permission level in each area. Owned resources belong to the member who created them. See [members](../processes/platform/members.md) and [notifications](../processes/platform/notifications.md) for the flows and access rules.
 
 ## One site, not tenants
 

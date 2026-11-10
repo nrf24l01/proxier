@@ -1,6 +1,8 @@
 # Proxy tests and config validation use embedded xray-core; Proxier never gets the Docker socket
 
-The proxy test must connect through an endpoint exactly as a real client does, discovery must browse through a chosen server, and template validation must reject xray configs that xray itself would refuse. xray-core is Go, so Proxier embeds it as a library for all three. The other validators (compose, nginx, shell) are pure Go too, so the image stays distroless with no `nginx` or `bash` in it: compose-go for compose, `mvdan.cc/sh` for shell (the syntax `bash -n` checks), and nginx-go-crossplane's parser for nginx, run on the rendered file with the context it will have in the container. Validation in throwaway containers on Proxier's machine was rejected: it needs the Docker socket mounted into Proxier, which is root on that machine, in a service that sits on the public internet. Bundling `nginx -t` and `bash -n` into the image was rejected too: it would end the distroless image for two syntax checks.
+Proxier embeds xray-core to test endpoints as a client, browse through a server during discovery and validate xray configurations. Other validators use Go libraries too. Compose uses compose-go, shell syntax uses `mvdan.cc/sh`, and nginx syntax uses nginx-go-crossplane. The nginx parser receives each rendered file in the context it will have inside the container.
+
+Running validators in temporary containers would require access to the Docker socket. That would give the public-facing Proxier service root access to its host. Including nginx and bash in the image would also prevent the image from remaining distroless. The Go parsers avoid both requirements.
 
 ## Consequences
 

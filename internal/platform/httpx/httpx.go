@@ -1,6 +1,6 @@
 // Package httpx builds Proxier's single HTTP listener: the Echo app, its
 // middleware chain and /healthz. Admin and public routes are added by the
-// platform and the modules (docs/architecture.md#http-surfaces).
+// platform and the modules (docs/architecture.md#http-routes).
 package httpx
 
 import (

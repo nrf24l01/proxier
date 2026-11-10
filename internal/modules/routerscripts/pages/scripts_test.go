@@ -168,7 +168,7 @@ func TestScriptPage(t *testing.T) {
 	}
 	for _, want := range []string{`name="revision" value="1"`, `id="params-panel"`, `data-code-findings="draft-body"`, "Detected parameters · 18",
 		"Publish v2…", "js/editor.bundle.js", `data-code-save`, `form="draft-form"`, "draft based on v1", "Discard draft…", "The draft is dropped; v1 stays current.",
-		"interface names", "vpnGateway", "→ 192.168.89.2", `&#34;10.230.1&#34;`, "Saved the draft of fresh-router",
+		"interface names", "vpnGateway", "→ 192.168.89.2", `&#34;10.20.1&#34;`, "Saved the draft of fresh-router",
 		// the draft's band holds Wrap lines and Full screen; the keys sheet lists the editor's keys
 		`<section class="area rs-area" id="draft"`, `data-code-wrap`, `data-code-full`, ">Full screen<", "In a code editor"} {
 		if !strings.Contains(page, want) {
@@ -352,7 +352,7 @@ func TestVersionAndDiffPages(t *testing.T) {
 	h := rscriptstest.New(t)
 	today := paramstest.Today()
 	h.Script("fresh-router", today)
-	h.Publish(1, paramstest.Replace(paramstest.WithEnd(today), `"10.230.1"`, `"10.40.1"`))
+	h.Publish(1, paramstest.Replace(paramstest.WithEnd(today), `"10.20.1"`, `"10.40.1"`))
 	page := h.Login.Get("/router-scripts/1/versions/1").Body.String()
 	checkNoInline(t, "version", page)
 	for _, want := range []string{`class="c1"`, `class="na"`, `class="s"`, `class="nv"`, `id="body-L66"`, "the last values read are minVer, ver, v",

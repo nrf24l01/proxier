@@ -2,7 +2,7 @@
 
 Proxier is a self-hosted control panel for one person's proxy setup, shared with the members they add. It builds VPS proxy servers from templates and checks whether they work from Russia. It gives people and devices subscription links, keeps domain-based routing on MikroTik routers and the Shadowrocket config in sync, and hosts the router setup script.
 
-Every module is built and runs on the real deployment. The facts that only real hardware, accounts or phones can confirm are listed in [open questions](./open-questions.md).
+See [open questions](./open-questions.md) for checks that need real hardware, accounts or phones.
 
 ## Map
 
@@ -10,12 +10,12 @@ Every module is built and runs on the real deployment. The facts that only real 
 |---|---|
 | [`../CLAUDE.md#glossary`](../CLAUDE.md#glossary) | The glossary. Use its words, not the ones it lists under _Avoid_. |
 | [overview.md](./overview.md) | Why Proxier exists, who uses it, the modules, what is out of scope, and the backlog. |
-| [architecture.md](./architecture.md) | Runtime shape, the module system, jobs, events, data, HTTP surfaces, security, configuration, tech stack. |
+| [architecture.md](./architecture.md) | Runtime, the module system, jobs, events, data, HTTP routes, security, configuration, tech stack. |
 | [development.md](./development.md) | Code layout, module interfaces, the rules every change follows, test harnesses, checking pages in a real browser. |
 | [data-model.md](./data-model.md) | Every module's entities and how they relate; retention. |
 | [events.md](./events.md) | Every event Proxier records, and which ones send a Telegram notification by default. |
 | [deployment.md](./deployment.md) | How to run Proxier: where, the compose file, the reverse proxy, the tailnet, the data volume, backups, CI. |
-| [open-questions.md](./open-questions.md) | Facts not yet confirmed on the real deployment. |
+| [open-questions.md](./open-questions.md) | Integration checks that require real devices or networks. |
 | [modules/](./modules/) | One document per module: platform, servers, subscriptions, routing, router scripts. |
 | [processes/](./processes/README.md) | Every flow step by step, with its rules and its edge cases (each one a test). |
 | [integrations/](./integrations/) | Contracts with outside systems: VLESS/XHTTP, Cloudflare, check-host.net, Telegram, RouterOS, domain sources, Shadowrocket, the subscription format. |

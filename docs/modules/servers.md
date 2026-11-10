@@ -1,6 +1,6 @@
 # Servers
 
-The servers module turns a freshly issued VPS into a working proxy server from a versioned **template**. Afterwards it keeps the server's DNS, stack and secrets, changes the server when asked, and checks whether it works from Russia. It took over from `servers-templates/proxy/setup.sh`, hand-made DNS records and `credentials.txt`.
+The servers module turns a freshly issued VPS into a working proxy server from a versioned **template**. Afterwards it keeps the server's DNS, stack and secrets, changes the server when asked, and checks whether it works from Russia.
 
 ## Countries and names
 
@@ -21,7 +21,7 @@ Lifecycle and validation: [template authoring](../processes/servers/template-aut
 
 ### Manifest
 
-The seed template, converted from `servers-templates/proxy` ([VLESS XHTTP integration](../integrations/vless-xhttp.md)), shows every part:
+The [seed template](../integrations/vless-xhttp.md) shows every part:
 
 ```yaml
 name: VLESS XHTTP behind nginx
@@ -150,7 +150,7 @@ Per-link or per-subscription credentials would then only mean filling `.Clients`
 ### Import and export
 
 - **Export** a version as a zip: `manifest.yaml` and its files, with the same layout as the editor.
-- **Import** a zip, or a git URL with a path and ref (e.g. `github.com/tikhonp/servers-templates`, `proxy-proxier/`, `master`). Either way the result is a new draft, and it goes through validation like any edit. This keeps `servers-templates` usable as the backup and review place for templates.
+- **Import** a zip, or supply a git URL, path and ref. For example, use `https://github.com/example/proxy-templates`, `proxy/` and `main`. Proxier creates a draft and validates it like any other edit. Keep templates in a separate repository for backup and review.
 - The **seed template** "VLESS XHTTP behind nginx" is created on first start, once (deleting it later does not bring it back). Its images stay `:latest`, so it is published with the two warnings that causes; **Update images** pulls new versions.
 
 ## Lifecycle

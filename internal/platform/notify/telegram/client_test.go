@@ -20,7 +20,7 @@ const token = "123456:SECRET-token_value"
 
 func TestPollReadsUpdatesAndConfirmsThem(t *testing.T) {
 	f := telegram.NewFake(t, token)
-	f.AddUpdate(`{"update_id":1,"message":{"message_id":3,"text":"/link","chat":{"id":5,"type":"private","first_name":"Tikhon","last_name":"P"},"from":{"id":5,"language_code":"ru"}}}`)
+	f.AddUpdate(`{"update_id":1,"message":{"message_id":3,"text":"/link","chat":{"id":5,"type":"private","first_name":"Alex","last_name":"P"},"from":{"id":5,"language_code":"ru"}}}`)
 	f.AddUpdate(`{"update_id":2,"channel_post":{"chat":{"id":-1007,"type":"channel","title":"Alerts","username":"alerts"}}}`)
 	f.AddUpdate(`{"update_id":3,"my_chat_member":{"chat":{"id":-200,"type":"supergroup","title":"Ops"},"from":{"id":5}}}`)
 	f.AddUpdate(`{"update_id":4,"callback_query":{"id":"q1","data":"c1.0","from":{"id":5},"message":{"message_id":9,"chat":{"id":5,"type":"private"}}}}`)
@@ -32,7 +32,7 @@ func TestPollReadsUpdatesAndConfirmsThem(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []telegram.Incoming{
-		{ID: 1, Chat: telegram.Chat{ID: 5, Type: "private", Title: "Tikhon P"}, From: 5, Lang: "ru", Text: "/link"},
+		{ID: 1, Chat: telegram.Chat{ID: 5, Type: "private", Title: "Alex P"}, From: 5, Lang: "ru", Text: "/link"},
 		{ID: 2, Chat: telegram.Chat{ID: -1007, Type: "channel", Title: "Alerts", Username: "alerts"}},
 		{ID: 3, Chat: telegram.Chat{ID: -200, Type: "supergroup", Title: "Ops"}, From: 5},
 		{ID: 4, Chat: telegram.Chat{ID: 5, Type: "private"}, From: 5, Callback: "q1", Data: "c1.0", MessageID: 9},

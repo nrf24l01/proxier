@@ -1,6 +1,8 @@
 # Servers are managed agentlessly over SSH, with host keys pinned on first contact
 
-Proxier installs nothing of its own on servers. Provisioning, redeploys, self-checks and stats all go over SSH with Proxier's own key. A server is just Debian or Ubuntu with Docker and the stack, and it keeps working if Proxier disappears. Each host key (server, jump host, router) is pinned on first contact. A changed key stops every job with that host and notifies until a member with `settings: manage` accepts the new key, because silently accepting it would hand a man in the middle the means to read and change the server's secrets.
+Proxier installs no agent on servers. Provisioning, redeploys, self-checks and stats use SSH with Proxier's key. A server runs Debian or Ubuntu with Docker and keeps working without Proxier.
+
+Proxier pins each server, jump-host and router host key on first contact. A changed key stops jobs for that host and triggers a notification. A member with `settings: manage` must accept the replacement before jobs continue. Automatic acceptance would let an attacker impersonate the host and read or change server secrets.
 
 ## Considered options
 

@@ -2,7 +2,7 @@
 
 **Actors**: a member with `activity` access (Cancel and Retry: the manage level of the job's area); modules (enqueue jobs from actions and event reactions); Scheduler; worker pools.
 
-All long or remote work is a job: provisioning, redeploys, check rounds, router syncs, refreshes, discovery, notifications, backups. Jobs are stored, so a member can see what ran, what failed and why, retry it, or cancel it, and a restart doesn't lose work. The machinery is described in [architecture](../../architecture.md#jobs). This document is the behaviour.
+Proxier runs long or remote operations as stored jobs, including provisioning, checks, router syncs, discovery, notifications and backups. Members can inspect logs, retry failures and cancel work. Stored progress lets interrupted jobs resume after a restart. See [architecture](../../architecture.md#jobs) for the implementation.
 
 ## Steps: lifecycle
 

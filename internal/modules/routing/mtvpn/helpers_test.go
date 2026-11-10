@@ -28,7 +28,7 @@ func today(h *routingtest.Harness) string {
 	list := h.Up.File("lists/mtvpn-main.txt", "# main\n- v2fly:youtube\n- google\n- iplist:instagram.com\n- v2fly:anthropic\n")
 	b := h.Up.File("base.conf", base)
 	return "router: 192.168.88.1\nservices:\n  - anthropic\n  - " + tunneled + "\nservice_lists:\n  - " + list +
-		"\nshadowrocket_base: " + b + "\nshadowrocket_upload: https://copyparty.example/up/\nshadowrocket_user: tikhon\nshadowrocket_password: " + password + "\n"
+		"\nshadowrocket_base: " + b + "\nshadowrocket_upload: https://copyparty.example/up/\nshadowrocket_user: alex\nshadowrocket_password: " + password + "\n"
 }
 
 func preview(t *testing.T, h *routingtest.Harness, text string) mtvpn.Import {

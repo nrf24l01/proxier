@@ -2,7 +2,9 @@
 
 **Actors**: a member with `servers: manage`; the redeploy job (queue `provisioning`); the server.
 
-Because Proxier renders every file itself, it can change a server after provisioning by rendering again and applying only the difference. This covers **redeploy** (same version), **upgrade** (another version, alone or rolled out across many servers), **parameter changes**, and the lighter stack operations (**restart stack**, **update images**, **reboot**, **container logs**). Rotation is its own flow ([credential rotation](./credential-rotation.md)) but reuses this one.
+Proxier changes a provisioned server by rendering its files again and applying the difference. A redeploy uses the same template version. An upgrade uses another version and can run on one server or as a rollout.
+
+This flow also covers parameter changes, stack restarts, image updates, reboots and container logs. [Credential rotation](./credential-rotation.md) has its own flow and uses the same deployment steps.
 
 ## Steps: redeploy, upgrade, parameter change
 

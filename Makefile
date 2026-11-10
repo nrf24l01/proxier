@@ -2,7 +2,7 @@ APP_VERSION := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 TEMPL_VERSION := v0.3.1100
 GOVULNCHECK_VERSION := v1.9.0
 # The image make build-image tags; make build-image IMAGE=registry.example.com/me/proxier
-IMAGE ?= code.tikhonnnnn.com/tikhon/proxier
+IMAGE ?= proxier
 
 .PHONY: dev build-dev fdev shell manage migrate-status test check templ editor check-editor lint vuln build build-image
 

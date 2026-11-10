@@ -30,7 +30,7 @@ func TestFailedDemoJobReachesTelegram(t *testing.T) {
 	if err := app.Settings.Set(ctx, "admin", "telegram", map[string]string{"telegram.bot_token": "777:E2E-token"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := app.Auth.SetTelegramChat(ctx, 1, "42", "Tikhon"); err != nil {
+	if err := app.Auth.SetTelegramChat(ctx, 1, "42", "Alex"); err != nil {
 		t.Fatal(err)
 	}
 	deadline := run(t, s)

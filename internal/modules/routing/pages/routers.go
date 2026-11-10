@@ -197,7 +197,7 @@ func (h *handler) lastPushed(ctx context.Context, id int64) (string, bool, error
 	return syncSummary(ctx, ss[0]), true, nil
 }
 
-// addrLine is "10.230.2.1 · via tailnet jump host" or "10.230.1.1 · RB5009 · 7.24.5".
+// addrLine is "10.20.2.1 · via tailnet jump host" or "10.20.1.1 · RB5009 · 7.24.5".
 func addrLine(ctx context.Context, r routers.Router) string {
 	parts := []string{r.Conn.Host}
 	switch {

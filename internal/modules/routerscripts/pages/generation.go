@@ -324,7 +324,7 @@ func (h *handler) after(ctx context.Context, g generations.Generation, state fet
 	return a
 }
 
-// jumpName is a jump host without the usual port: "dacha-pi".
+// jumpName is a jump host without the usual port: "jump-host".
 func jumpName(addr string) string {
 	if host, port, err := net.SplitHostPort(addr); err == nil && port == "22" {
 		return host

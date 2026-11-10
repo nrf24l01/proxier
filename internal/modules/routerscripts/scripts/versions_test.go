@@ -65,13 +65,13 @@ func TestDiff(t *testing.T) {
 	h := rscriptstest.New(t)
 	end := paramstest.WithEnd(paramstest.Today())
 	id := h.Script("fresh-router", end)
-	h.Publish(id, paramstest.Replace(end, `"10.230.1"`, `"10.40.1"`))
+	h.Publish(id, paramstest.Replace(end, `"10.20.1"`, `"10.40.1"`))
 	d, err := h.Mod.Scripts.Diff(ctx, id, "1", "2")
-	if err != nil || !strings.Contains(d, "-:local lanNet \"10.230.1\"") || !strings.Contains(d, "+:local lanNet \"10.40.1\"") ||
+	if err != nil || !strings.Contains(d, "-:local lanNet \"10.20.1\"") || !strings.Contains(d, "+:local lanNet \"10.40.1\"") ||
 		!strings.Contains(d, "fresh-router-v1.rsc") || strings.Count(d, "\n-") != 1 {
 		t.Errorf("v1 → v2: %q %v", d, err)
 	}
-	if d, _ := h.Mod.Scripts.Diff(ctx, id, "2", "1"); !strings.Contains(d, "+:local lanNet \"10.230.1\"") {
+	if d, _ := h.Mod.Scripts.Diff(ctx, id, "2", "1"); !strings.Contains(d, "+:local lanNet \"10.20.1\"") {
 		t.Errorf("v2 → v1: %q", d)
 	}
 	// the draft against its base

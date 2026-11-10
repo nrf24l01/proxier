@@ -94,11 +94,11 @@ button:disabled{cursor:not-allowed;opacity:.45}
 <label for="rl" style="padding-top:6px;color:#908caa">Routing list</label>
 <div style="position:relative;max-width:320px"><select id="rl" class="pc-inp" style="appearance:none;-webkit-appearance:none;width:100%;padding-right:32px"><option>Main · default</option><option>Parents</option></select><span aria-hidden="true" style="position:absolute;right:10px;top:6px;color:#6e6a86;pointer-events:none">▾</span></div>
 <label for="rh" style="padding-top:6px;color:#908caa">Host <span style="color:#6e6a86">· lanNet + .1</span></label>
-<input id="rh" class="pc-inp" value="10.230.3.1" style="width:100%;max-width:320px">
+<input id="rh" class="pc-inp" value="10.20.3.1" style="width:100%;max-width:320px">
 <label for="ru" style="padding-top:6px;color:#908caa">SSH user · port</label>
 <div style="display:flex;gap:8px;max-width:320px"><input id="ru" class="pc-inp" value="proxier" style="flex:1;min-width:0"><input aria-label="SSH port" class="pc-inp" value="22" style="width:72px"></div>
 <label for="rj" style="padding-top:6px;color:#908caa">Jump host</label>
-<div style="position:relative;max-width:320px"><select id="rj" class="pc-inp" style="appearance:none;-webkit-appearance:none;width:100%;padding-right:32px"><option>dacha-pi · tailnet</option><option>none</option><option>blackberry · tailnet</option></select><span aria-hidden="true" style="position:absolute;right:10px;top:6px;color:#6e6a86;pointer-events:none">▾</span></div>
+<div style="position:relative;max-width:320px"><select id="rj" class="pc-inp" style="appearance:none;-webkit-appearance:none;width:100%;padding-right:32px"><option>jump-host · tailnet</option><option>none</option><option>home-server · tailnet</option></select><span aria-hidden="true" style="position:absolute;right:10px;top:6px;color:#6e6a86;pointer-events:none">▾</span></div>
 </div>
 <p style="padding:10px 16px 18px;font-size:12px;color:#908caa">Registered as awaiting setup: no syncs and no alarms until Proxier first reaches it. Fills vpnList and dohForwarder below and locks them to this router.</p>
 </div>
@@ -215,14 +215,14 @@ class Component extends DCLogic {
         group: false, field: true, id: 'p' + i, name: name, value: value, help: help, locked: locked,
         lc: changed ? '#ebbcba' : '#e0def4',
         bc: kind === 'changed' ? '#ebbcba' : (locked ? '#26233a' : '#403d52'),
-        note: kind === 'changed' ? '· changed, default "10.230.1"' : (kind === 'locked' ? '· filled from router Dacha' : (kind === 'computed' ? '· computed, read-only' : (kind === 'link' ? '· from the link above' : ''))),
+        note: kind === 'changed' ? '· changed, default "10.20.1"' : (kind === 'locked' ? '· filled from router Dacha' : (kind === 'computed' ? '· computed, read-only' : (kind === 'link' ? '· from the link above' : ''))),
         nc: changed ? '#ebbcba' : '#908caa'
       };
     };
     return {
       nav: this.nav('scripts', {}),
       params: [
-        P('lanNet', '10.230.3', 'LAN /24 prefix, no trailing dot. Router gets .1, DHCP hands out .20-.254', 'changed'),
+        P('lanNet', '10.20.3', 'LAN /24 prefix, no trailing dot. Router gets .1, DHCP hands out .20-.254', 'changed'),
         P('wanIface', 'ether1', 'WAN port; gets its address and the LAN\'s DNS servers via DHCP client'),
         P('subUrl', 'https://proxier.example.com/s/•••••• (created on generate)', 'mihomo subscription URL (SUB1 env of the container)', 'link'),
         P('image', 'registry-1.docker.io/wiktorbgu/mihomo-mikrotik:latest', ''),

@@ -54,7 +54,9 @@ Flows: [subscription management](../processes/subscriptions/subscription-managem
 | deleted, within the tombstone period (`subscriptions.tombstone`, 30 days) | One stub entry: "⛔ Link removed". |
 | deleted, after the tombstone period, or a token that never existed | `404`. |
 
-That is what an app gets. A browser that opens the URL gets the link's **page** in the link's language: the subscription's title and the expiry, tabs for iPhone & iPad, Android, macOS, Windows, Linux and TV with the suggested apps of each (download buttons, an **Add to {app}** button that imports the link, three short steps), **Copy link** and a QR code of the URL. A disabled, expired or deleted link's page shows only the stub's text and the contact. Page views are fetches with format `page`. The apps and when the page is served: [browser page](../integrations/subscription-format.md#browser-page).
+A browser opens the link's page in the link's language. It shows the subscription title and expiry, platform tabs, suggested apps with download and import buttons, and three import steps. **Copy link** and a QR code let the holder transfer the URL.
+
+A disabled, expired or deleted link shows only its stub text and contact. Browser views enter the fetch log with format `page`. See [browser page](../integrations/subscription-format.md#browser-page) for app selection and content negotiation.
 
 Headers, formats and rate limits: [fetch](../processes/subscriptions/subscription-fetch.md).
 
@@ -64,7 +66,7 @@ Credentials are **shared per endpoint** ([ADR 0004](../adr/0004-one-shared-crede
 
 - **Disable, expire, delete** stop the link's *updates*. On its next refresh, the app replaces its server list with the stub entry. Most apps then have nothing left to connect with. That is why a disabled link serves a stub entry rather than an error: on an error, apps keep their old list.
 - A person who copied a connection URI out of the app, or whose app stopped refreshing, **keeps access** until the server's credentials are rotated.
-- **Cut-off** is the real revoke: it disables the link and rotates every server in its subscription. Every other link then receives the new URIs on its next refresh. Anyone holding only old URIs (the cut-off link, copied URIs) loses access.
+- **Cut-off** disables the link and can rotate every server in its subscription. Other links receive the new URIs on refresh. After rotation, old URIs stop working, including copies and the cut-off link's cached URIs.
 
 The UI says this wherever it matters: the disable dialog, the delete dialog, and the cut-off dialog, which lists the servers to be rotated and how many other links will get new URIs.
 

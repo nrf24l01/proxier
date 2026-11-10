@@ -2,7 +2,9 @@
 
 Supersedes the coverage part of [ADR 0013](./0013-one-owner-service-per-domain.md): Proxier no longer drops a name because another service in the list has a suffix above it, and a custom service no longer absorbs its own names under its suffixes. A router installs every name its services list, for every service, upstream or custom. Only the same name is still given to one owner: in the same form, the first service in list order; as both a suffix and an exact name, the suffix.
 
-A suffix entry doesn't make a MikroTik resolve the names under it. The router resolves only the names it is given: each address-list hostname entry is resolved by the router itself, and each FWD entry puts what it resolves into the address list. A subdomain a member adds on purpose, as in the domain-list files mtvpn installed, is there so the router fetches its addresses too, for example for a client that doesn't ask the router's DNS. mtvpn never dropped such names on routers; it only dropped them from the Shadowrocket export. Proxier had applied that export's rule to routers as well, so a deliberately added `console.anthropic.com` never reached the router while `anthropic.com` was in another service.
+A MikroTik suffix entry does not resolve every subdomain. The router resolves each address-list hostname it receives, and each FWD entry adds the addresses it resolves to the address list. A listed subdomain therefore needs its own entries, including for clients that do not use the router's DNS.
+
+mtvpn kept such subdomains on routers and removed them only from Shadowrocket exports. Proxier initially applied the export rule to routers too. That prevented a listed `console.anthropic.com` from reaching the router whenever another service listed `anthropic.com`.
 
 The same name stays with one owner because a router holds one entry per name: the service block removes every other entry with its names, so two tags claiming one name would take it from each other on every sync ([RouterOS integration](../integrations/routeros.md#service-block)).
 

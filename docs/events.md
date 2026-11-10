@@ -69,8 +69,8 @@ The payload lists the fields beyond the subject. A member's events (`auth.*`, `m
 | `server.retire_failed` | server | step, error, cancelled | **on** | "nl-2: retirement failed at …". The server stays out of service (retiring) until a member with `servers: manage` retries; a cancelled job notifies nothing. |
 | `server.notes_changed` | server | — | off | Only when the notes changed. |
 | `server.ip_changed` | server | from, to, kept (the old IP stays a previous IP), back (the new IP was a previous one), forced | off | Recorded by the Change IP job's DNS step, in the transaction that stores the IP ([IP change](./processes/servers/ip-change.md)). |
-| `server.ip_change_failed` | server | to, step, error, cancelled | **on**, except when `cancelled` | "nl-1: moving to 177.202.68.96 failed at Proxy test". Before the DNS step the server is untouched at its IP. |
-| `server.previous_ip_changed` | server | ip, from, to (`unknown` / `works` / `fails`), error (to `fails`) | **on** only from `fails` to `works` | "🟢 nl-1: previous IP 201.58.181.185 works again" / "Switch back to it from the server's Health tab." Activity words it by the state reached. |
+| `server.ip_change_failed` | server | to, step, error, cancelled | **on**, except when `cancelled` | "nl-1: moving to 203.0.113.20 failed at Proxy test". Before the DNS step the server is untouched at its IP. |
+| `server.previous_ip_changed` | server | ip, from, to (`unknown` / `works` / `fails`), error (to `fails`) | **on** only from `fails` to `works` | "🟢 nl-1: previous IP 203.0.113.10 works again" / "Switch back to it from the server's Health tab." Activity words it by the state reached. |
 | `server.previous_ip_forgotten` | server | ip | off | **Forget** on the Health tab. |
 | `server.rollout_started` | rollout (`rollout:<id>`) | servers (names), to_version | off | A rolling upgrade began. |
 | `server.rollout_finished` | rollout | state (`done` / `stopped` / `cancelled`), done, failed, not_started, skipped | off | Recorded once, when the rollout is no longer running and no server of it is. |
@@ -130,8 +130,8 @@ Lists in payloads are one comma-joined string.
 | `routing.router_updated` | router | changes (of name, connection, names, list), from, to (the old and new name on a rename, list names on a list switch) | off | |
 | `routing.router_connected` | router | version, board | off | First successful connection: a passing Test connection (saved with it, or of a saved router that never connected) or a sync's connect step; ends "awaiting setup". An awaiting router's probe records it too and queues the initial sync. |
 | `routing.router_synced` | router | added, updated, removed, recorded, trigger (change, manual, initial) | off | Only when something was pushed or recorded: a sync with nothing to do records no event. |
-| `routing.router_sync_failed` | router | step (connect, read, push, verify), error (the problem sentence), consecutive, manual, attempt, final | **on** when the job gives up (final) 🔴 | Recorded for every failed attempt; `final` is the last attempt or an error no retry fixes (a refused key, a changed or unknown host key, the tailnet off). "Home: sync gave up at connect" / "Proxier can't reach the router 10.230.1.1:22: connection refused. Nothing was changed on the router. · after 4 attempts" (the attempts only when more than one). |
-| `routing.router_recovered` | router | failures, notified | **on** after a notified failure 🟢 | The first success after failed attempts; a failure that never notified recovers quietly. "Home is in sync again" / "After 4 failed attempts." |
+| `routing.router_sync_failed` | router | step (connect, read, push, verify), error (the problem sentence), consecutive, manual, attempt, final | **on** when the job gives up (final) 🔴 | Recorded for every failed attempt; `final` is the last attempt or an error no retry fixes (a refused key, a changed or unknown host key, the tailnet off). "Home: sync gave up at connect" / "Proxier can't reach the router 10.20.1.1:22: connection refused. Nothing was changed on the router. · after 4 attempts" (the attempts only when more than one). |
+| `routing.router_recovered` | router | failures, notified | **on** after a notified failure 🟢 | The first success after failed attempts; recovery sends no message if the failure sent none. "Home is in sync again" / "After 4 failed attempts." |
 | `routing.router_paused` / `.resumed` | router | — | off | |
 | `routing.router_removed` | router | name, cleaned | off | Kept: at once; cleaned: after the removal sync. A failed removal records `router_sync_failed{manual: true}`. |
 | `routing.drift_detected` | router | tags, repair | **on** only when repair is off 🟡 | "{subject} drifted from what Proxier installed" / "Tags: {tags}. Auto-repair is off: open the router to repair." With repair off, recorded only when the set of drifting tags changes. |
@@ -194,6 +194,6 @@ Subscriptions' texts (EN; each has its RU twin). The dates are the last day the 
 | Event | Emoji | Title | Sentence |
 |---|---|---|---|
 | `link.expiring_soon` | ⏳ | {subject} expires on {date} | Extend it on its page if it should keep working. |
-| `link.expired` | ⏳ | {subject} expired on {date} | Its app gets the “expired” entry on its next refresh. |
+| `link.expired` | ⏳ | {subject} expired on {date} | Its app gets the "expired" entry on its next refresh. |
 | `link.shared_suspected` | 🟡 | {subject} looks shared | Fetched from {networks} and {apps} in 24 h ("6 networks", "1 app": the language's plural forms). |
 | `subscription.all_unhealthy` | 🟡 | Every server of {subject} is unhealthy | Hiding them would leave nothing, so all {count} are served. |

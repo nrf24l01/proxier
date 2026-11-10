@@ -15,7 +15,7 @@ func TestMarkerSkipsInactiveRouters(t *testing.T) {
 	_, active := h.Router("Active", 0)
 	_, paused := h.Router("Paused", 0)
 	h.Exec(`UPDATE routing_routers SET state = 'paused' WHERE id = ?`, paused)
-	untested, err := h.Mod.Routers.Create(bg, routingtest.Owner, "Untested", main, routers.Connection{Host: "10.230.9.1"}, 0, "admin")
+	untested, err := h.Mod.Routers.Create(bg, routingtest.Owner, "Untested", main, routers.Connection{Host: "10.20.9.1"}, 0, "admin")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -12,11 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # The runner mounts persistent volumes at the tool cache, the module
-      # cache and the build cache (sh-blackberry's runner config), so Go and
-      # the modules are downloaded once, not per job. A download that stalls
-      # (blackberry's path to github.com and proxy.golang.org does) fails its
-      # step within the timeout instead of holding the job for an hour.
+      # Bound downloads so a stalled connection fails the step.
       - uses: actions/setup-go@v7
         timeout-minutes: 10
         with:
@@ -83,21 +79,16 @@ jobs:
       - name: govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
-  # Images are built only from a commit whose tests and lint passed
-  # (docs/deployment.md#images-and-ci): a push to main tags :<sha>, :main and
-  # :latest (blackberry follows :latest); a v* tag tags :<tag>. They go to
-  # this Forgejo's registry: its automatic token can't write packages, so
-  # REGISTRY_TOKEN is an access token with write:package (as in
-  # music-download-bot).
+  # Optional publishing to a registry configured by the repository owner.
   image:
     needs: [test, lint]
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && vars.REGISTRY != ''
     runs-on: ubuntu-latest
     concurrency:
       group: image-${{ github.ref }}
       cancel-in-progress: false
     env:
-      REGISTRY: code.tikhonnnnn.com
+      REGISTRY: ${{ vars.REGISTRY }}
     steps:
       - uses: actions/checkout@v7
 

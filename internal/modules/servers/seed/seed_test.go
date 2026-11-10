@@ -26,7 +26,7 @@ func TestSeedIsCreatedOnce(t *testing.T) {
 		t.Fatalf("template: %+v", tpl)
 	}
 	vs, _ := store.ListVersions(ctx, q, tpl.ID)
-	if len(vs) != 1 || vs[0].Number != 1 || vs[0].Notes != "Converted from servers-templates/proxy" || vs[0].PublishedBy != "system" {
+	if len(vs) != 1 || vs[0].Number != 1 || vs[0].Notes != "Built-in VLESS XHTTP template" || vs[0].PublishedBy != "system" {
 		t.Fatalf("versions: %+v", vs)
 	}
 	files, _ := store.VersionFiles(ctx, q, vs[0].ID)

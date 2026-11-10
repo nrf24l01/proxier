@@ -2,7 +2,9 @@
 
 **Actors**: Scheduler; check jobs (queue `checks`); the embedded proxy client; check-host.net; a member with `servers: manage` (`servers: view` sees only the health state on the list); subscriptions (through `EndpointCatalog`); the notifier.
 
-Health answers one question per active server: **can people in Russia use it right now, and if not, why?** Proxier runs at home in Russia, so its own proxy test is the ground truth for "usable from Russia" ([ADR 0005](../../adr/0005-home-is-the-russian-vantage-point.md)). The self-check over SSH says whether the server itself works. check-host.net nodes abroad say whether it is reachable from outside Russia. Together they separate **down** (the server is broken or gone) from **blocked** (the server is fine, but Russia can't use it).
+Health reports whether a server works from Proxier's network in Russia. The proxy test measures client use from that network. An SSH self-check checks the server itself, and check-host.net nodes test reachability from abroad.
+
+Together these checks distinguish **down**, where the server has failed, from **blocked**, where it works abroad but cannot be used from Proxier's network. See [ADR 0005](../../adr/0005-home-is-the-russian-vantage-point.md).
 
 ## Checks
 
@@ -42,7 +44,9 @@ Every combination of inputs matches exactly one rule. Rule 5 requires a passing 
 
 When a proxy test fails and no external result newer than 10 minutes exists, an external check is started at once and the server is marked as awaiting it. A verdict that leans on external data (rules 7, 8, 8a, 9, 10, 11) **waits** while the mark is younger than 2 minutes and no external result newer than the mark exists: it stores nothing and a delayed `servers.evaluate` looks again after 2 minutes. The external check's own evaluation, which clears the mark and cancels the delayed one, decides otherwise.
 
-**Flap protection**: the server's health state changes only when the same candidate comes out of **2 consecutive counted evaluations** (setting). An evaluation is *counted* when it is the first to see a new proxy-test round (a result newer than the one the last counted evaluation used): the self-check's evaluation, a scheduled external check's, or a second look at the same round only refresh the detail. `paused`, a changed host key and the first state after `unknown` apply at once. Each change records `server.health_changed{from, to, reason, summary}` and sets "health since". The detail of the latest evaluation (reason, per-check summary) is kept on the server for the UI, even when nothing changed.
+The server changes health state after the same candidate appears in 2 consecutive counted evaluations, unless the setting specifies another count. An evaluation counts only when it sees a proxy-test round newer than the last counted one. Self-checks, scheduled external checks and repeated evaluations of the same round update details without increasing the count.
+
+`paused`, a changed host key and the first state after `unknown` apply immediately. A change records `server.health_changed{from, to, reason, summary}` and updates "health since". The server keeps the latest reason and per-check summary for the UI even when the state stays the same.
 
 ## Steps: check round
 
@@ -67,7 +71,7 @@ When a proxy test fails and no external result newer than 10 minutes exists, an 
 
 ## The Health tab
 
-- The verdict, with its reason as one sentence and "since". A healthy verdict has no reason, so nothing stands under it. While paused, one note under it says until when and that no notifications are sent (the pause reason isn't repeated above it); a candidate waiting for confirmation is shown there too.
+- The verdict, with its reason as one sentence and "since". A healthy verdict omits the reason area. While paused, one note under it says until when and that no notifications are sent (the pause reason isn't repeated above it); a candidate waiting for confirmation is shown there too.
 - A matrix of the latest results. Rows: home internet, self-check (with each template check), proxy test per endpoint (connect, first byte, throughput), each Russian node, each node abroad. Columns: result, time, 24 h success strip (48 cells of 30 minutes). Before the first external check (or when check-host.net refused it), one group, "Nodes in Russia and abroad", holds one row saying so; a region the latest external check had no node in shows a row saying that, so no group heading stands empty.
 - A timeline of health states (24 h / 7 d / 30 d).
 - **Run checks now**, **Pause checks**.

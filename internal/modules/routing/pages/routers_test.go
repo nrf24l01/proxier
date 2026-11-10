@@ -199,7 +199,7 @@ func TestRouterPage(t *testing.T) {
 		t.Fatalf("list: %s", loc)
 	}
 	has(t, "list switched", h.Login.Get(path).Body.String(), "follows Parents", "Home follows Parents instead of Main")
-	f := url.Values{"name": {"Home 2"}, "host": {"10.230.1.1"}, "port": {"22"}, "user": {"proxier"}, "first_hop": {"direct"}, "list_name": {"to_vpn_list"}, "forwarder": {"vpn-doh"}}
+	f := url.Values{"name": {"Home 2"}, "host": {"10.20.1.1"}, "port": {"22"}, "user": {"proxier"}, "first_hop": {"direct"}, "list_name": {"to_vpn_list"}, "forwarder": {"vpn-doh"}}
 	if loc := location(t, h.Login.Post(path+"/edit", f)); loc != path+"?saved=1" {
 		t.Fatalf("edit: %s", loc)
 	}

@@ -77,7 +77,7 @@ button{cursor:pointer}
 <dl style="display:grid;grid-template-columns:minmax(96px,auto) minmax(0,1fr);gap:10px 14px;padding:12px 16px 14px;font-size:13px">
 <dt style="color:#908caa">Installed</dt><dd>6 tags · 402 domains <span style="color:#908caa">· matched Parents at 14:48</span></dd>
 <dt style="color:#908caa">Waiting</dt><dd>1 update <span style="color:#908caa">· reddit +9, added to Parents at 21:11</span></dd>
-<dt style="color:#908caa">Router</dt><dd style="word-break:break-all">proxier@10.230.2.1:22</dd>
+<dt style="color:#908caa">Router</dt><dd style="word-break:break-all">proxier@10.20.2.1:22</dd>
 <dt style="color:#908caa">Jump host</dt><dd style="word-break:break-all">pi@parents-pi:22 <span style="color:#908caa">· tailnet</span></dd>
 </dl>
 </section>
@@ -109,7 +109,7 @@ class Component extends DCLogic {
       hops: [
         { name: 'tailnet node proxier', c: OK.c, m: OK.m, result: 'up', detail: 'Proxier itself is on the tailnet' },
         { name: 'jump host parents-pi', c: FAIL.c, m: FAIL.m, result: 'offline', detail: 'dial tcp parents-pi:22: no route to host' },
-        { name: 'router 10.230.2.1', c: SKIP.c, m: SKIP.m, result: 'not tried', detail: 'reached only through parents-pi' }
+        { name: 'router 10.20.2.1', c: SKIP.c, m: SKIP.m, result: 'not tried', detail: 'reached only through parents-pi' }
       ],
       history: [
         { t: '21:17', c: FAIL.c, m: FAIL.m, what: 'failed at connect', detail: '2nd in a row · you were notified' },

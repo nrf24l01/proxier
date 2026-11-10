@@ -1,6 +1,6 @@
 # VLESS over XHTTP (the seed template and endpoint type)
 
-The endpoint type `vless-xhttp-tls` and the seed template "VLESS XHTTP behind nginx" come from `servers-templates/proxy`. The stack is unchanged. What changes is who runs it: Proxier renders the files and runs the steps instead of an interactive `setup.sh`.
+The endpoint type `vless-xhttp-tls` uses the seed template "VLESS XHTTP behind nginx". Proxier renders the stack files and runs the installation steps.
 
 ## The stack
 
@@ -17,30 +17,20 @@ client --TLS:443--> nginx --/<xhttp-path>/...--> xray (VLESS over XHTTP, h2c via
 
 ## Template contents
 
-| File | From `servers-templates/proxy` | Change |
-|---|---|---|
-| `compose.yaml` | `compose.yaml` | none |
-| `nginx/default.conf.template` | same | none (`${SERVER_DOMAIN}`, `${VLESS_XHTTP_PATH}` still come from `.env` through the nginx image's envsubst) |
-| `site/index.html` | same | none |
-| `xray-config.json` | `xray-config.json` with `VLESS_CLIENT_UUID` / `VLESS_XHTTP_PATH` placeholders replaced by `sed` | Go template: `clients` rendered from `.Clients` ([servers module](../modules/servers.md#the-client-list)), `path` from `.Gen.xhttp_path` |
-| `.env` | written line by line by `setup.sh` | rendered: `CONTAINER_POSTFIX={{ .Gen.container_postfix }}`, `SERVER_DOMAIN={{ .Server.ProxyHostname }}`, `VLESS_XHTTP_PATH={{ .Gen.xhttp_path }}` |
-| `issue-cert.sh` | `issue_certificate()` in `setup.sh` | a standalone script that exits early when the certificate exists (so retries are safe) and adds `-m <email> --no-eff-email` only when the parameter is set |
-
-What `setup.sh` did interactively and Proxier now does itself:
-
-| `setup.sh` | Proxier |
+| File | Purpose |
 |---|---|
-| `bootstrap-system.sh` (Docker, docker group, SSH password hardening) | `base-bootstrap` step, plus key installation and the firewall |
-| Asks for the domain and checks that it resolves | The hostname comes from the server name. DNS is created through Cloudflare and waited for. |
-| Asks for the Let's Encrypt email | Template parameter `letsencrypt_email` |
-| `uuidgen`, `openssl rand -hex 8`, `openssl rand -hex 2` | Generated values `client_uuid`, `xhttp_path` (16 hex characters with a leading `/`), `container_postfix` (4 hex characters) |
-| Asks for the link's tag name | The endpoint's display name (`🇳🇱 Netherlands 1`) |
-| `credentials.txt` | The server page and subscription outputs |
-| `newgrp docker` subshell | Not needed: Proxier runs Docker through `sudo -n` as its `proxier` deploy user |
+| `compose.yaml` | Runs nginx and xray. |
+| `nginx/default.conf.template` | Routes the secret XHTTP path to xray. `${SERVER_DOMAIN}` and `${VLESS_XHTTP_PATH}` come from `.env` through nginx's envsubst. |
+| `site/index.html` | The decoy site. |
+| `xray-config.json` | Renders `clients` from `.Clients` and `path` from `.Gen.xhttp_path`. See [the client list](../modules/servers.md#the-client-list). |
+| `.env` | Renders `CONTAINER_POSTFIX`, `SERVER_DOMAIN` and `VLESS_XHTTP_PATH` from server and generated values. |
+| `issue-cert.sh` | Issues the TLS certificate. It exits early when a certificate exists and adds an email only when the parameter is set. |
+
+Proxier installs Docker, SSH keys and the firewall through base bootstrap. It creates DNS records for the server hostname, waits for resolution, renders the stack and runs the template's steps. The template takes an optional `letsencrypt_email` parameter and generates `client_uuid`, `xhttp_path` and `container_postfix`. Connection details appear on the server page and in subscription outputs.
 
 ## Connection URI
 
-Built exactly as `setup.sh` printed it:
+The endpoint produces this URI:
 
 ```
 vless://{uuid}@{host}:443?encryption=none&security=tls&sni={host}&fp=chrome&host={host}&alpn=h2&type=xhttp&path=%2F{path-without-leading-slash}&mode=stream-up#{display-name}

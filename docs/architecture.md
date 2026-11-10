@@ -1,6 +1,6 @@
 # Architecture
 
-## Runtime shape
+## Runtime
 
 Proxier is **one Go binary** (`proxier`) in one container, with its data in one SQLite file ([ADR 0001](./adr/0001-single-binary-sqlite-in-process-jobs.md)). It runs on a machine in Russia, usually a home server ([deployment](./deployment.md)). Only discovery uses the headless Chromium sidecar. `proxier serve` runs the HTTP server, the scheduler and every worker pool in one process. `proxier manage …` holds the one-off commands (create the first member, reset a member's password or second factor, run migrations, back up).
 
@@ -148,7 +148,7 @@ Comparing desired with applied gives a **plan**. A member can preview the plan b
 - **Secrets are encrypted at rest** with AES-256-GCM under a master key from the environment ([ADR 0012](./adr/0012-secrets-encrypted-root-password-never-stored.md)). Lookups by secret (link tokens) use an HMAC of the token, never the token itself.
 - Full entity list: [data-model.md](./data-model.md).
 
-## HTTP surfaces
+## HTTP routes
 
 One listener, two kinds of routes. The prefixes are fixed, so the gateway could split them across hosts without a code change ([ADR 0006](./adr/0006-one-public-host-for-admin-and-public-urls.md)).
 
@@ -162,7 +162,9 @@ One listener, two kinds of routes. The prefixes are fixed, so the gateway could 
 | `/f/{token}` | a router | single-use token | Router script fetch URL |
 | `/healthz` | monitoring | — | Liveness (DB reachable, workers alive). Reveals nothing. |
 
-Public routes never set cookies, always send `Cache-Control: no-store` and `X-Robots-Tag: noindex`. `/s/`, `/r/` and `/f/` are rate-limited to 60 requests a minute per client IP (a fixed window; over it, `429` with `Retry-After`); `/agent/` limits itself per session. All unknown tokens get the same plain `404` as any unknown public path. Proxier's own logs never hold a token: the request log and the error log write `/s/•••`, `/r/•••/home.conf`. The client IP comes from `X-Real-IP` only when the request arrives from a trusted proxy address (the SSH tunnel endpoint). Otherwise it is the socket address.
+Public routes never set cookies and always send `Cache-Control: no-store` and `X-Robots-Tag: noindex`. The `/s/`, `/r/` and `/f/` routes allow 60 requests per minute per client IP in a fixed window. Requests over the limit receive `429` with `Retry-After`. Agent routes apply per-session limits.
+
+Unknown tokens receive the same plain `404` as unknown public paths. Request and error logs mask tokens as `/s/•••` or `/r/•••/home.conf`. Proxier accepts `X-Real-IP` only from an address in `PROXIER_TRUSTED_PROXIES`. Otherwise it uses the socket peer's address.
 
 ## Outbound connections
 
@@ -183,7 +185,8 @@ Public routes never set cookies, always send `Cache-Control: no-store` and `X-Ro
 
 ## Security model (summary)
 
-- Members sign in on a public host, each on their own, with a level in each area; every signed-in route checks its area's level, and every query of owned things (subscriptions, links, routing lists, routers, Shadowrocket configs, custom services, generations) takes an `access.Scope`, so a member at `own` reaches only their own and another's ID answers 404 ([members](./processes/platform/members.md#ownership), [ADR 0018](./adr/0018-several-members-with-per-area-access.md)). A new member chooses their password at a single-use setup link, so nobody else handles it. Password sign-in, with an optional authenticator app code; optional passkeys sign in alone ([ADR 0017](./adr/0017-passkeys-sign-in-alone.md)). Mitigations: login lockout per IP across passwords, codes and passkeys, a notification to the member on sign-in from a new IP and on every change to their ways in, notifications only to the members an event concerns (the owner of its subject and who manages its area: [recipients](./processes/platform/notifications.md#recipients)), short idle sessions, secure cookies, CSRF on every change ([sign-in](./processes/platform/sign-in.md)).
+- Every signed-in route checks the member's level in its area. Queries for owned resources take an `access.Scope`. At `own`, another member's resource returns 404. New members choose their password through a single-use setup link. See [members](./processes/platform/members.md#ownership) and [ADR 0018](./adr/0018-several-members-with-per-area-access.md).
+- Members can enable authenticator codes for password sign-in or use passkeys alone. Per-IP lockout covers all three methods. New-IP sign-ins and authentication changes notify the affected member. Sessions have a short idle timeout, cookies are secure, and every state change requires CSRF protection. See [sign-in](./processes/platform/sign-in.md) and [notification recipients](./processes/platform/notifications.md#recipients).
 - Secrets encrypted at rest. The root password of a new VPS is kept, encrypted, only until Proxier's key is installed, then erased ([ADR 0012](./adr/0012-secrets-encrypted-root-password-never-stored.md)).
 - SSH host keys are pinned on first contact. A changed key stops all work with that host until a member with `settings: manage` accepts the new key on Settings → SSH ([ADR 0007](./adr/0007-agentless-ssh-with-pinned-host-keys.md)).
 - Proxier never gets the Docker socket of the machine it runs on ([ADR 0009](./adr/0009-embedded-xray-core-no-docker-socket.md)).
@@ -230,7 +233,7 @@ Environment variables hold what Proxier needs before the database is readable, a
 | Public suffix list | `golang.org/x/net/publicsuffix` | registrable-domain grouping |
 | UI | templ components + htmx (SSE for live logs), plain JS for the keymap, search pop-up, reorder, code editor and charts; styles from [ui/design/tokens.css](./ui/design/tokens.css) | [ADR 0014](./adr/0014-server-rendered-ui-templ-htmx.md) |
 | i18n | message catalogs per module, EN and RU | |
-| Images | multi-stage Dockerfile, distroless, non-root; Forgejo Actions: build, vet, test, lint and govulncheck, then push `code.tikhonnnnn.com/tikhon/proxier` ([deployment](./deployment.md#images-and-ci)) | |
+| Images | multi-stage Dockerfile, distroless, non-root; GitHub Actions: build, vet, test, lint and govulncheck, then push `ghcr.io/tikhonp/proxier` ([deployment](./deployment.md#images-and-ci)) | |
 
 ## Code layout
 

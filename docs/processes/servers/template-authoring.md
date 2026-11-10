@@ -97,7 +97,11 @@ Sample context: server `xx-1` in country `XX` ("Sample", no flag; `.Server.Locat
 | `shell` | The file is not valid bash syntax (checked with the pure-Go `mvdan.cc/sh` parser, like `bash -n`). | — |
 | Size | A file is over 1 MB, or the version over 10 MB. | — |
 
-The nginx check parses the rendered file with a Go parser; nothing runs. `*.template` files are first expanded with the environment the compose service that mounts them is given (`${VAR}` and `$VAR` of defined variables, as the nginx image's start script does; undefined ones stay as written). Where the file ends up in the container decides its context: mounted as `/etc/nginx/nginx.conf` it is the main context, under `/etc/nginx/templates/` or `/etc/nginx/conf.d/` it sits inside `http { }`, and a file no service mounts is read inside `http { }` unless it is named `nginx.conf`. Certificate paths and upstream hostnames are not opened or resolved, so nothing needs replacing. What only a running nginx finds is left to the smoke test.
+The nginx validator parses rendered files with a Go parser without running nginx. It expands `*.template` files using the environment of the compose service that mounts them. Defined `${VAR}` and `$VAR` references expand as they do in the nginx image's startup script; undefined references remain unchanged.
+
+The mount path determines the parse context. `/etc/nginx/nginx.conf` uses the main context. Files under `/etc/nginx/templates/` or `/etc/nginx/conf.d/` use `http { }`. An unmounted file also uses `http { }` unless its name is `nginx.conf`.
+
+Validation does not open certificate files or resolve upstream hostnames. The smoke test checks failures that require a running nginx.
 
 ## Rules
 

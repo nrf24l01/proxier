@@ -21,11 +21,11 @@
 
 # PARAMETERS
 # LAN /24 prefix (no trailing dot). Router gets .1, DHCP hands out .20-.254
-:local lanNet "10.230.1"
+:local lanNet "10.20.1"
 # WAN port (gets its address, and the LAN's DNS servers, via DHCP client)
 :local wanIface "ether1"
 # mihomo subscription URL (SUB1 env of the container)
-:local subUrl "https://files....t"
+:local subUrl "https://files.example.com/subscription"
 :local image "registry-1.docker.io/wiktorbgu/mihomo-mikrotik:latest"
 :local timeZone "Europe/Moscow"
 

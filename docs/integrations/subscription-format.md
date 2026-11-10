@@ -1,6 +1,6 @@
 # Subscription format
 
-What a link's URL returns ([fetch](../processes/subscriptions/subscription-fetch.md)). The format is de facto, defined by what client apps accept, not by a standard. Which apps take a stub entry as their new list is under [stub entry](#stub-entry); the apps not tried yet are in [open questions](../open-questions.md#client-apps-and-the-stub-entry).
+What a link's URL returns ([fetch](../processes/subscriptions/subscription-fetch.md)). The format is de facto, defined by what client apps accept, not by a standard. Which apps take a stub entry as their new list is under [stub entry](#stub-entry); the apps not tried yet are in [open questions](../open-questions.md#client-subscription-refresh).
 
 ## Formats
 
@@ -70,9 +70,17 @@ The apps and their deep links (`<url>` is the link's URL, `<title>` the subscrip
 
 The URL goes into a path as it is, since it has no `?` or `#`. In a query or a fragment, the URL and the title are percent-encoded byte by byte like the stub entry's name (a space is `%20`, never `+`). Base64 is the standard alphabet with padding, over the raw text.
 
-Seen on an Android phone (Chrome, 360 px): the Android tab opens by itself, and **Add to Hiddify**, **Add to Happ** and **Add to v2rayNG** each open their app and add the link under the subscription's title (Hiddify straight after its first-run screen). Hiddify 4.1.1 names the profile after a `#title` on its link as it stands, undecoded ("Claude%20test"), over `profile-title`, so its link has none and it takes the header. Hiddify also claims `v2rayng://`, so with both installed Android asked which app opens a plain `v2rayng://install-sub` link: v2rayNG's button is Android's `intent:` form of it, which names the app (Chrome opened v2rayNG straight away, and the group took the title, Cyrillic included). The manual imports match what the apps show: Happ's + has "Вставить из буфера обмена", v2rayNG's + "Импорт из буфера обмена" (it names that group "import sub": it reads neither `profile-title` nor the file name), and Hiddify's + a "Буфер обмена" tile. **Copy link** fills the clipboard, and the QR code is folded under the apps. Chrome on Android also has Google fetch a page it opens (user agent `… Google-Read-Aloud …`, from Google's addresses): it asked for `*/*`, so it got the connection URIs and counted as another network. Such fetches are a **Link preview**: they get the page and count toward no alert.
+On an Android phone with Chrome at 360 px, the page selected the Android tab. **Add to Hiddify**, **Add to Happ** and **Add to v2rayNG** opened their apps and imported the link under the subscription title. Hiddify completed the import after its first-run screen.
 
-Through Hiddify 4.1.1 on that phone (its defaults, region Russia), every server works since the template's xray sniffs the site's name ([VLESS over XHTTP](./vless-xhttp.md)): Hiddify sends IPv6 destinations even with its IPv6 off. What its region sends straight from the phone, Russian sites, it tries over IPv6 too, so on a network without IPv6 those that have an IPv6 address (ya.ru, mail.ru) don't load; region "Other", or "IPv4 only" for its remote DNS, lets them. It also hung with its tunnel up and nothing passing after a change of server, failed to restart its tunnel after a change of setting while connected, and failed its first connect after the VPN prompt. Happ, on the same servers, loaded everything, so it is the Android tab's first app.
+Hiddify 4.1.1 displays a URL's `#title` without decoding it and prefers it over `profile-title`. Proxier omits that fragment from Hiddify links so the app uses the header. Hiddify also registers `v2rayng://`. To avoid an app chooser when both are installed, v2rayNG's button uses an Android `intent:` URL naming its package. Chrome opened v2rayNG directly and retained the title, including Cyrillic.
+
+The manual instructions match the observed apps. Happ's + menu says "Вставить из буфера обмена". v2rayNG's says "Импорт из буфера обмена" and names that group "import sub" because it reads neither `profile-title` nor the filename. Hiddify's + menu has a "Буфер обмена" tile. **Copy link** filled the clipboard, and the QR code stayed collapsed below the apps.
+
+Chrome's read-aloud feature can make Google fetch the URL from another network with a `Google-Read-Aloud` user agent and `Accept: */*`. Proxier classifies such requests as **Link preview**, returns the browser page and excludes them from shared-link alerts.
+
+In testing with Hiddify 4.1.1 and its Russia-region defaults, proxy destinations worked because the template's xray sniffed the site name. Hiddify sent IPv6 destinations even with its IPv6 setting off. Direct connections to Russian sites also tried IPv6, so sites such as ya.ru and mail.ru failed on a network without IPv6. Choosing region "Other" or "IPv4 only" for remote DNS allowed them to load. See [VLESS over XHTTP](./vless-xhttp.md).
+
+The same test also found a connected tunnel passing no traffic after a server change, a tunnel that failed to restart after a setting change and a failed first connection after the VPN prompt. Happ loaded the tested sites on the same servers, so it appears first on the Android tab. These observations describe the tested version and setup.
 
 | Tab | Apps, the first recommended |
 |---|---|
@@ -83,7 +91,11 @@ Through Hiddify 4.1.1 on that phone (its defaults, region Russia), every server 
 | Linux | Hiddify, Happ |
 | TV | Shadowrocket (Apple TV), Happ (Apple TV, Android TV), v2rayNG (Android TV) |
 
-Left out on purpose: the official sing-box apps and NekoBox, which have no XHTTP; Clash Verge Rev, Stash and Clash Mi, which need Clash YAML (a backlog format); FoXray, which is gone. The apps, their order on each tab, notes, download buttons, manual imports (in English and Russian) and deep links (Go templates over the URL and the title) are one file, `internal/modules/subscriptions/linkpage/apps.yaml`: adding, removing or reordering an app changes only it. It is compiled in and checked when the package loads (every tab once with an app, known apps, labels and manual imports, both languages, https downloads, deep links that render), so a mistake in it fails the tests. Which of these links and steps work on real devices is in [open questions](../open-questions.md#the-browser-pages-apps).
+The app list excludes sing-box and NekoBox because they lack XHTTP, and Clash Verge Rev, Stash and Clash Mi because they need Clash YAML, which is in the backlog. FoXray is no longer available.
+
+`internal/modules/subscriptions/linkpage/apps.yaml` defines the apps, tab order, notes, downloads, English and Russian import instructions, and deep links. Deep links are Go templates over the URL and title. Change that file to add, remove or reorder an app.
+
+The package validates this embedded file at load time. It checks tab coverage, known apps, labels, instructions in both languages, HTTPS downloads and renderable deep links. Invalid entries fail tests. See [open questions](../open-questions.md#browsers-and-authentication) for remaining real-device checks.
 
 ## App detection
 

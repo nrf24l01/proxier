@@ -50,7 +50,7 @@ func TestActivitySentences(t *testing.T) {
 func TestActivityNamesMembersAndTheOldAdmin(t *testing.T) {
 	s := sitetest.New(t, sitetest.Options{})
 	l := s.SignIn("")
-	if _, err := s.App.DB.W.Exec(`UPDATE members SET username = 'tikhon' WHERE id = 1`); err != nil {
+	if _, err := s.App.DB.W.Exec(`UPDATE members SET username = 'alex' WHERE id = 1`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.App.DB.W.Exec(`DELETE FROM events`); err != nil {
@@ -60,8 +60,8 @@ func TestActivityNamesMembersAndTheOldAdmin(t *testing.T) {
 	record(t, s, "auth.totp_enabled", events.Subject{Type: "member", ID: "1"}, events.MemberActor(1), nil)
 	body := strings.Join(strings.Fields(l.Get("/activity").Body.String()), " ")
 	for _, want := range []string{
-		`<span class="actor" title="tikhon">tikhon</span> <span class="subtle">Changed the password of <a href="/settings/members/1" class="text">tikhon</a>`,
-		`<span class="actor" title="tikhon">tikhon</span> <span class="subtle">Turned on the authenticator app of <a href="/settings/members/1" class="text">tikhon</a>`,
+		`<span class="actor" title="alex">alex</span> <span class="subtle">Changed the password of <a href="/settings/members/1" class="text">alex</a>`,
+		`<span class="actor" title="alex">alex</span> <span class="subtle">Turned on the authenticator app of <a href="/settings/members/1" class="text">alex</a>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %s:\n%s", want, body)

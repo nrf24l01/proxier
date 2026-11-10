@@ -183,7 +183,7 @@ func (e *env) configure() {
 	must(e.t, e.h.Settings.Set(bg, events.MemberActor(1), "telegram", map[string]string{
 		"telegram.bot_token": token, "telegram.bot_username": "proxier_test_bot",
 	}))
-	must(e.t, e.auth.SetTelegramChat(bg, 1, chat, "tikhon"))
+	must(e.t, e.auth.SetTelegramChat(bg, 1, chat, "alex"))
 }
 
 // join adds a member with grant g through a setup link, in language lang,

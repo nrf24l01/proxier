@@ -23,7 +23,11 @@ The phone, away from home, should tunnel the same domains as the home router. Pr
 
 ## Steps: editing
 
-1. **Edit base config** opens the editor: the code across the page, filling the window, with **Save** in the title and the upload, the import and the version's note under the code. Saving validates and creates a new base version. If an agent or another tab saved after the editor opened, Proxier refuses the save with the band "The base config changed since you opened it (an agent or another tab saved it)." and **Reload**. **Save** turns off and the typed text stays in the editor. Older versions can be viewed, diffed and restored (a restore creates a new version). → `routing.shadowrocket_updated`
+1. **Edit base config** opens an editor filling the page. **Save** sits in the title; upload, import and the version note sit below the code. Saving validates the config, creates a version and records `routing.shadowrocket_updated`.
+
+   If an agent or another tab saved after the editor opened, Proxier rejects the stale save. The warning says "The base config changed since you opened it (an agent or another tab saved it)." **Save** becomes disabled and **Reload** appears. The editor keeps the typed text.
+
+   Older versions can be viewed, compared and restored. A restore creates a new version.
 2. **Preview** ("What the phone gets", on the config page) shows the rendered output exactly as the phone would get it, numbered, with Proxier's block marked; **Download** is in its title band.
 3. **Change routing list**, **change rule policy**: from the next fetch on.
 4. **Regenerate token**: the old URL returns `404`, and the new URL is shown.

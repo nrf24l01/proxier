@@ -1,6 +1,8 @@
 # A server has a country, not a location
 
-A location was a record of its own: a code (`nl`), a display name typed by hand and a country for the flag, managed on a Locations page with add, rename and delete rules ("a location with servers can't be deleted", "renaming it changes the name in every app"). The only things it ever carried are what the country already determines: a code, a name and a flag. So a server now stores just its country, an ISO 3166-1 alpha-2 code chosen in a searchable picker on New server (preselected from the IP's country), and everything else is derived: the name from a static country list (`servers/country`, English and Russian), the flag from the two regional-indicator letters. The Locations page, its table and its events go.
+A server stores its country as an ISO 3166-1 alpha-2 code. The New server page offers a searchable picker and suggests the IP's country. Proxier derives the country name from the English and Russian lists in `servers/country`, and the flag from regional-indicator letters.
+
+The former location record duplicated the country code, name and flag and needed its own add, rename and delete rules. Removing the Locations page and table avoids storing those values twice.
 
 - A new server is named `<code in lower case>-<number>` (`nl-2`); the number is one more than the highest its name prefix has ever used, read from the servers themselves (a server row is never deleted, so a number stays taken).
 - The display name apps show is `{flag} {English country name} {number}`, in every link whatever its language.

@@ -224,7 +224,7 @@ func discoveryStart(owner int64) discovery.Start {
 // confirm a key through it.
 func TestAnotherMembersConnectionTestIsNotFound(t *testing.T) {
 	m := newMembers(t)
-	id, err := m.h.Mod.Routers.StartTest(context.Background(), 0, m.annaW, routers.Connection{Host: "10.230.9.1", Port: 22, User: "proxier"}, "member:2")
+	id, err := m.h.Mod.Routers.StartTest(context.Background(), 0, m.annaW, routers.Connection{Host: "10.20.9.1", Port: 22, User: "proxier"}, "member:2")
 	if err != nil {
 		t.Fatal(err)
 	}

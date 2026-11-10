@@ -13,7 +13,11 @@ Provisioning turns a freshly issued VPS (an IP and a root password) into an **ac
    - **Hostname**, optional: the management and proxy hostname, e.g. `vpn.example.com`. Left empty, the server gets the name the hostname pattern gives (`nl-2.hosts.example.com`). Proxier trims it, writes it in lower case and drops a trailing dot. When none of the Cloudflare zones covers it, the member creates its A record by hand at their DNS provider (a **record made by hand**).
    - **Template** and **version** (default version preselected), then the version's **parameters** as form fields with labels, help and defaults.
    - **Notes**.
-2. While the member types, the form shows what will be created: the server name (`nl-2`), the management and proxy hostnames, the DNS record, and the endpoints with their display names. A picker the member hasn't chosen in (empty with nothing suggested yet, or showing what the IP suggested last) follows the IP's country as the summary updates; anything else in it (a half-typed name, an emptied field, a country they picked) is theirs, and the summary never replaces it. Until a country is picked the summary shows no name, and text that names no country is refused only on **Create**. For a record made by hand, the summary shows the record to create (`A vpn.example.org → 203.0.113.10`, not proxied, short TTL) and a **Check the record** button. The summary asks no DNS server about the name until the member presses it.
+2. While the member types, the form previews the server name, management and proxy hostnames, DNS record and endpoint display names.
+
+   The country picker follows IP-country suggestions until the member edits it. It can replace an untouched empty value or the previous suggestion. It never replaces a picked country, partial name or field the member cleared. The preview omits the server name until it has a valid country. Invalid country text becomes an error only on **Create**.
+
+   For a manually created DNS record, the summary shows the required A record, DNS-only setting and short TTL, for example `vpn.example.org` pointing to `203.0.113.10`. **Check the record** queries DNS. Updating the summary alone never queries that hostname.
 3. **Create**. Proxier checks:
    - no non-retired server has this IP, as its IP or as a previous IP it keeps ([IP change](./ip-change.md));
    - the country is a country (an ISO code in use today), and the template version exists and the template isn't archived;

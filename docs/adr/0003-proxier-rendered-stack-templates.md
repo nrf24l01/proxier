@@ -1,6 +1,6 @@
 # Server templates are rendered by Proxier, not scripts run on the server
 
-A template version is a manifest plus files. Proxier generates the secrets (UUIDs, secret paths), renders every file with Go templates, uploads them over SSH, and runs declared steps built from a small set of step kinds. Because Proxier holds the exact configuration of every server, it can redeploy, upgrade with a diff, and rotate credentials later. Turning a VPS into a server becomes data, versioned and validated in the UI.
+A template version contains a manifest and files. Proxier generates UUIDs and secret paths, renders files with Go templates, uploads them over SSH and runs the declared steps. It stores the exact configuration of every server, which lets it preview changes, redeploy, upgrade and rotate credentials. Members edit, validate and publish template versions in the UI.
 
 ## Considered options
 
@@ -9,5 +9,5 @@ A template version is a manifest plus files. Proxier generates the secrets (UUID
 
 ## Consequences
 
-- `servers-templates/proxy/setup.sh` is converted once into the seed template. The repository can stay as the place to keep and review templates, imported by zip or git URL.
+- The seed template defines the initial proxy stack. Keep other templates in separate repositories and import them by zip or git URL.
 - Templates must render the xray client list from `.Clients`, so that per-link credentials, if they ever arrive, are a data change and not a template rewrite.

@@ -1,5 +1,5 @@
 // Package seed holds the template every Proxier starts with: "VLESS XHTTP
-// behind nginx", converted from servers-templates/proxy
+// behind nginx"
 // (docs/integrations/vless-xhttp.md). The module publishes it as version 1 on
 // the first start; from then on it is an ordinary template.
 package seed
@@ -18,7 +18,7 @@ const (
 	Slug        = "vless-xhttp"
 	Name        = "VLESS XHTTP behind nginx"
 	Description = "VLESS over XHTTP, hidden behind nginx with a Let's Encrypt certificate and a decoy site."
-	Notes       = "Converted from servers-templates/proxy"
+	Notes       = "Built-in VLESS XHTTP template"
 )
 
 // Files returns the seed's tree: path → content, manifest.yaml included.

@@ -67,10 +67,10 @@ Given this excerpt of `fresh-router.rsc`:
 ```
 # PARAMETERS
 # LAN /24 prefix (no trailing dot). Router gets .1, DHCP hands out .20-.254
-:local lanNet "10.230.1"
+:local lanNet "10.20.1"
 # mihomo subscription URL (SUB1 env of the container)
 # @fill subscription-link
-:local subUrl "https://files....t"
+:local subUrl "https://files.example.com/subscription"
 ...
 # container internal /24: router side = .1, mihomo veth = .2 = the VPN gateway
 :local containerNet "192.168.89"
@@ -84,7 +84,7 @@ Given this excerpt of `fresh-router.rsc`:
 ```
 
 - The block runs from `# PARAMETERS` to `# END PARAMETERS`. Comments starting with capitals inside it (`# LAN …`, `# WAN …`, `# DOH_FORWARDER …`) are just descriptions.
-- `lanNet` is a parameter: default `10.230.1`, description "LAN /24 prefix (no trailing dot). Router gets .1, DHCP hands out .20-.254".
+- `lanNet` is a parameter: default `10.20.1`, description "LAN /24 prefix (no trailing dot). Router gets .1, DHCP hands out .20-.254".
 - `subUrl` is a parameter filled from a subscription link.
 - `containerNet` is a parameter.
 - `vpnGateway` is **computed** (its value is an expression) and shown read-only.

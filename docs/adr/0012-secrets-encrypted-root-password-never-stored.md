@@ -1,6 +1,8 @@
 # Secrets are encrypted under one master key; a new VPS's root password is never kept
 
-Every secret in the database (generated values, link and config tokens, deployed files that contain credentials, integration tokens, Proxier's SSH private key) is encrypted with AES-256-GCM under a master key from the environment. Tokens are looked up through an HMAC, never by their plain value. The root password of a new VPS lives only, encrypted, in its provisioning job, and is erased as soon as login with Proxier's key works. After that, no Proxier database, log or backup can reveal it.
+Proxier encrypts database secrets with AES-256-GCM under a master key from the environment. These include generated values, link and config tokens, deployed files containing credentials, integration tokens and Proxier's SSH private key. Token lookup uses an HMAC rather than the token's plain value.
+
+A new VPS's root password stays encrypted in its provisioning job until login with Proxier's SSH key works. Proxier then erases it. Later database snapshots and logs cannot recover that password.
 
 ## Consequences
 

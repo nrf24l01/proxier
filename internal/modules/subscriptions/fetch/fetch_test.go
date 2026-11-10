@@ -183,7 +183,7 @@ func TestDisableAndEnable(t *testing.T) {
 	if err := h.Mod.Links.Disable(bg, id, access.All, "admin"); err != nil {
 		t.Fatal(err)
 	}
-	mustStub(t, h, token, "⛔ Link disabled · @tikhonp")
+	mustStub(t, h, token, "⛔ Link disabled · @example_admin")
 	if err := h.App.Settings.Set(bg, "admin", "general", map[string]string{"general.admin_contact": ""}); err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +218,7 @@ func TestExpiredStubInRussian(t *testing.T) {
 	}
 	expire(t, h, id, "2026-12-01", "")
 	h.Now = time.Date(2026, 12, 3, 9, 0, 0, 0, time.UTC)
-	mustStub(t, h, token, "⏳ Истекла 1 дек 2026 · @tikhonp")
+	mustStub(t, h, token, "⏳ Истекла 1 дек 2026 · @example_admin")
 }
 
 func TestDateOnlyExpiryEndsAtMidnight(t *testing.T) {
@@ -232,14 +232,14 @@ func TestDateOnlyExpiryEndsAtMidnight(t *testing.T) {
 	}
 	mustServe(t, h, token, "🇳🇱 Netherlands 1", "🇩🇪 Germany 1")
 	h.Now = time.Date(2026, 12, 2, 0, 0, 0, 0, msk)
-	mustStub(t, h, token, "⏳ Expired on 1 Dec 2026 · @tikhonp")
+	mustStub(t, h, token, "⏳ Expired on 1 Dec 2026 · @example_admin")
 }
 
 func TestExtendExpiredLink(t *testing.T) {
 	h, _, id, token := family(t)
 	expire(t, h, id, "2026-10-10", "")
 	h.Now = time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
-	mustStub(t, h, token, "⏳ Expired on 10 Oct 2026 · @tikhonp")
+	mustStub(t, h, token, "⏳ Expired on 10 Oct 2026 · @example_admin")
 	expire(t, h, id, "2026-11-30", "")
 	mustServe(t, h, token, "🇳🇱 Netherlands 1", "🇩🇪 Germany 1")
 }
@@ -251,7 +251,7 @@ func TestDisabledWinsOverExpired(t *testing.T) {
 		t.Fatal(err)
 	}
 	h.Now = time.Date(2026, 10, 20, 12, 0, 0, 0, time.UTC)
-	mustStub(t, h, token, "⛔ Link disabled · @tikhonp")
+	mustStub(t, h, token, "⛔ Link disabled · @example_admin")
 }
 
 func TestDeletedLinkTombstone(t *testing.T) {
