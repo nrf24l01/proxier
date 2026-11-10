@@ -8,14 +8,14 @@ Retirement takes a server out of service for good: it leaves every subscription,
 
 1. Server page → **Retire**. The dialog shows:
    - the subscriptions and number of links that serve the server ("12 links in 3 subscriptions will stop showing nl-1 on their next refresh");
-   - the DNS records that will be deleted;
+   - the DNS records that will be deleted, or, for a record made by hand ([provisioning](./server-provisioning.md)), that Proxier leaves it;
    - **Remove the stack from the server** (checked when the server is reachable): runs the template's `uninstall` steps and deletes `dir`;
    - a text field to type the server name to confirm.
 2. **Retire** queues the job. The server stops being offered to subscriptions at once, and its checks stop. It is **retiring**: its page says "Retiring…" and offers no action. (Its hostnames and IP stay in `ServerHostnames` until it is retired, because its DNS still points to it.)
 3. Job steps:
    1. Cancel the server's queued jobs and a running provisioning; wait (up to 15 min) for any other running job on the server, such as a check, to finish.
    2. If chosen and the server is reachable over SSH, render only the `uninstall` steps with the stored parameters and generated values, run them and remove `dir`. Endpoint validation and file rendering do not block cleanup. If the server is unreachable, log "skipped: unreachable" and continue.
-   3. Delete each DNS record Proxier created for the server, provided it still points to the server's IP and still carries the comment `proxier:<name>`. A record that changed is kept and reported.
+   3. Delete each DNS record Proxier created for the server, provided it still points to the server's IP and still carries the comment `proxier:<name>`. A record that changed is kept and reported. A record made by hand is left, and the log says to delete it at the DNS provider.
    4. Mark the server **retired**, erase its generated values and drop its previous IPs with their results. → `server.retired{dns_removed, stack_removed}`
    The job has three attempts (backoff 1 and 5 minutes). When they are used up, `server.retire_failed{step, error}` notifies and the server **stays retiring** (out of service, not offered, not checked), because the stack may already be gone. Its page shows the step and the error with **Retry retirement**, which continues from the step that failed. **Retire without removing stack** retries with stack removal disabled after confirmation; DNS cleanup and final retirement still run.
 4. Subscriptions react to `server.retired` by removing the server from every subscription. → `subscription.servers_changed{removed}` per subscription. From then on, link outputs no longer contain it.
@@ -35,6 +35,7 @@ Retirement takes a server out of service for good: it leaves every subscription,
 - The DNS record was changed by hand to point elsewhere → kept, and the event reports `dns_removed: false` for it.
 - Retire a server whose provisioning is running → the provisioning job is cancelled first, then retirement continues.
 - Retire a failed server whose provisioning stopped before DNS → no DNS to delete, server retired.
+- Retire a server whose record was made by hand → the dialog says Proxier leaves it, the job deletes nothing and logs "The record of vpn.example.org was made by hand at another DNS provider; Proxier leaves it, so delete it there", server retired.
 - Retire a server whose name is typed wrong in the confirmation → the button stays disabled.
 - Retire a server that keeps a previous IP → the previous IP is gone, and a new server can be built at it.
 - After retiring `nl-2`, a new server in `nl` → `nl-3`.

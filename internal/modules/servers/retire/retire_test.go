@@ -765,3 +765,34 @@ func TestRetryRetirementWithoutStack(t *testing.T) {
 		t.Fatal("missing retirement event")
 	}
 }
+
+// A record made by hand stays, and the log says to delete it at its provider.
+func TestRetireLeavesARecordMadeByHand(t *testing.T) {
+	h := serverstest.NewHarness(t, serverstest.StubProxy())
+	h.Mod.Retire.ConnectTimeout = time.Second
+	h.Mod.Retire.WaitPoll = 5 * time.Millisecond
+	h.SetRecord("vpn.example.org", "127.0.0.1")
+	f := h.Form()
+	f.Hostname = "vpn.example.org"
+	id := h.Create(f)
+	h.Drain()
+	if s := h.Server(id); s.State != "active" {
+		t.Fatalf("server %s: %s", s.State, s.FailedError)
+	}
+	c, err := h.Mod.Retire.Consequences(bg, id)
+	if err != nil || len(c.DNS) != 0 || !c.Server.ManualDNS {
+		t.Fatalf("consequences %+v %v", c, err)
+	}
+	mustRetire(t, h, id, true)
+	h.Drain()
+	j := retireJob(t, h, id)
+	if j.State != jobs.Succeeded || h.Server(id).State != "retired" {
+		t.Fatalf("job %s: %s\n%s", j.State, j.Error, h.Log(j.ID))
+	}
+	if log := h.Log(j.ID); !strings.Contains(log, "The record of vpn.example.org was made by hand") {
+		t.Errorf("log:\n%s", log)
+	}
+	if got := strs(h.Events("server.retired")[0].Payload["dns_removed"]); len(got) != 0 {
+		t.Errorf("dns_removed %v", got)
+	}
+}

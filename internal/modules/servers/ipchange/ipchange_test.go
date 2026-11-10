@@ -344,3 +344,39 @@ func TestWaitAsksTheNameserversFirst(t *testing.T) {
 		t.Fatalf("log:\n%s", log)
 	}
 }
+
+// A record made by hand: the member points it at the new IP, and the change
+// checks it before it switches.
+func TestChangeWithARecordMadeByHand(t *testing.T) {
+	h := serverstest.NewHarness(t, serverstest.StubProxy())
+	h.SetRecord("vpn.example.org", "127.0.0.1")
+	form := h.Form()
+	form.Hostname = "vpn.example.org"
+	f := &fixture{Harness: h, ID: h.Create(form)}
+	h.Drain()
+	if s := h.Server(f.ID); s.State != "active" || !s.ManualDNS {
+		t.Fatalf("server %+v", s)
+	}
+
+	// Not pointed yet: nothing changes.
+	j := f.change(ipchange.Form{IP: newIP, Keep: true})
+	if j.State != jobs.Failed || !strings.Contains(j.Error, "A vpn.example.org → "+newIP) {
+		t.Fatalf("job %s: %s", j.State, j.Error)
+	}
+	if s := h.Server(f.ID); s.IP != "127.0.0.1" || len(f.previous()) != 0 || len(h.Events("server.ip_changed")) != 0 {
+		t.Fatalf("the server changed: %+v", s)
+	}
+
+	h.SetRecord("vpn.example.org", newIP)
+	j = f.change(ipchange.Form{IP: newIP, Keep: true})
+	if j.State != jobs.Succeeded {
+		t.Fatalf("job %s: %s\n%s", j.State, j.Error, h.Log(j.ID))
+	}
+	recs, _ := store.DNSRecords(bg, h.App.DB.R, f.ID)
+	if s := h.Server(f.ID); s.IP != newIP || len(recs) != 0 || len(h.CF.Records("proxier.test")) != 0 {
+		t.Fatalf("ip %s, records %+v", s.IP, recs)
+	}
+	if p := f.previous(); len(p) != 1 || p[0].IP != "127.0.0.1" {
+		t.Fatalf("previous IPs: %+v", p)
+	}
+}

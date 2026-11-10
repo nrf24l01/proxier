@@ -425,6 +425,9 @@ func (s *Service) deleteDNS(ctx context.Context, r *jobs.Run, p *payload) error 
 			todo = append(todo, rec)
 		}
 	}
+	if srv.ManualDNS {
+		r.Log().Warn("The record of %s was made by hand at another DNS provider; Proxier leaves it, so delete it there", srv.ManagementHostname)
+	}
 	if len(todo) == 0 {
 		r.Log().Info("No DNS records to delete")
 		return nil

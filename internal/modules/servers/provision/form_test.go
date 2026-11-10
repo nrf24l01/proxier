@@ -480,7 +480,6 @@ func TestCustomHostnameRefusals(t *testing.T) {
 		{"a leading hyphen", "-vpn.proxier.test", "hostname", "servers.err.hostname_invalid"},
 		{"a wildcard", "*.proxier.test", "hostname", "servers.err.hostname_invalid"},
 		{"a URL", "https://vpn.proxier.test/", "hostname", "servers.err.hostname_invalid"},
-		{"another zone", "vpn.example.org", "dns", "servers.err.not_covered"},
 		{"another server's", "NL-1.hosts.proxier.test", "hostname", "servers.err.hostname_used"},
 	} {
 		t.Run(c.name, func(t *testing.T) {

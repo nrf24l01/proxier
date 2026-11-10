@@ -158,3 +158,47 @@ func TestNewServerCustomHostname(t *testing.T) {
 		t.Fatalf("servers: %+v", srvs)
 	}
 }
+
+// A typed hostname outside the Cloudflare zones: the summary names the record
+// to create and checks it on request; the IP and Retire dialogs say the
+// record is the member's.
+func TestNewServerHostnameByHand(t *testing.T) {
+	h := serverstest.NewHarness(t, serverstest.StubProxy())
+	f := h.Form()
+	sum := url.Values{
+		"ip": {f.IP}, "country": {h.Country}, "hostname": {"vpn.example.org"},
+		"template": {sid(h.TemplateID)}, "version": {"1"}, "params_for": {sid(h.TemplateID) + ":1"},
+	}
+	body := h.Login.Post("/servers/new/summary", sum).Body.String()
+	mustContain(t, body, "A vpn.example.org → 127.0.0.1", "Create this record at your DNS provider", `data-action="srv.check_dns"`, `hx-vals='{"check_dns": "1"}'`)
+	mustNotContain(t, body, "proxier:nl-1", "does not point")
+
+	sum.Set("check_dns", "1")
+	mustContain(t, h.Login.Post("/servers/new/summary", sum).Body.String(), "vpn.example.org does not point to 127.0.0.1 yet (ns.fake answered nothing)")
+	h.SetRecord("vpn.example.org", "127.0.0.1")
+	mustContain(t, h.Login.Post("/servers/new/summary", sum).Body.String(), "The record is in place: ns.fake answered 127.0.0.1.")
+
+	h.SetRecord("vpn.example.org")
+	form := url.Values{
+		"ip": {f.IP}, "ssh_port": {strconv.Itoa(f.SSHPort)}, "root_password": {f.RootPassword}, "country": {h.Country},
+		"template": {sid(h.TemplateID)}, "version": {"1"}, "hostname": {"vpn.example.org"},
+	}
+	rec := h.Login.Post("/servers", form)
+	if rec.Code != 422 {
+		t.Fatalf("%d\n%s", rec.Code, rec.Body)
+	}
+	mustContain(t, rec.Body.String(), "Create the record A vpn.example.org → 127.0.0.1 at your DNS provider and check again.")
+
+	h.SetRecord("vpn.example.org", "127.0.0.1")
+	if rec = h.Login.Post("/servers", form); rec.Code != 303 {
+		t.Fatalf("%d\n%s", rec.Code, rec.Body)
+	}
+	h.Drain()
+	srvs, _ := store.ListServers(bg, h.App.DB.R)
+	if len(srvs) != 1 || srvs[0].State != "active" {
+		t.Fatalf("servers: %+v", srvs)
+	}
+	base := "/servers/" + sid(srvs[0].ID)
+	mustContain(t, page(t, h, base+"/ip"), "Point vpn.example.org at the new IP at your DNS provider", "Checks that vpn.example.org points to the new IP")
+	mustContain(t, page(t, h, base+"/retire"), "The record of vpn.example.org was made by hand at another DNS provider")
+}

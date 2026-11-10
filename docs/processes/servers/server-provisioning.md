@@ -1,8 +1,8 @@
 # Server provisioning
 
-**Actors**: a member with `servers: manage`; the provisioning job (queue `provisioning`); the new VPS; Cloudflare; Let's Encrypt (through the template's steps); the proxy test client.
+**Actors**: a member with `servers: manage`; the provisioning job (queue `provisioning`); the new VPS; Cloudflare, or the member's own DNS provider for a hostname outside the Cloudflare zones; Let's Encrypt (through the template's steps); the proxy test client.
 
-Provisioning turns a freshly issued VPS (an IP and a root password) into an **active** server built from a template version. The member fills in one form and watches the job. There is nothing to type over SSH and nothing to do in DNS. A server only becomes active once a real proxy connection from home works through it.
+Provisioning turns a freshly issued VPS (an IP and a root password) into an **active** server built from a template version. The member fills in one form and watches the job. There is nothing to type over SSH. There is nothing to do in DNS either, unless the member types a hostname that none of the Cloudflare zones covers. A server only becomes active once a real proxy connection from home works through it.
 
 ## Steps: the form
 
@@ -10,10 +10,10 @@ Provisioning turns a freshly issued VPS (an IP and a root password) into an **ac
    - **IP address** (IPv4) and **SSH port** (default 22, under "advanced").
    - **Root password**, never shown again.
    - **Country**, a searchable picker: typing filters the list of every country by name (in the member's language) or code, and the field takes "🇳🇱 Netherlands · NL"; a code (`nl`) or a name in English or Russian typed in full counts too. It is preselected from the IP's country. The country's lower-case code is the first half of the server name ([ADR 0015](../../adr/0015-servers-have-a-country-not-a-location.md)).
-   - **Hostname**, optional: the management and proxy hostname, e.g. `vpn.example.com`. Left empty, the server gets the name the hostname pattern gives (`nl-2.hosts.example.com`). Proxier trims it, writes it in lower case and drops a trailing dot.
+   - **Hostname**, optional: the management and proxy hostname, e.g. `vpn.example.com`. Left empty, the server gets the name the hostname pattern gives (`nl-2.hosts.example.com`). Proxier trims it, writes it in lower case and drops a trailing dot. When none of the Cloudflare zones covers it, the member creates its A record by hand at their DNS provider (a **record made by hand**).
    - **Template** and **version** (default version preselected), then the version's **parameters** as form fields with labels, help and defaults.
    - **Notes**.
-2. While the member types, the form shows what will be created: the server name (`nl-2`), the management and proxy hostnames, the DNS record, and the endpoints with their display names. A picker the member hasn't chosen in (empty with nothing suggested yet, or showing what the IP suggested last) follows the IP's country as the summary updates; anything else in it (a half-typed name, an emptied field, a country they picked) is theirs, and the summary never replaces it. Until a country is picked the summary shows no name, and text that names no country is refused only on **Create**.
+2. While the member types, the form shows what will be created: the server name (`nl-2`), the management and proxy hostnames, the DNS record, and the endpoints with their display names. A picker the member hasn't chosen in (empty with nothing suggested yet, or showing what the IP suggested last) follows the IP's country as the summary updates; anything else in it (a half-typed name, an emptied field, a country they picked) is theirs, and the summary never replaces it. Until a country is picked the summary shows no name, and text that names no country is refused only on **Create**. For a record made by hand, the summary shows the record to create (`A vpn.example.org → 203.0.113.10`, not proxied, short TTL) and a **Check the record** button. The summary asks no DNS server about the name until the member presses it.
 3. **Create**. Proxier checks:
    - no non-retired server has this IP, as its IP or as a previous IP it keeps ([IP change](./ip-change.md));
    - the country is a country (an ISO code in use today), and the template version exists and the template isn't archived;
@@ -21,11 +21,12 @@ Provisioning turns a freshly issued VPS (an IP and a root password) into an **ac
    - the hostname pattern in Settings → Servers is set, unless the member typed a hostname;
    - a typed hostname is a full DNS name: two labels or more, letters, digits and hyphens, no wildcard;
    - no non-retired server has the hostname, as its management or proxy hostname. Create checks it again in its transaction, so two servers created at once never share one;
-   - Cloudflare is configured and a configured zone covers the hostname;
+   - for the pattern's name: Cloudflare is configured and a configured zone covers it;
+   - for a record made by hand (a typed hostname that no zone covers, or any typed hostname while Cloudflare is not configured): the name points to the IP and to nothing else. Proxier finds the zone from the name's parents (`example.org` for `vpn.example.org`) and asks its own nameservers, which cache nothing, so a check made before the record exists does not delay it later. When the nameservers can't be asked, it asks 1.1.1.1 and 8.8.8.8 instead. **Check the record** runs the same check;
    - no routing list covers the hostname (when the routing module is enabled): a list holding `example.com`, or the hostname itself, would send Proxier's checks of the server into the router's tunnel. Any name listed in any list counts, even one the list doesn't install. The live summary says it too: "nl-3.hosts.example.com is covered by example.com (my-sites) in Main: Proxier's checks would go into the tunnel. Take it out of the list first."
 
    Failures are shown on the form and nothing is created.
-4. The server is created in **provisioning** with its name reserved, the root password goes encrypted into the job payload, and the job is queued. The browser goes to the server page, which shows the steps and the live log. → `server.created{ip, country, hostname, template_version}`
+4. The server is created in **provisioning** with its name reserved, the root password goes encrypted into the job payload, and the job is queued. The browser goes to the server page, which shows the steps and the live log. → `server.created{ip, country, hostname, manual_dns, template_version}`
 
 ## Steps: the job
 
@@ -51,6 +52,7 @@ Each step is resumable. A retried job starts at the step that didn't finish.
 4. **DNS.** Create the A record(s) for the hostname(s): DNS-only, TTL 60, comment `proxier:nl-2`. Then wait for the name to be visible ([Cloudflare](../../integrations/cloudflare.md#behaviour)):
    - First ask the zone's own nameservers (`gabe.ns.cloudflare.com` and the rest, port 53, without recursion) every 2 s until every one of them answers with the IP. A resolver asked before then gets "no such name" and may keep that answer for the zone's negative TTL (the SOA's minimum: 30 min at Cloudflare). If the nameservers can't be asked (port 53 dropped, an answer without the authoritative flag, no nameservers found), the log says why and the wait pauses 10 s instead.
    - Then wait until 1.1.1.1 and 8.8.8.8 both answer with the IP (timeout 10 min). A resolver that still answers nothing at 10 min, while the other shows the IP, probably holds a negative answer from before the record existed; the log says so, and it gets until the zone's negative TTL plus a minute has passed since the nameservers had the record.
+   - A record made by hand: Proxier writes nothing. The log says the record is made by hand, and the step waits for it the same way, with the zone found from the name's parents. When it doesn't show, the step fails and names the record to create.
 5. **Generated values.** Create every generated value the version declares (encrypted).
 6. **Render and upload.** Render the version for this server and upload the files to the manifest's `dir` (`upload-files`). Record the deployment and its rendered files.
 7. **Template install steps**, in order (in the seed template: issue the certificate, `compose up --pull`, wait for the decoy site to answer locally).
@@ -77,6 +79,7 @@ The job makes one attempt and never retries by itself: a retry may need input, s
 - The name is reserved at **Create** and never reused, even if provisioning fails and the server is retired.
 - The root password exists only encrypted in the job payload, and only until Proxier's key login works (step 2). It never appears in logs, events or the UI. A provisioning job that fails before step 2 keeps it, encrypted, until it is retried, cancelled or the server is retired.
 - Every remote change is verified before the next step depends on it: key login after installing keys, key login after the sshd change, DNS answers before certificate issuance.
+- Proxier never writes, changes or deletes a record made by hand. [IP change](./ip-change.md) checks that the member pointed it at the new IP, and [retirement](./server-retirement.md) leaves it and says to delete it at the DNS provider.
 - Provisioning never overwrites a DNS record that Proxier didn't create. A conflicting record fails step 4 with the record's current value. **Retry** then offers **Overwrite** as an explicit choice.
 - At most two provisioning jobs run at once. Each server's jobs run one at a time.
 - Health checks don't run until the server is active.
@@ -93,7 +96,13 @@ The job makes one attempt and never retries by itself: a retry may need input, s
 - "Main" holds a custom service with suffix `example.com`; the new server would be `nl-3.hosts.example.com` → refused on the form, naming the list and the service, nothing created.
 - Hostname `VPN.example.com.` typed → the summary shows `nl-2` with `vpn.example.com`. The job makes the A record for `vpn.example.com`, the certificate and the connection URIs name it, and `server.created` records it. The next server without a typed hostname gets the pattern's name again.
 - Hostname `vpn`, `my vpn.example.com`, `-vpn.example.com`, `*.example.com` or `https://vpn.example.com/` → refused, "Enter a full DNS name such as vpn.example.com.", nothing created.
-- Hostname `vpn.example.org` where no configured zone covers `example.org` → refused, "vpn.example.org is in none of the zones Proxier may use. Allow its zone under Integrations → Cloudflare."
+- Hostname `vpn.example.org` where no configured zone covers `example.org` → the summary shows `A vpn.example.org → 127.0.0.1`, "Create this record at your DNS provider…" and **Check the record**, with no error.
+- That record missing, pointing to `198.51.100.1`, or holding a second address → **Check the record** and **Create** say "vpn.example.org does not point to 127.0.0.1 yet (ns1 answered nothing). Create the record A vpn.example.org → 127.0.0.1 at your DNS provider and check again." Nothing is created.
+- That record in place → **Check the record** says "The record is in place: ns1 answered 127.0.0.1." **Create** creates the server. The job writes no record of its own, waits for the resolvers to show it, and the server goes active. `server.created` has `manual_dns: true`.
+- The record made by hand is deleted between **Create** and the DNS step → the DNS step fails: "… Make sure the record A vpn.example.org → 127.0.0.1 exists at your DNS provider, then retry".
+- The zone's nameservers can't be asked (port 53 dropped) → the check asks 1.1.1.1 and 8.8.8.8 instead. No nameservers found from the name's parents → the same.
+- Cloudflare not configured → every typed hostname is a record made by hand, in any zone. A server without a typed hostname is refused: "Cloudflare is not configured…".
+- The pattern's name in no configured zone → refused, "nl-2.hosts.example.org is in none of the zones Proxier may use. Allow its zone under Integrations → Cloudflare."
 - Hostname `nl-1.hosts.example.com` while `nl-1` is active → refused, "nl-1 already has nl-1.hosts.example.com." Once `nl-1` is retired, the name is free.
 - `de-1` was given the hostname `nl-3.hosts.example.com`; the next server in the Netherlands would get that name from the pattern → refused, naming `de-1`. Typing another hostname gets it through.
 - Two servers created at once with the same typed hostname → one is created, the other refused.

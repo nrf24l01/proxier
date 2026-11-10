@@ -22,13 +22,20 @@ templ ipPageView(s ui.Shell, v ipView) {
 				<ol class="area-body plan-steps">
 					<li>{ i18n.T(ctx, "servers.ip.first.provider") }</li>
 					<li>{ i18n.T(ctx, "servers.ip.first.vps") }</li>
+					if v.S.ManualDNS {
+						<li>{ i18n.T(ctx, "servers.ip.first.manual_dns", i18n.Args{"host": v.S.ManagementHostname}) }</li>
+					}
 				</ol>
 			}
 			@ui.Area(i18n.T(ctx, "servers.ip.what"), "") {
 				<ol class="area-body plan-steps">
 					<li>{ i18n.T(ctx, "servers.ip.what.ssh") }</li>
 					<li>{ i18n.T(ctx, "servers.ip.what.proxy") }</li>
-					<li>{ i18n.T(ctx, "servers.ip.what.dns") }</li>
+					if v.S.ManualDNS {
+						<li>{ i18n.T(ctx, "servers.ip.what.dns_manual", i18n.Args{"host": v.S.ManagementHostname}) }</li>
+					} else {
+						<li>{ i18n.T(ctx, "servers.ip.what.dns") }</li>
+					}
 					<li>{ i18n.T(ctx, "servers.ip.what.checks") }</li>
 				</ol>
 				<div class="area-body">

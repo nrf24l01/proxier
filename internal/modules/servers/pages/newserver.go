@@ -81,6 +81,7 @@ func formOf(c *echo.Context) provision.Form {
 		IP: c.FormValue("ip"), RootPassword: c.FormValue("root_password"), SSHPort: int(atoi("ssh_port")),
 		Country: countryOf(c.FormValue("country")), TemplateID: atoi("template"), Version: int(atoi("version")),
 		Notes: c.FormValue("notes"), Hostname: c.FormValue("hostname"), Params: map[string]string{},
+		CheckDNS: c.FormValue("check_dns") == "1",
 	}
 	if err := c.Request().ParseForm(); err == nil {
 		for k, vs := range c.Request().PostForm {

@@ -55,7 +55,7 @@ func TestServersMigrationsRoundTrip(t *testing.T) {
 	if err := db.MigrateUp(ctx, d, dbtest.Discard, srcs...); err != nil {
 		t.Fatal(err)
 	}
-	for range 6 {
+	for range 7 {
 		if err := db.MigrateDown(ctx, d, dbtest.Discard, source{}); err != nil {
 			t.Fatalf("down: %v", err)
 		}

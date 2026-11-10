@@ -68,9 +68,10 @@ type Harness struct {
 	stubbed    bool
 	stallSmoke bool
 	accepts    func(endpoint.Endpoint) bool
-	refused    map[string]bool   // IPs whose SSH dial is refused (Unreachable)
-	blocked    map[string]bool   // IPs the stubbed proxy test fails at (BlockIP)
-	routes     map[string]string // IPs whose SSH dial goes elsewhere (RouteSSH)
+	refused    map[string]bool         // IPs whose SSH dial is refused (Unreachable)
+	blocked    map[string]bool         // IPs the stubbed proxy test fails at (BlockIP)
+	routes     map[string]string       // IPs whose SSH dial goes elsewhere (RouteSSH)
+	byHand     map[string][]netip.Addr // records made by hand at another DNS provider (SetRecord)
 	extra      func(m *servers.Module) []module.Module
 }
 
@@ -362,6 +363,9 @@ func (h *Harness) lookup(_ context.Context, _ dns.Resolver, name string) ([]neti
 	if !visible {
 		return nil, "doh", nil
 	}
+	if a, ok := h.recordByHand(name); ok {
+		return a, "doh", nil
+	}
 	for _, r := range h.CF.Records("proxier.test") {
 		if r.Name == name {
 			if a, err := netip.ParseAddr(r.Content); err == nil {
@@ -387,6 +391,9 @@ func (h *Harness) ask(_ context.Context, _ dns.NameServer, name string) ([]netip
 	if down {
 		return nil, errors.New("i/o timeout")
 	}
+	if a, ok := h.recordByHand(name); ok {
+		return a, nil
+	}
 	var out []netip.Addr
 	for _, r := range h.CF.Records("proxier.test") {
 		if a, err := netip.ParseAddr(r.Content); err == nil && r.Name == name {
@@ -394,6 +401,30 @@ func (h *Harness) ask(_ context.Context, _ dns.NameServer, name string) ([]netip
 		}
 	}
 	return out, nil
+}
+
+// SetRecord makes an A record by hand at another DNS provider, outside the
+// Cloudflare zones: name points to ips, and to nothing when there are none.
+// The zone's nameservers serve it at once, and the resolvers too unless
+// HideDNS hides them.
+func (h *Harness) SetRecord(name string, ips ...string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.byHand == nil {
+		h.byHand = map[string][]netip.Addr{}
+	}
+	var a []netip.Addr
+	for _, ip := range ips {
+		a = append(a, netip.MustParseAddr(ip))
+	}
+	h.byHand[name] = a
+}
+
+func (h *Harness) recordByHand(name string) ([]netip.Addr, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	a, ok := h.byHand[name]
+	return a, ok
 }
 
 // NameserversDown makes the zone's nameservers unreachable, as a home router

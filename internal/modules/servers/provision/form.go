@@ -46,6 +46,9 @@ type Form struct {
 	// Hostname is the server's management and proxy hostname; "" takes the
 	// name the hostname pattern gives.
 	Hostname string
+	// CheckDNS asks the summary to check a record made by hand now (the
+	// Check button). Create always checks it.
+	CheckDNS bool
 }
 
 // Msg is a refusal: an i18n key and its arguments.
@@ -69,8 +72,16 @@ func (fe FieldErrors) Error() string {
 // Summary is what the live summary shows while the admin types.
 type Summary struct {
 	Name, ManagementHostname, ProxyHostname string
-	// DNSRecord is the record that will be written: "A <name> → <ip>, DNS only, TTL 60".
+	// DNSRecord is the record that will be written: "A <name> → <ip>, DNS only, TTL 60",
+	// or with ManualDNS the one the member creates: "A <name> → <ip>".
 	DNSRecord string
+	// ManualDNS: the hostname is in none of the Cloudflare zones, so the
+	// member creates its record by hand at their DNS provider.
+	ManualDNS bool
+	// DNSFound is what the check of a record made by hand found when it is
+	// in place ("ns1.example.net answered 203.0.113.10"); a record that is
+	// not is in Errors["dns"].
+	DNSFound  string
 	Endpoints []string // display names
 	// Suggested is the IP's country, "" when unknown or not asked for.
 	Suggested string
@@ -100,8 +111,12 @@ type checked struct {
 	man      *manifest.Manifest
 	number   int
 	hostname string
-	public   map[string]string // non-secret parameters, as stored
-	secret   map[string]string
+	// manualDNS: a typed hostname in none of the Cloudflare zones; found is
+	// what its check found, when it ran and passed.
+	manualDNS bool
+	found     string
+	public    map[string]string // non-secret parameters, as stored
+	secret    map[string]string
 }
 
 func fe(errs FieldErrors, field, key string, args ...any) {
@@ -237,10 +252,19 @@ func (s *Service) check(ctx context.Context, f Form, withPassword bool) (*checke
 		}
 		s.checkRouting(ctx, c.hostname, errs)
 	}
-	if token, err := s.Settings.Get(ctx, cloudflare.TokenKey); err == nil && token == "" {
+	// A typed hostname outside the Cloudflare zones is the member's to point
+	// by hand; a pattern's name must be in one.
+	typed := c.form.Hostname != ""
+	token, terr := s.Settings.Get(ctx, cloudflare.TokenKey)
+	switch noCF := terr == nil && token == ""; {
+	case noCF && typed:
+		c.manualDNS = c.hostname != ""
+	case noCF:
 		fe(errs, "dns", "servers.err.no_cloudflare")
-	} else if c.hostname != "" {
+	case c.hostname != "":
 		switch _, ok, err := s.DNS().Covers(ctx, c.hostname); {
+		case errors.Is(err, dns.ErrNotConfigured) && typed, err == nil && !ok && typed:
+			c.manualDNS = true
 		case errors.Is(err, dns.ErrNotConfigured):
 			fe(errs, "dns", "servers.err.no_cloudflare")
 		case err != nil:
@@ -249,7 +273,24 @@ func (s *Service) check(ctx context.Context, f Form, withPassword bool) (*checke
 			fe(errs, "dns", "servers.err.not_covered", "host", c.hostname)
 		}
 	}
+	if c.manualDNS && (withPassword || f.CheckDNS) && addr.Is4() && !addr.Is4In6() {
+		s.checkManualDNS(ctx, c, errs)
+	}
 	return c, errs
+}
+
+// checkManualDNS checks that the record made by hand points the hostname at
+// the IP, and only there.
+func (s *Service) checkManualDNS(ctx context.Context, c *checked, errs FieldErrors) {
+	found, err := s.Waiter().Check(ctx, c.hostname, c.form.IP)
+	switch {
+	case err != nil:
+		fe(errs, "dns", "servers.err.dns_manual_check", "host", c.hostname, "error", err.Error())
+	case !found.OK:
+		fe(errs, "dns", "servers.err.dns_manual_missing", "host", c.hostname, "ip", c.form.IP, "said", found.Said)
+	default:
+		c.found = found.Said
+	}
 }
 
 // NormalizeHostname is the hostname as typed in the form, trimmed and in
@@ -329,6 +370,10 @@ func (s *Service) Summarize(ctx context.Context, f Form, suggest bool) Summary {
 	sum.Name = fmt.Sprintf("%s-%d", c.prefix, c.number)
 	sum.ManagementHostname, sum.ProxyHostname = c.hostname, c.hostname
 	sum.DNSRecord = fmt.Sprintf("A %s → %s, DNS only, TTL 60", c.hostname, c.form.IP)
+	if c.manualDNS {
+		sum.ManualDNS, sum.DNSFound = true, c.found
+		sum.DNSRecord = fmt.Sprintf("A %s → %s", c.hostname, c.form.IP)
+	}
 	if c.man != nil {
 		many := len(c.man.Endpoints) > 1
 		for _, e := range c.man.Endpoints {
@@ -415,7 +460,7 @@ func (s *Service) Create(ctx context.Context, f Form, actor string) (int64, erro
 		id, err = store.InsertServer(ctx, tx, store.NewServer{
 			Country: c.form.Country, Number: number, Name: fmt.Sprintf("%s-%d", c.prefix, number), IP: c.form.IP, SSHPort: c.form.SSHPort,
 			ManagementHostname: host, ProxyHostname: host, TemplateID: c.tpl.ID, TemplateVersion: c.version,
-			Params: marshalStrings(c.public), Notes: f.Notes,
+			Params: marshalStrings(c.public), Notes: f.Notes, ManualDNS: c.manualDNS,
 		}, db.At(s.Now()), func(id int64) []byte { return sealed.SealParams(s.Vault, id, c.secret) })
 		if errors.Is(err, store.ErrIPInUse) {
 			return FieldErrors{"ip": {Key: "servers.err.ip_used", Args: i18n.Args{"name": "?"}}}
@@ -434,7 +479,7 @@ func (s *Service) Create(ctx context.Context, f Form, actor string) (int64, erro
 			return err
 		}
 		_, err = s.Events.Record(ctx, tx, events.Event{Type: "server.created", Subject: store.ServerSubject(id), Actor: actor,
-			Payload: map[string]any{"ip": c.form.IP, "country": c.form.Country, "hostname": host, "template_version": c.version}})
+			Payload: map[string]any{"ip": c.form.IP, "country": c.form.Country, "hostname": host, "manual_dns": c.manualDNS, "template_version": c.version}})
 		return err
 	})
 	if err != nil {

@@ -369,6 +369,9 @@ func (s *Service) dnsStep(ctx context.Context, r *jobs.Run, d *data) error {
 	if srv.ProxyHostname != srv.ManagementHostname {
 		names = append(names, srv.ProxyHostname)
 	}
+	if srv.ManualDNS {
+		return s.manualDNSStep(ctx, r, srv, names)
+	}
 	drv := s.DNS()
 	zones := map[string]string{}
 	for _, name := range names {
@@ -399,6 +402,24 @@ func (s *Service) dnsStep(ctx context.Context, r *jobs.Run, d *data) error {
 			if errors.Is(err, dns.ErrNotVisible) {
 				return fmt.Errorf("%s is not visible on every resolver: %w", name, err)
 			}
+			return err
+		}
+	}
+	return nil
+}
+
+// manualDNSStep is the DNS step of a hostname in none of the Cloudflare
+// zones: the member made its record by hand, so Proxier writes nothing and
+// waits for the resolvers to show it, as for its own records.
+func (s *Service) manualDNSStep(ctx context.Context, r *jobs.Run, srv store.Server, names []string) error {
+	w := s.Waiter()
+	for _, name := range names {
+		r.Log().Info("%s is in none of the Cloudflare zones: its record is made by hand. Waiting for resolvers to show %s", name, name)
+		err := w.Wait(ctx, w.Apex(ctx, name), name, srv.IP, r.Log())
+		if errors.Is(err, dns.ErrNotVisible) {
+			return fmt.Errorf("%s does not point to %s on every resolver. Make sure the record A %s → %s exists at your DNS provider, then retry: %w", name, srv.IP, name, srv.IP, err)
+		}
+		if err != nil {
 			return err
 		}
 	}

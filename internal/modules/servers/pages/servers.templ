@@ -247,7 +247,24 @@ templ summaryBody(v newView) {
 			<dt>{ i18n.T(ctx, "servers.new.sum.dns") }</dt>
 			<dd>
 				{ v.Sum.DNSRecord }
-				<div class="sm subtle">proxier:{ v.Sum.Name }</div>
+				if v.Sum.ManualDNS {
+					<div class="sm subtle">{ i18n.T(ctx, "servers.new.sum.dns.manual") }</div>
+					if v.Sum.DNSFound != "" {
+						<div class="sm" role="status">{ i18n.T(ctx, "servers.new.sum.dns.found", i18n.Args{"said": v.Sum.DNSFound}) }</div>
+					}
+					<button
+						type="button"
+						class="pc-btn pc-sm"
+						hx-post="/servers/new/summary"
+						hx-vals='{"check_dns": "1"}'
+						hx-params="not root_password"
+						hx-target="#summary"
+						hx-swap="innerHTML"
+						data-action="srv.check_dns"
+					>{ i18n.T(ctx, "servers.new.sum.dns.check") }</button>
+				} else {
+					<div class="sm subtle">proxier:{ v.Sum.Name }</div>
+				}
 			</dd>
 			<dt>{ i18n.T(ctx, "servers.new.sum.endpoints") }</dt>
 			<dd>

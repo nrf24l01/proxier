@@ -12,8 +12,9 @@ Proxier has no provider APIs. Before **Change IP** the member:
 
 1. Adds the IP to the VPS at the provider.
 2. Makes sure the VPS answers on it, while keeping the current IP. Some providers configure an added IP by themselves. Others need it added to the network interface (a second address in netplan or `/etc/network/interfaces`). The stack listens on every address, so nothing in it changes.
+3. For a server whose hostname has a record made by hand ([provisioning](./server-provisioning.md)): points the record at the new IP at their DNS provider. Proxier can't change it.
 
-The dialog lists both steps.
+The dialog lists these steps.
 
 ## Steps: the dialog
 
@@ -34,7 +35,7 @@ The job holds `server:<id>`, so no other job changes the server meanwhile. Until
 
 1. **Reach the new IP.** Connect over SSH as `proxier` with Proxier's key, at the new IP and the server's SSH port. When that address has no pinned host key yet, its key must be the one pinned for the server's current address, which proves it is the same machine. Only then does Proxier pin the key for the new address ([ADR 0007](../../adr/0007-agentless-ssh-with-pinned-host-keys.md)). Another key fails the job ("it is another machine") and pins nothing. No answer fails it too, asking whether the IP is set up on the VPS.
 2. **Proxy test.** The proxy test from home through every endpoint, aimed at the new IP: the hostname stays in TLS and HTTP, as a client's will once DNS leads there. Up to 3 attempts, 20 s apart, like the smoke test. A failure stops the job ("failed from home too … nothing was changed"), unless the member chose to switch anyway; then it logs a warning and goes on.
-3. **Repoint DNS.** Bring each record Proxier made for the server (the management hostname's, and the proxy hostname's once they differ) to the new IP, keeping its comment, DNS-only and TTL 60. A record at the name that Proxier did not make stops the job, with nothing changed. Then, in one transaction:
+3. **Repoint DNS.** For a record made by hand, Proxier only checks it: the zone's nameservers (or 1.1.1.1 and 8.8.8.8 when they can't be asked) must answer the new IP and nothing else. Otherwise the job stops with nothing changed and names the record to set. For the rest: bring each record Proxier made for the server (the management hostname's, and the proxy hostname's once they differ) to the new IP, keeping its comment, DNS-only and TTL 60. A record at the name that Proxier did not make stops the job, with nothing changed. Then, in one transaction:
    - store the record's new content and the server's new IP, and the time of the change;
    - when the new IP was a previous IP, drop it from the list, since the server switched back;
    - when **Keep** was checked, keep the IP it left as a previous IP, untested so far;
@@ -77,6 +78,7 @@ A failed or cancelled job → `server.ip_change_failed{to, step, error, cancelle
 - Switch back to a previous IP → the server is at it again, it leaves the list, the IP left becomes a previous IP, `back: true` (`TestSwitchBackToAPreviousIP`).
 - The form refuses an empty IP, an IPv6 address, a name, the server's own IP, another server's IP and another server's previous IP, and queues nothing (`TestChangeFormRefusals`).
 - The record at the hostname no longer carries Proxier's comment → fails at **Repoint DNS**, nothing changed (`TestConflictingDNSRecordChangesNothing`).
+- A record made by hand still at the old IP → fails at **Repoint DNS**: "… Change it to A vpn.example.org → 10.77.0.5 at your DNS provider, then change the IP again; nothing was changed". Pointed at the new IP → the server moves, and Proxier writes no record (`TestChangeWithARecordMadeByHand`). The dialog lists the step and says what the job checks (`TestNewServerHostnameByHand`).
 - The wait asks the zone's nameservers for the new IP before the resolvers; with port 53 to them dropped it pauses and goes on, and the change succeeds (`TestWaitAsksTheNameserversFirst`).
 - **Forget** → the previous IP, its results and its host key are gone, a second Forget is not found, and a new server can be built at that IP (`TestForgetAPreviousIP`).
 - A template whose stack uses `.Server.IP` → the dialog's band and the job's log ask for a redeploy; the seed template doesn't (`TestStackThatNamesTheIPAsksForARedeploy`, `TestChangeIPPages`).

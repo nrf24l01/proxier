@@ -29,7 +29,9 @@ templ retirePageView(s ui.Shell, v retireView) {
 			}
 			@ui.Area(i18n.T(ctx, "servers.retire.dns"), "") {
 				<div class="area-body">
-					if len(v.DNS) == 0 {
+					if v.S.ManualDNS {
+						<p class="subtle">{ i18n.T(ctx, "servers.retire.dns_manual", i18n.Args{"host": v.S.ManagementHostname}) }</p>
+					} else if len(v.DNS) == 0 {
 						<p class="subtle">{ i18n.T(ctx, "servers.retire.dns_none") }</p>
 					}
 					for _, r := range v.DNS {

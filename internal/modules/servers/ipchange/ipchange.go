@@ -368,9 +368,26 @@ func (s *Service) dnsStep(ctx context.Context, r *jobs.Run) error {
 		r.Log().Info("%s is at %s already", srv.Name, p.To)
 		return nil
 	}
+	// Proxier writes the records in its zones; a record made by hand the
+	// member points first, and the change checks it.
+	toWrite := hostnames(srv)
+	if srv.ManualDNS {
+		toWrite = nil
+		w := s.Waiter()
+		for _, name := range hostnames(srv) {
+			found, err := w.Check(ctx, name, p.To)
+			if err != nil {
+				return fmt.Errorf("check the record of %s: %w", name, err)
+			}
+			if !found.OK {
+				return jobs.Permanent(fmt.Errorf("%s is in none of the Cloudflare zones, so its record is made by hand, and it does not point to %s yet (%s). Change it to A %s → %s at your DNS provider, then change the IP again; nothing was changed", name, p.To, found.Said, name, p.To))
+			}
+			r.Log().Info("%s points to %s (%s)", name, p.To, found.Said)
+		}
+	}
 	drv := s.DNS()
 	var recs []dns.Record
-	for _, name := range hostnames(srv) {
+	for _, name := range toWrite {
 		rec, err := drv.Ensure(ctx, name, p.To, srv.Name, false)
 		var conflict *dns.ConflictError
 		if errors.As(err, &conflict) {
@@ -466,6 +483,9 @@ func (s *Service) waitDNS(ctx context.Context, r *jobs.Run) error {
 	}
 	w := s.Waiter()
 	for _, name := range hostnames(srv) {
+		if srv.ManualDNS {
+			zones[name] = w.Apex(ctx, name)
+		}
 		r.Log().Info("Waiting for resolvers to show %s → %s", name, srv.IP)
 		err := w.Wait(ctx, zones[name], name, srv.IP, r.Log())
 		switch {

@@ -65,8 +65,8 @@ var serverMessages = i18n.Messages{
 	"servers.new.country.help":        {EN: "Suggested from the IP's country. Its code is the first half of the server name.", RU: "Предлагается по стране IP. Её код — первая половина имени сервера."},
 	"servers.new.hostname":            {EN: "Hostname", RU: "Имя хоста"},
 	"servers.new.hostname.help": {
-		EN: "Leave empty for the name from the hostname pattern. Any name in your Cloudflare zones works; clients connect to it and its certificate names it.",
-		RU: "Оставьте пустым, чтобы взять имя из шаблона имени хоста. Подойдёт любое имя в ваших зонах Cloudflare: к нему подключаются клиенты, на него выпускается сертификат.",
+		EN: "Leave empty for the name from the hostname pattern. Clients connect to this name and its certificate names it. Proxier writes the record of a name in your Cloudflare zones; for any other name you create it by hand.",
+		RU: "Оставьте пустым, чтобы взять имя из шаблона имени хоста. К этому имени подключаются клиенты, на него выпускается сертификат. Запись для имени в ваших зонах Cloudflare Proxier создаст сам, для любого другого имени её создаёте вы.",
 	},
 	"servers.new.suggested":         {EN: "Suggested from the IP ({country}). You can pick another.", RU: "Предложена по IP ({country}). Можно выбрать другую."},
 	"servers.new.template":          {EN: "Template", RU: "Шаблон"},
@@ -87,9 +87,15 @@ var serverMessages = i18n.Messages{
 	"servers.new.sum.host":          {EN: "Host", RU: "Хост"},
 	"servers.new.sum.host.note":     {EN: "management and proxy", RU: "управление и прокси"},
 	"servers.new.sum.dns":           {EN: "DNS record", RU: "DNS-запись"},
-	"servers.new.sum.endpoints":     {EN: "Endpoints", RU: "Точки входа"},
-	"servers.new.sum.shown_as":      {EN: "apps show it as", RU: "приложения покажут как"},
-	"servers.new.sum.look":          {EN: "Needs a look", RU: "Нужно проверить"},
+	"servers.new.sum.dns.manual": {
+		EN: "The name is in none of your Cloudflare zones. Create this record at your DNS provider, not proxied, with a short TTL. Proxier checks it before it creates the server.",
+		RU: "Имя не входит ни в одну из ваших зон Cloudflare. Создайте эту запись у своего DNS-провайдера, без проксирования, с коротким TTL. Proxier проверит её перед созданием сервера.",
+	},
+	"servers.new.sum.dns.found": {EN: "The record is in place: {said}.", RU: "Запись на месте: {said}."},
+	"servers.new.sum.dns.check": {EN: "Check the record", RU: "Проверить запись"},
+	"servers.new.sum.endpoints": {EN: "Endpoints", RU: "Точки входа"},
+	"servers.new.sum.shown_as":  {EN: "apps show it as", RU: "приложения покажут как"},
+	"servers.new.sum.look":      {EN: "Needs a look", RU: "Нужно проверить"},
 
 	// form refusals
 	"servers.err.ip_required":         {EN: "Enter the server's IP address.", RU: "Введите IP-адрес сервера."},
@@ -118,9 +124,14 @@ var serverMessages = i18n.Messages{
 	"servers.err.hostname_used":       {EN: "{name} already has {host}.", RU: "Имя {host} уже у сервера {name}."},
 	"servers.err.no_cloudflare":       {EN: "Cloudflare is not configured. Save an API token under Settings → Integrations → Cloudflare.", RU: "Cloudflare не настроен. Сохраните API-токен в Настройки → Интеграции → Cloudflare."},
 	"servers.err.not_covered":         {EN: "{host} is in none of the zones Proxier may use. Allow its zone under Integrations → Cloudflare.", RU: "{host} не входит ни в одну разрешённую зону. Разрешите зону в Интеграции → Cloudflare."},
-	"servers.err.dns_check":           {EN: "Cannot check the DNS zone: {error}", RU: "Не удалось проверить DNS-зону: {error}"},
-	"servers.err.routed":              {EN: "{host} is covered by {domain} ({service}) in {list}: Proxier's checks would go into the tunnel. Take it out of the list first.", RU: "{host} охвачен доменом {domain} ({service}) в списке {list}: проверки Proxier пошли бы в туннель. Сначала уберите его из списка."},
-	"servers.err.routing_check":       {EN: "Cannot check the routing lists: {error}", RU: "Не удалось проверить списки маршрутизации: {error}"},
+	"servers.err.dns_manual_missing": {
+		EN: "{host} does not point to {ip} yet ({said}). Create the record A {host} → {ip} at your DNS provider and check again.",
+		RU: "{host} пока не указывает на {ip} ({said}). Создайте запись A {host} → {ip} у своего DNS-провайдера и проверьте снова.",
+	},
+	"servers.err.dns_manual_check": {EN: "Cannot check the record of {host}: {error}", RU: "Не удалось проверить запись {host}: {error}"},
+	"servers.err.dns_check":        {EN: "Cannot check the DNS zone: {error}", RU: "Не удалось проверить DNS-зону: {error}"},
+	"servers.err.routed":           {EN: "{host} is covered by {domain} ({service}) in {list}: Proxier's checks would go into the tunnel. Take it out of the list first.", RU: "{host} охвачен доменом {domain} ({service}) в списке {list}: проверки Proxier пошли бы в туннель. Сначала уберите его из списка."},
+	"servers.err.routing_check":    {EN: "Cannot check the routing lists: {error}", RU: "Не удалось проверить списки маршрутизации: {error}"},
 
 	// the server page
 	"servers.tabs":                {EN: "Server", RU: "Сервер"},
