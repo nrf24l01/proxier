@@ -133,6 +133,12 @@ The tailnet state is not in the database or its snapshots.
 - The `image` job runs after both, on pushes to `main` and `v*` tags. It builds `linux/amd64` with buildx and pushes `code.tikhonnnnn.com/tikhon/proxier` with `:<sha>`, `:main` and `:latest` for `main`, and `:<tag>` for releases. `APP_VERSION` is `<ref>-<sha7>`. The image is public.
 - Forgejo's automatic token can't write packages, so the job logs in with the repository secret `REGISTRY_TOKEN`, an access token with the `write:package` scope.
 
+`.github/workflows/ci.yaml` runs the same validation on GitHub pull requests and pushes to `main`. Go dependencies and build outputs use setup-go's cache on GitHub-hosted runners. Superseded PR runs are cancelled.
+
+- After both `test` and `lint` pass on `main`, the `image` job builds the same Dockerfile's `prod` target for `linux/amd64` and publishes `ghcr.io/tikhonp/proxier:<sha>`, `:main` and `:latest`. The build arguments match Forgejo: `APP_VERSION=main-<sha7>`, the commit timestamp and full commit SHA. PRs and release tags do not build or publish GitHub images.
+- Publishing uses the automatic `GITHUB_TOKEN` with `packages: write` scoped to the image job; no registry secret is needed. After the first publish, set the GHCR package's visibility to public if anonymous pulls are wanted. Use `ghcr.io/tikhonp/proxier:latest` in the compose file to pull from GitHub.
+- Require pull requests and the `test` and `lint` status checks in GitHub's branch protection or ruleset for `main` to enforce merge-only publishing. The workflow runs on pushes to `main`, including direct pushes if repository rules allow them. Main runs are serialized so image publishing cannot overlap.
+
 To run your own build, `docker build -t proxier .` and use that image in the compose file.
 
 ## Operating notes

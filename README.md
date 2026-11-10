@@ -25,6 +25,8 @@ volumes:
   proxier-data:
 ```
 
+GitHub Container Registry is also available: use `ghcr.io/tikhonp/proxier:latest` for the same production build. See [Images and CI](docs/deployment.md#images-and-ci) for publishing and registry setup.
+
 Then:
 
 ```sh
