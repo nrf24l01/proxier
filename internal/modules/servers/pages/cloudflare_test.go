@@ -19,7 +19,7 @@ const cfToken = "cf-page-TOKEN-0123456789"
 func cloudflareSite(t *testing.T) (*sitetest.Site, *sitetest.Login, *cloudflaretest.Fake) {
 	t.Helper()
 	s := sitetest.New(t, sitetest.Options{Modules: []module.Module{servers.New()}})
-	f := cloudflaretest.New(t, cfToken, "tikhonnnnn.com", "example.org")
+	f := cloudflaretest.New(t, cfToken, "proxier.test", "example.org")
 	mod, _ := s.App.Module("servers")
 	mod.(*servers.Module).CloudflareClient = f.ClientFor
 	return s, s.SignIn(""), f
@@ -57,7 +57,7 @@ func TestCloudflareSettingsPage(t *testing.T) {
 	}
 
 	// Cloudflare being unreachable is not "refused", and saves nothing either
-	f2 := cloudflaretest.New(t, cfToken, "tikhonnnnn.com")
+	f2 := cloudflaretest.New(t, cfToken, "proxier.test")
 	f2.Fail("GET /user/tokens/verify", 500, 500, 500, 500)
 	mod, _ := s.App.Module("servers")
 	mod.(*servers.Module).CloudflareClient = f2.ClientFor
@@ -76,7 +76,7 @@ func TestCloudflareSettingsPage(t *testing.T) {
 		t.Error("the token was not saved")
 	}
 	body = l.Get("/settings/integrations/cloudflare?saved=token").Body.String()
-	for _, want := range []string{"Token saved.", `value="tikhonnnnn.com"`, `value="example.org"`} {
+	for _, want := range []string{"Token saved.", `value="proxier.test"`, `value="example.org"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page after the token lacks %q", want)
 		}
@@ -86,12 +86,12 @@ func TestCloudflareSettingsPage(t *testing.T) {
 	}
 
 	// ticking saves cloudflare.zones; a name the token does not see is dropped
-	rec = l.Post("/settings/integrations/cloudflare/zones", url.Values{"zone": {"tikhonnnnn.com", "not-mine.net"}})
-	if rec.Code != http.StatusSeeOther || get("cloudflare.zones") != "tikhonnnnn.com" {
+	rec = l.Post("/settings/integrations/cloudflare/zones", url.Values{"zone": {"proxier.test", "not-mine.net"}})
+	if rec.Code != http.StatusSeeOther || get("cloudflare.zones") != "proxier.test" {
 		t.Fatalf("zones: %d, saved %q", rec.Code, get("cloudflare.zones"))
 	}
 	body = l.Get("/settings/integrations/cloudflare?saved=zones").Body.String()
-	if !strings.Contains(body, `value="tikhonnnnn.com" checked`) || strings.Contains(body, `value="example.org" checked`) || !strings.Contains(body, "Zones saved.") {
+	if !strings.Contains(body, `value="proxier.test" checked`) || strings.Contains(body, `value="example.org" checked`) || !strings.Contains(body, "Zones saved.") {
 		t.Errorf("after ticking:\n%s", body)
 	}
 	if body := l.Get("/settings/integrations").Body.String(); !strings.Contains(body, "Token saved · allowed zones: 1") {
@@ -111,7 +111,7 @@ func TestCloudflareSettingsPage(t *testing.T) {
 		t.Errorf("revoked token in Test:\n%s", body)
 	}
 	// ...and saving zones then changes nothing
-	if rec := l.Post("/settings/integrations/cloudflare/zones", url.Values{"zone": {"example.org"}}); rec.Code == http.StatusSeeOther || get("cloudflare.zones") != "tikhonnnnn.com" {
+	if rec := l.Post("/settings/integrations/cloudflare/zones", url.Values{"zone": {"example.org"}}); rec.Code == http.StatusSeeOther || get("cloudflare.zones") != "proxier.test" {
 		t.Errorf("zones saved with a dead token: %d, %q", rec.Code, get("cloudflare.zones"))
 	}
 
@@ -119,7 +119,7 @@ func TestCloudflareSettingsPage(t *testing.T) {
 	if rec := s.Do(sitetest.Req{Path: "/settings/integrations/cloudflare"}); rec.Code == http.StatusOK {
 		t.Errorf("signed out: %d", rec.Code)
 	}
-	if z, ok, _ := mod.(*servers.Module).DNS.Covers(t.Context(), "nl-1.hosts.tikhonnnnn.com"); !ok || z != "tikhonnnnn.com" {
+	if z, ok, _ := mod.(*servers.Module).DNS.Covers(t.Context(), "nl-1.hosts.proxier.test"); !ok || z != "proxier.test" {
 		t.Errorf("the driver does not see the saved zones: %q %v", z, ok)
 	}
 	var _ = cloudflare.ErrTokenRejected

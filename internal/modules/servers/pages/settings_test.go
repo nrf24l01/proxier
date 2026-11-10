@@ -22,10 +22,21 @@ func TestServersSettingsZoneWarning(t *testing.T) {
 		}
 	}
 	const warning = "is in no zone allowed for Cloudflare"
+	const unset = "No hostname pattern yet, so no server can be built."
 
-	// no zone allowed yet: the default pattern warns, and says which host it makes
+	// a new install: no pattern, so it asks for one, without the zone's link
 	body := l.Get("/settings/servers").Body.String()
-	if !strings.Contains(body, "xx-1.hosts.tikhonnnnn.com") || !strings.Contains(body, warning) || !strings.Contains(body, `href="/settings/integrations/cloudflare"`) {
+	if !strings.Contains(body, unset) || strings.Contains(body, warning) || strings.Contains(body, `<a href="/settings/integrations/cloudflare">`) {
+		t.Errorf("no pattern:\n%s", body)
+	}
+
+	// no zone allowed yet: the pattern warns, and says which host it makes
+	set("servers", map[string]string{"servers.hostname_pattern": "{country}-{number}.hosts.proxier.test"})
+	body = l.Get("/settings/servers").Body.String()
+	if strings.Contains(body, unset) {
+		t.Errorf("pattern set but asked for:\n%s", body)
+	}
+	if !strings.Contains(body, "xx-1.hosts.proxier.test") || !strings.Contains(body, warning) || !strings.Contains(body, `href="/settings/integrations/cloudflare"`) {
 		t.Errorf("no zone allowed:\n%s", body)
 	}
 	// the sentence and its link are one item of the alert's flex row: as items of
@@ -39,7 +50,7 @@ func TestServersSettingsZoneWarning(t *testing.T) {
 	}
 
 	// the zone is allowed: no warning
-	set("cloudflare", map[string]string{"cloudflare.zones": "tikhonnnnn.com"})
+	set("cloudflare", map[string]string{"cloudflare.zones": "proxier.test"})
 	if body := l.Get("/settings/servers").Body.String(); strings.Contains(body, warning) {
 		t.Errorf("zone allowed but warned:\n%s", body)
 	}
@@ -50,7 +61,7 @@ func TestServersSettingsZoneWarning(t *testing.T) {
 		t.Errorf("another domain:\n%s", body)
 	}
 	// ...until that zone is allowed too (longest suffix wins, any allowed zone counts)
-	set("cloudflare", map[string]string{"cloudflare.zones": "tikhonnnnn.com,example.org"})
+	set("cloudflare", map[string]string{"cloudflare.zones": "proxier.test,example.org"})
 	if body := l.Get("/settings/servers").Body.String(); strings.Contains(body, warning) {
 		t.Errorf("both zones allowed but warned")
 	}
@@ -73,7 +84,7 @@ func TestServersSettingsSave(t *testing.T) {
 
 	// every refusal is shown beside its field and nothing is saved
 	rec := l.Post("/settings/servers", url.Values{
-		"servers.hostname_pattern":   {"{country}-{number}.hosts.tikhonnnnn.com"},
+		"servers.hostname_pattern":   {"{country}-{number}.hosts.proxier.test"},
 		"servers.ip_country_url":     {"http://ipinfo.io/{ip}/country"},
 		"servers.proxy_test_url":     {"ftp://files.example.com/x"},
 		"servers.proxy_test_timeout": {"1s"},
@@ -112,5 +123,27 @@ func TestServersSettingsSave(t *testing.T) {
 	}
 	if body := l.Get("/settings/servers?saved=1").Body.String(); !strings.Contains(body, "Saved") {
 		t.Errorf("no confirmation:\n%s", body)
+	}
+}
+
+// The dashboard's first-run list asks for what a server needs, until a server
+// exists and nothing is missing.
+func TestDashboardFirstRun(t *testing.T) {
+	s := sitetest.New(t, sitetest.Options{Modules: []module.Module{servers.New()}})
+	l := s.SignIn("")
+	const cloudflare, pattern, first = "Connect Cloudflare", "Set the hostname pattern", "Add the first server"
+
+	body := l.Get("/").Body.String()
+	for _, want := range []string{cloudflare, pattern, first, `href="/settings/servers"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("a new install: no %q", want)
+		}
+	}
+	if err := s.App.Settings.Set(t.Context(), "admin", "servers", map[string]string{"servers.hostname_pattern": "{country}-{number}.hosts.proxier.test"}); err != nil {
+		t.Fatal(err)
+	}
+	body = l.Get("/").Body.String()
+	if strings.Contains(body, pattern) || !strings.Contains(body, cloudflare) || !strings.Contains(body, first) {
+		t.Errorf("pattern set:\n%s", body)
 	}
 }

@@ -14,8 +14,8 @@ var messages = i18n.Messages{
 	"settings.servers":                        {EN: "Servers", RU: "Серверы"},
 	"settings.field.servers.hostname_pattern": {EN: "Hostname pattern", RU: "Шаблон имени хоста"},
 	"settings.field.servers.hostname_pattern.help": {
-		EN: "{country} (the server's country code in lower case, nl) and {number} are replaced for each server. The domain must be in a zone allowed under Integrations → Cloudflare.",
-		RU: "{country} (код страны сервера строчными, nl) и {number} подставляются для каждого сервера. Домен должен быть в зоне, разрешённой в Интеграции → Cloudflare.",
+		EN: "For example {country}-{number}.hosts.example.com. {country} (the server's country code in lower case, nl) and {number} are replaced for each server. The domain must be in a zone allowed under Integrations → Cloudflare.",
+		RU: "Например, {country}-{number}.hosts.example.com. {country} (код страны сервера строчными, nl) и {number} подставляются для каждого сервера. Домен должен быть в зоне, разрешённой в Интеграции → Cloudflare.",
 	},
 	"settings.field.servers.ip_country_url": {EN: "IP → country lookup", RU: "Страна по IP"},
 	"settings.field.servers.ip_country_url.help": {
@@ -47,6 +47,10 @@ var messages = i18n.Messages{
 	"servers.settings.zone_warning": {
 		EN: "The hostname pattern gives {host}, which is in no zone allowed for Cloudflare, so no server can be built yet.",
 		RU: "По шаблону получается {host}, а этого домена нет ни в одной зоне, разрешённой для Cloudflare, поэтому построить сервер пока нельзя.",
+	},
+	"servers.settings.pattern_warning": {
+		EN: "No hostname pattern yet, so no server can be built. Set one below, in a zone allowed for Cloudflare.",
+		RU: "Шаблон имени хоста не задан, поэтому построить сервер нельзя. Задайте его ниже, в зоне, разрешённой для Cloudflare.",
 	},
 	"servers.settings.zone_warning_link": {EN: "Allow a zone", RU: "Разрешить зону"},
 

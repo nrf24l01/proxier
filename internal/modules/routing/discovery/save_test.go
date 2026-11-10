@@ -12,27 +12,27 @@ import (
 	"github.com/tikhonp/proxier/internal/platform/access"
 )
 
-// homeRun is a finished run of tikhonnnnn.com that also loads example.org.
+// homeRun is a finished run of proxier.test that also loads example.org.
 func homeRun(t *testing.T, h *routingtest.Harness, b interface {
 	Site(string, string, discovery.Result)
 }) int64 {
 	t.Helper()
-	url := "https://tikhonnnnn.com/"
+	url := "https://proxier.test/"
 	b.Site(url, "", loaded(url, "Tikhon's site",
-		req(url, "tikhonnnnn.com"), req("https://www.tikhonnnnn.com/a", "www.tikhonnnnn.com"),
+		req(url, "proxier.test"), req("https://www.proxier.test/a", "www.proxier.test"),
 		req("https://assets.example.org/x.css", "assets.example.org"), req("https://cdn.example.org/y.js", "cdn.example.org")))
-	return wait(t, h, start(t, h, discovery.Start{Owner: 1, Website: "tikhonnnnn.com", Via: discovery.ViaDirect}), discovery.Done).ID
+	return wait(t, h, start(t, h, discovery.Start{Owner: 1, Website: "proxier.test", Via: discovery.ViaDirect}), discovery.Done).ID
 }
 
 func TestCreateRefusedByGuard(t *testing.T) {
 	h, b := newH(t)
-	h.Servers.Put(1, "nl-1", "nl-1.hosts.tikhonnnnn.com")
+	h.Servers.Put(1, "nl-1", "nl-1.hosts.proxier.test")
 	id := homeRun(t, h, b)
 	before := len(h.Marks.Changes())
 
-	_, err := h.Mod.Discovery.Create(bg, id, access.All, services.Custom{Owner: 1, Name: "Mine"}, discovery.Pick{Suffix: []string{"tikhonnnnn.com", "example.org"}}, []int64{1}, "admin")
+	_, err := h.Mod.Discovery.Create(bg, id, access.All, services.Custom{Owner: 1, Name: "Mine"}, discovery.Pick{Suffix: []string{"proxier.test", "example.org"}}, []int64{1}, "admin")
 	var ge *lists.GuardError
-	if !errors.As(err, &ge) || ge.Server != "nl-1" || ge.Hostname != "nl-1.hosts.tikhonnnnn.com" || ge.Domain != "tikhonnnnn.com" || ge.List != "Main" {
+	if !errors.As(err, &ge) || ge.Server != "nl-1" || ge.Hostname != "nl-1.hosts.proxier.test" || ge.Domain != "proxier.test" || ge.List != "Main" {
 		t.Fatalf("create: %v", err)
 	}
 	if _, err := h.Mod.Services.ByTag(bg, "mine", access.All); !errors.Is(err, services.ErrNotFound) {
@@ -45,7 +45,7 @@ func TestCreateRefusedByGuard(t *testing.T) {
 	// without it: the service in the chosen lists, origin discovery, the lists marked
 	parents := h.List("Parents")
 	sid, err := h.Mod.Discovery.Create(bg, id, access.All, services.Custom{Owner: 1, Name: "Example assets"},
-		discovery.Pick{Suffix: []string{"example.org"}, Exact: []string{"www.tikhonnnnn.com", "assets.example.org", "not.in.the.run"}}, []int64{1, parents}, "admin")
+		discovery.Pick{Suffix: []string{"example.org"}, Exact: []string{"www.proxier.test", "assets.example.org", "not.in.the.run"}}, []int64{1, parents}, "admin")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,7 +58,7 @@ func TestCreateRefusedByGuard(t *testing.T) {
 		t.Fatal(err)
 	}
 	// assets.example.org, ticked under example.org, stays (ADR 0016); a name the run never saw is dropped
-	if !slices.Equal(snap.Set.Suffix, []string{"example.org"}) || !slices.Equal(snap.Set.Exact, []string{"assets.example.org", "www.tikhonnnnn.com"}) {
+	if !slices.Equal(snap.Set.Suffix, []string{"example.org"}) || !slices.Equal(snap.Set.Exact, []string{"assets.example.org", "www.proxier.test"}) {
 		t.Errorf("names: %v %v", snap.Set.Suffix, snap.Set.Exact)
 	}
 	ls, err := h.Mod.Lists.ListsOf(bg, sid, access.All)
@@ -89,7 +89,7 @@ func TestAddToExisting(t *testing.T) {
 	mine := h.Custom("mine", "a.com", "full:cdn.example.org")
 	h.List("Main", mine)
 
-	err := h.Mod.Discovery.AddTo(bg, id, access.All, mine, discovery.Pick{Suffix: []string{"example.org"}, Exact: []string{"www.tikhonnnnn.com", "assets.example.org"}}, "admin")
+	err := h.Mod.Discovery.AddTo(bg, id, access.All, mine, discovery.Pick{Suffix: []string{"example.org"}, Exact: []string{"www.proxier.test", "assets.example.org"}}, "admin")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestAddToExisting(t *testing.T) {
 		t.Fatal(err)
 	}
 	// cdn.example.org and assets.example.org stay under example.org (ADR 0016)
-	if !slices.Equal(snap.Set.Suffix, []string{"a.com", "example.org"}) || !slices.Equal(snap.Set.Exact, []string{"assets.example.org", "cdn.example.org", "www.tikhonnnnn.com"}) {
+	if !slices.Equal(snap.Set.Suffix, []string{"a.com", "example.org"}) || !slices.Equal(snap.Set.Exact, []string{"assets.example.org", "cdn.example.org", "www.proxier.test"}) {
 		t.Errorf("names: %v %v", snap.Set.Suffix, snap.Set.Exact)
 	}
 	// an upstream service can't take picks
@@ -109,8 +109,8 @@ func TestAddToExisting(t *testing.T) {
 		t.Errorf("into an upstream service: %v", err)
 	}
 	// the guard applies as in the editor
-	h.Servers.Put(1, "nl-1", "nl-1.hosts.tikhonnnnn.com")
-	err = h.Mod.Discovery.AddTo(bg, id, access.All, mine, discovery.Pick{Suffix: []string{"tikhonnnnn.com"}}, "admin")
+	h.Servers.Put(1, "nl-1", "nl-1.hosts.proxier.test")
+	err = h.Mod.Discovery.AddTo(bg, id, access.All, mine, discovery.Pick{Suffix: []string{"proxier.test"}}, "admin")
 	var ge *lists.GuardError
 	if !errors.As(err, &ge) || ge.Server != "nl-1" {
 		t.Errorf("guard: %v", err)

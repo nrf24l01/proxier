@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	waitName = "nl-1.hosts.tikhonnnnn.com"
+	waitName = "nl-1.hosts.proxier.test"
 	waitIP   = "198.51.100.7"
 )
 
@@ -41,7 +41,7 @@ func (l *memLog) text() string {
 	return strings.Join(l.lines, "\n")
 }
 
-const waitZone = "tikhonnnnn.com"
+const waitZone = "proxier.test"
 
 // fastWaiter's zone has nameservers that serve the record at once and lets no
 // negative answer be cached.

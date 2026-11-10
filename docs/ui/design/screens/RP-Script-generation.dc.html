@@ -260,8 +260,8 @@ class Component extends DCLogic {
     const mm = String(Math.floor(left / 60)).padStart(2, '0');
     const ss = String(left % 60).padStart(2, '0');
     const url = this.state.reveal
-      ? 'https://proxier.tikhonnnnn.com/f/Zr8Kd2Qm9VxT4pWc'
-      : 'https://proxier.tikhonnnnn.com/f/••••••••••••••••';
+      ? 'https://proxier.example.com/f/Zr8Kd2Qm9VxT4pWc'
+      : 'https://proxier.example.com/f/••••••••••••••••';
     const say = (t) => {
       clearTimeout(this.msgTimer);
       this.setState({ msg: t });
@@ -293,7 +293,7 @@ class Component extends DCLogic {
       msg: this.state.msg,
       values: [
         { k: 'lanNet', v: '10.230.3 · changed', kc: '#ebbcba' },
-        { k: 'subUrl', v: 'https://proxier.tikhonnnnn.com/s/•••••• · secret', kc: '#ebbcba' },
+        { k: 'subUrl', v: 'https://proxier.example.com/s/•••••• · secret', kc: '#ebbcba' },
         { k: 'vpnList', v: 'to_vpn_list · from router Dacha', kc: '#e0def4' },
         { k: 'dohForwarder', v: 'vpn-doh · from router Dacha', kc: '#e0def4' },
         { k: 'wanIface', v: 'ether1', kc: '#e0def4' },

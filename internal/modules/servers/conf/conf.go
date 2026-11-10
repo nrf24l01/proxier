@@ -72,8 +72,13 @@ func nodeList(v string) error {
 var Section = settings.Section{
 	Name: "servers", Module: "servers",
 	Fields: []settings.Field{
-		{Key: HostnamePatternKey, Kind: settings.String, Default: "{country}-{number}.hosts.tikhonnnnn.com", MaxLen: 200,
+		// No default: the name must be in the install's own Cloudflare zone.
+		// Empty means not set yet, and no server can be created.
+		{Key: HostnamePatternKey, Kind: settings.String, Default: "", MaxLen: 200,
 			Validate: func(v string) error {
+				if v == "" {
+					return nil
+				}
 				// It must make a valid DNS name for any server; xx-1 stands for them.
 				_, err := render.Hostname(v, "xx", 1)
 				return err

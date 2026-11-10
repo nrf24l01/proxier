@@ -25,29 +25,35 @@ type serversSettingsView struct {
 	Values  []settings.Value
 	Errs    settings.FieldErrors
 	Saved   bool
-	Warning string // translated; "" when the hostname pattern's zone is allowed
+	Warning string // translated; "" when the hostname pattern is set and its zone is allowed
+	// ZoneLink offers Integrations → Cloudflare: the warning is about the zone.
+	ZoneLink bool
 }
 
 func (h *handler) serversSettings(c *echo.Context) error {
 	return h.renderServersSettings(c, http.StatusOK, nil, nil, c.QueryParam("saved") == "1")
 }
 
-// zoneWarning says so when the hostname pattern lands in a zone the admin has
-// not ticked: the form would refuse every server.
-func (h *handler) zoneWarning(ctx context.Context) (string, error) {
+// patternWarning says so when the form would refuse every server: the
+// hostname pattern is not set, or it lands in a zone the admin has not ticked
+// (zone is true then).
+func (h *handler) patternWarning(ctx context.Context) (warning string, zone bool, err error) {
 	pattern, err := h.Settings.Get(ctx, conf.HostnamePatternKey)
 	if err != nil {
-		return "", err
+		return "", false, err
+	}
+	if pattern == "" {
+		return i18n.T(ctx, "servers.settings.pattern_warning"), false, nil
 	}
 	host, err := render.Hostname(pattern, "xx", 1)
 	if err != nil {
-		return "", nil // the field's own validation reports it
+		return "", false, nil // the field's own validation reports it
 	}
 	_, ok, err := h.DNS.Covers(ctx, host)
 	if err != nil || ok {
-		return "", err
+		return "", false, err
 	}
-	return i18n.T(ctx, "servers.settings.zone_warning", i18n.Args{"host": host}), nil
+	return i18n.T(ctx, "servers.settings.zone_warning", i18n.Args{"host": host}), true, nil
 }
 
 func (h *handler) renderServersSettings(c *echo.Context, status int, submitted map[string]string, errs settings.FieldErrors, saved bool) error {
@@ -63,12 +69,12 @@ func (h *handler) renderServersSettings(c *echo.Context, status int, submitted m
 		}
 		vals = append(vals, v)
 	}
-	warn, err := h.zoneWarning(ctx)
+	warn, zone, err := h.patternWarning(ctx)
 	if err != nil {
 		return err
 	}
 	s := h.shell(c, i18n.T(ctx, "settings.servers"), "/settings")
-	return web.Render(c, status, serversSettingsPage(s, h.settingsPages(), conf.Section, serversSettingsView{Values: vals, Errs: errs, Saved: saved, Warning: warn}))
+	return web.Render(c, status, serversSettingsPage(s, h.settingsPages(), conf.Section, serversSettingsView{Values: vals, Errs: errs, Saved: saved, Warning: warn, ZoneLink: zone}))
 }
 
 func (h *handler) saveServersSettings(c *echo.Context) error {

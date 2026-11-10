@@ -5,7 +5,7 @@ The DNS driver. Proxier creates the A records of servers it provisions, waits fo
 ## Setup
 
 - Settings → Integrations → Cloudflare: an **API token** with `Zone → DNS → Edit` (and `Zone → Zone → Read`) for the zones Proxier may use, e.g. `example.com`. Saving the token first verifies it and lists the zones with it; if Cloudflare refuses, nothing is saved ("Cloudflare refused this token"). **Test** lists the zones the token can see again. A member with `settings: manage` ticks the ones Proxier may use (`cloudflare.zones`, comma-separated names; a name the token does not see is dropped).
-- The hostname pattern (Settings → Servers) must end in one of those zones. Proxier picks the zone by the longest matching suffix. Settings → Servers warns when the pattern's zone is not ticked.
+- The hostname pattern (Settings → Servers) must end in one of those zones. Proxier picks the zone by the longest matching suffix. Settings → Servers warns when the pattern is not set, or when its zone is not ticked.
 
 ## Records
 

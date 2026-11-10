@@ -8,17 +8,17 @@ import (
 )
 
 func TestZoneByLongestSuffix(t *testing.T) {
-	zones := []string{"tikhonnnnn.com", "hosts.tikhonnnnn.com", "example.org"}
+	zones := []string{"proxier.test", "hosts.proxier.test", "example.org"}
 	for name, want := range map[string]string{
-		"nl-1.hosts.tikhonnnnn.com":  "hosts.tikhonnnnn.com", // the longer wins
-		"proxier.tikhonnnnn.com":     "tikhonnnnn.com",
-		"tikhonnnnn.com":             "tikhonnnnn.com", // the zone's own apex
-		"NL-1.Hosts.Tikhonnnnn.com.": "hosts.tikhonnnnn.com",
-		"deep.sub.example.org":       "example.org",
-		"nottikhonnnnn.com":          "", // a suffix of the text is not a parent domain
-		"tikhonnnnn.com.evil.net":    "",
-		"other.net":                  "",
-		"":                           "",
+		"nl-1.hosts.proxier.test":  "hosts.proxier.test", // the longer wins
+		"panel.proxier.test":       "proxier.test",
+		"proxier.test":             "proxier.test", // the zone's own apex
+		"NL-1.Hosts.Proxier.Test.": "hosts.proxier.test",
+		"deep.sub.example.org":     "example.org",
+		"notproxier.test":          "", // a suffix of the text is not a parent domain
+		"proxier.test.evil.net":    "",
+		"other.net":                "",
+		"":                         "",
 	} {
 		got, ok := dns.ZoneFor(name, zones)
 		if got != want || ok != (want != "") {
@@ -33,9 +33,9 @@ func TestZoneByLongestSuffix(t *testing.T) {
 	}
 
 	// the driver's form check applies it, and only to allowed zones
-	f := cloudflaretest.New(t, "tok", "tikhonnnnn.com", "example.org")
-	drv, _ := f.Driver(t, "tikhonnnnn.com")
-	if z, ok, err := drv.Covers(t.Context(), "nl-1.hosts.tikhonnnnn.com"); err != nil || !ok || z != "tikhonnnnn.com" {
+	f := cloudflaretest.New(t, "tok", "proxier.test", "example.org")
+	drv, _ := f.Driver(t, "proxier.test")
+	if z, ok, err := drv.Covers(t.Context(), "nl-1.hosts.proxier.test"); err != nil || !ok || z != "proxier.test" {
 		t.Errorf("Covers: %q %v %v", z, ok, err)
 	}
 	if _, ok, err := drv.Covers(t.Context(), "nl-1.example.org"); err != nil || ok {
@@ -47,7 +47,7 @@ func TestZoneByLongestSuffix(t *testing.T) {
 }
 
 func TestRemoveOnlyOwnRecords(t *testing.T) {
-	const zone, name, ip = "tikhonnnnn.com", "nl-1.hosts.tikhonnnnn.com", "198.51.100.7"
+	const zone, name, ip = "proxier.test", "nl-1.hosts.proxier.test", "198.51.100.7"
 	f := cloudflaretest.New(t, "tok", zone)
 	drv, _ := f.Driver(t, zone)
 	ensure := func() dns.Record {

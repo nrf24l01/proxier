@@ -234,7 +234,7 @@ func (h *handler) droppedViews(ctx context.Context, it services.Item, ms []lists
 
 // dropReason says why a name isn't installed: "anthropic has it as a
 // suffix", "owned by anthropic (first in Main)", "left out: covers
-// nl-1.hosts.tikhonnnnn.com (nl-1)".
+// nl-1.hosts.proxier.test (nl-1)".
 func dropReason(ctx context.Context, d own.Drop, list string) string {
 	return i18n.T(ctx, "lists.drop."+d.Reason, i18n.Args{"by": d.By, "via": d.Via, "list": list})
 }

@@ -37,6 +37,10 @@ import (
 // CFToken is the token of the fake Cloudflare account.
 const CFToken = "cf-test-token"
 
+// HostnamePattern is the hostname pattern the harness saves: names in the
+// fake account's zone.
+const HostnamePattern = "{country}-{number}.hosts.proxier.test"
+
 // Harness wires the servers module with a full app (sitetest), a fake
 // Cloudflare, a fake resolver, an in-process proxy server the smoke test can
 // reach and a VPS to provision. Nothing touches the network.
@@ -101,14 +105,17 @@ func NewHarness(t *testing.T, opts ...Option) *Harness {
 	h.Site, h.App = site, site.App
 	ctx := context.Background()
 
-	// Cloudflare: a fake account owning tikhonnnnn.com, its token saved.
-	h.CF = cloudflaretest.New(t, CFToken, "tikhonnnnn.com")
+	// Cloudflare: a fake account owning proxier.test, its token saved.
+	h.CF = cloudflaretest.New(t, CFToken, "proxier.test")
 	mod.CloudflareClient = h.CF.ClientFor
-	if err := h.App.Settings.Set(ctx, "admin", "cloudflare", map[string]string{"cloudflare.api_token": CFToken, "cloudflare.zones": "tikhonnnnn.com"}); err != nil {
+	if err := h.App.Settings.Set(ctx, "admin", "cloudflare", map[string]string{"cloudflare.api_token": CFToken, "cloudflare.zones": "proxier.test"}); err != nil {
 		t.Fatal(err)
 	}
-	// The IP → country lookup is off unless a test turns it on.
-	if err := h.App.Settings.Set(ctx, "admin", "servers", map[string]string{"servers.ip_country_url": ""}); err != nil {
+	// Servers are named in that zone. The IP → country lookup is off unless a
+	// test turns it on.
+	if err := h.App.Settings.Set(ctx, "admin", "servers", map[string]string{
+		"servers.hostname_pattern": HostnamePattern, "servers.ip_country_url": "",
+	}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -355,7 +362,7 @@ func (h *Harness) lookup(_ context.Context, _ dns.Resolver, name string) ([]neti
 	if !visible {
 		return nil, "doh", nil
 	}
-	for _, r := range h.CF.Records("tikhonnnnn.com") {
+	for _, r := range h.CF.Records("proxier.test") {
 		if r.Name == name {
 			if a, err := netip.ParseAddr(r.Content); err == nil {
 				return []netip.Addr{a}, "doh", nil
@@ -381,7 +388,7 @@ func (h *Harness) ask(_ context.Context, _ dns.NameServer, name string) ([]netip
 		return nil, errors.New("i/o timeout")
 	}
 	var out []netip.Addr
-	for _, r := range h.CF.Records("tikhonnnnn.com") {
+	for _, r := range h.CF.Records("proxier.test") {
 		if a, err := netip.ParseAddr(r.Content); err == nil && r.Name == name {
 			out = append(out, a)
 		}
@@ -564,7 +571,7 @@ func (h *Harness) targetIP(e endpoint.Endpoint, o proxy.Options) string {
 		host, _, _ := net.SplitHostPort(to)
 		return host
 	}
-	for _, r := range h.CF.Records("tikhonnnnn.com") {
+	for _, r := range h.CF.Records("proxier.test") {
 		if r.Name == e.Host {
 			return r.Content
 		}

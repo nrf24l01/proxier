@@ -15,7 +15,7 @@ var (
 )
 
 func ep(name, key, display string, id int64) endpoint.Endpoint {
-	host := name + ".hosts.tikhonnnnn.com"
+	host := name + ".hosts.proxier.test"
 	return endpoint.Endpoint{
 		Key: key, Type: endpoint.VlessXHTTPTLS, Host: host, Port: 443,
 		Credential:  fmt.Sprintf("6f1c2b7e-0d3a-4c8e-9a51-%012x", id),

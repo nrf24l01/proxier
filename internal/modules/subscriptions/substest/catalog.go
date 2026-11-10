@@ -99,11 +99,11 @@ func (c *Catalog) Server(_ context.Context, id int64) (servers.ServerEndpoints, 
 var HealthySince = time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
 
 // Server is an active, healthy server with one vless-xhttp-tls endpoint "main":
-// host "<name>.hosts.tikhonnnnn.com", port 443, a UUID derived from id, path
+// host "<name>.hosts.proxier.test", port 443, a UUID derived from id, path
 // "/<16 hex from id>", sni = host, mode stream-up, fp chrome, alpn h2,
 // display name "<flag> <country> <number>".
 func Server(id int64, name, flag, country string, number int) servers.ServerEndpoints {
-	host := name + ".hosts.tikhonnnnn.com"
+	host := name + ".hosts.proxier.test"
 	return servers.ServerEndpoints{
 		ServerID: id, Name: name, Flag: flag, Health: "healthy", HealthSince: HealthySince,
 		Endpoints: []endpoint.Endpoint{{

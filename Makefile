@@ -1,6 +1,8 @@
 APP_VERSION := $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 TEMPL_VERSION := v0.3.1100
 GOVULNCHECK_VERSION := v1.9.0
+# The image make build-image tags; make build-image IMAGE=registry.example.com/me/proxier
+IMAGE ?= code.tikhonnnnn.com/tikhon/proxier
 
 .PHONY: dev build-dev fdev shell manage migrate-status test check templ editor check-editor lint vuln build build-image
 
@@ -71,4 +73,4 @@ build:
 	CGO_ENABLED=0 go build -ldflags "-X github.com/tikhonp/proxier/internal/platform/obs.AppVersion=$(APP_VERSION)" -o bin/proxier ./cmd/proxier
 
 build-image:
-	docker buildx build --build-arg APP_VERSION=$(APP_VERSION) -t code.tikhonnnnn.com/tikhon/proxier:local --load .
+	docker buildx build --build-arg APP_VERSION=$(APP_VERSION) -t $(IMAGE):local --load .

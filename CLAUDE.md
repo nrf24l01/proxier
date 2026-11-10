@@ -44,7 +44,7 @@ make dev             # docker compose: air hot reload on :8080; needs .env (cp .
 make manage ARGS="migrate status"     # inside the dev container
 make editor          # rebuild the template editor's CodeMirror bundle in Docker (web/editor → internal/platform/ui/static/js/editor.bundle.js, committed)
 make check-editor    # make editor + fail if the committed bundle differs (part of make check; needs Docker running)
-make build-image     # code.tikhonnnnn.com/tikhon/proxier:local
+make build-image     # code.tikhonnnnn.com/tikhon/proxier:local; IMAGE=<name> tags another name
 go run ./cmd/proxier serve            # on the host, with PROXIER_MASTER_KEY, PROXIER_BASE_URL, PROXIER_DATA_DIR=./data
 ```
 
@@ -96,7 +96,7 @@ _Avoid_: location, region, geo
 _Avoid_: hostname, label, id
 
 **Management hostname**:
-The DNS name Proxier and members use to reach a server, e.g. `nl-1.hosts.tikhonnnnn.com`.
+The DNS name Proxier and members use to reach a server, e.g. `nl-1.hosts.example.com`.
 _Avoid_: domain (alone)
 
 **Proxy hostname**:

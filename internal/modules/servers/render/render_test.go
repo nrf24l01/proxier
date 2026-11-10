@@ -129,15 +129,15 @@ func TestEndpointPortMustBeAPort(t *testing.T) {
 func TestHostnamePattern(t *testing.T) {
 	// {location} is the placeholder's earlier name: a pattern saved with it
 	// keeps working
-	for _, p := range []string{"{country}-{number}.hosts.tikhonnnnn.com", "{location}-{number}.hosts.tikhonnnnn.com"} {
+	for _, p := range []string{"{country}-{number}.hosts.proxier.test", "{location}-{number}.hosts.proxier.test"} {
 		h, err := render.Hostname(p, "nl", 1)
-		if err != nil || h != "nl-1.hosts.tikhonnnnn.com" {
+		if err != nil || h != "nl-1.hosts.proxier.test" {
 			t.Errorf("%s: %q %v", p, h, err)
 		}
 	}
 	for _, bad := range []string{
-		"{country}.hosts.tikhonnnnn.com",  // no number
-		"x-{number}.hosts.tikhonnnnn.com", // no country
+		"{country}.hosts.proxier.test",    // no number
+		"x-{number}.hosts.proxier.test",   // no country
 		"{country}_{number}.example.com",  // underscore
 		"{country}-{number}",              // not fully qualified
 		"{country}-{number}.-bad.example", // label starts with -

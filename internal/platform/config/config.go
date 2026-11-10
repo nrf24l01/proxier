@@ -61,7 +61,7 @@ func Load(getenv func(string) string) (*Config, error) {
 	c := &Config{
 		DataDir:      get("PROXIER_DATA_DIR", "/data"),
 		Listen:       get("PROXIER_LISTEN", ":8080"),
-		TSControlURL: get("PROXIER_TS_CONTROL_URL", "https://hs.tikhonnnnn.com"),
+		TSControlURL: get("PROXIER_TS_CONTROL_URL", "https://controlplane.tailscale.com"),
 		TSAuthKey:    get("PROXIER_TS_AUTHKEY", ""),
 		TSHostname:   get("PROXIER_TS_HOSTNAME", "proxier"),
 		ChromiumURL:  get("PROXIER_CHROMIUM_URL", ""),
@@ -78,7 +78,7 @@ func Load(getenv func(string) string) (*Config, error) {
 	}
 
 	if raw := get("PROXIER_BASE_URL", ""); raw == "" {
-		errs = append(errs, errors.New("PROXIER_BASE_URL is required, e.g. https://proxier.tikhonnnnn.com"))
+		errs = append(errs, errors.New("PROXIER_BASE_URL is required, e.g. https://proxier.example.com"))
 	} else if u, err := parseBaseURL(raw); err != nil {
 		errs = append(errs, fmt.Errorf("PROXIER_BASE_URL: %w", err))
 	} else {

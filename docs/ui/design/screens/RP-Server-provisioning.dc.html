@@ -70,7 +70,7 @@ button:disabled{cursor:not-allowed;opacity:.45}
 <span style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap;color:{{badge.c}}"><span aria-hidden="true" style="{{badge.m}}"></span>{{badge.t}}</span>
 <span style="font-size:12px;color:#908caa">{{badgeNote}}</span>
 </div>
-<p style="color:#908caa;margin-top:4px">Netherlands · 203.0.113.24 · nl-2.hosts.tikhonnnnn.com · VLESS XHTTP behind nginx v3</p>
+<p style="color:#908caa;margin-top:4px">Netherlands · 203.0.113.24 · nl-2.hosts.example.com · VLESS XHTTP behind nginx v3</p>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px">
 <sc-if value="{{running}}" hint-placeholder-val="{{ true }}">
@@ -246,7 +246,7 @@ class Component extends DCLogic {
       ['16:50:33', 3, '', 'docker 28.5.1 installed'],
       ['16:50:38', 3, '', 'ufw allow 22/tcp 80/tcp 443/tcp · enabled'],
       ['16:50:39', 4, 'h', '==> 4/11 DNS'],
-      ['16:50:40', 4, '', 'cloudflare: A nl-2.hosts.tikhonnnnn.com → 203.0.113.24 · dns only · ttl 60 · proxier:nl-2'],
+      ['16:50:40', 4, '', 'cloudflare: A nl-2.hosts.example.com → 203.0.113.24 · dns only · ttl 60 · proxier:nl-2'],
       ['16:50:41', 4, '', 'waiting for 1.1.1.1 and 8.8.8.8 …'],
       ['16:51:14', 4, '', '1.1.1.1 → 203.0.113.24 · 8.8.8.8 → 203.0.113.24'],
       ['16:51:14', 5, 'h', '==> 5/11 Generated values'],
@@ -263,10 +263,10 @@ class Component extends DCLogic {
       ['16:51:58', 7, '', 'container vless-xhttp-nginx-3fa1 started'],
       ['16:51:58', 7, '', 'container vless-xhttp-xray-3fa1 started'],
       ['16:51:59', 7, '', 'container vless-xhttp-certbot-3fa1 started'],
-      ['16:51:59', 7, '', '[3/3] wait-http https://nl-2.hosts.tikhonnnnn.com/ · resolve 127.0.0.1 · expect 200'],
+      ['16:51:59', 7, '', '[3/3] wait-http https://nl-2.hosts.example.com/ · resolve 127.0.0.1 · expect 200'],
       ['16:52:03', 7, '', 'wait-http: 200 after 4 s'],
       ['16:52:03', 8, 'h', '==> 8/11 Endpoints'],
-      ['16:52:03', 8, '', 'main · vless-xhttp-tls · nl-2.hosts.tikhonnnnn.com:443 · “🇳🇱 Netherlands 2”'],
+      ['16:52:03', 8, '', 'main · vless-xhttp-tls · nl-2.hosts.example.com:443 · “🇳🇱 Netherlands 2”'],
       ['16:52:03', 9, 'h', '==> 9/11 Self-check'],
       ['16:52:05', 9, '', 'compose-running ok · http-local 200 · cert-expiry 90 d · disk-free 91 %'],
       ['16:52:05', 10, 'h', '==> 10/11 Smoke test'],

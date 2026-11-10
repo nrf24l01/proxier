@@ -57,7 +57,7 @@ func (f *fixture) change(form ipchange.Form) jobs.Job {
 func (f *fixture) record() string {
 	f.T.Helper()
 	name := f.Server(f.ID).ManagementHostname
-	for _, r := range f.CF.Records("tikhonnnnn.com") {
+	for _, r := range f.CF.Records("proxier.test") {
 		if r.Name == name {
 			return r.Content
 		}
@@ -259,7 +259,7 @@ func TestChangeFormRefusals(t *testing.T) {
 func TestConflictingDNSRecordChangesNothing(t *testing.T) {
 	f := newFixture(t)
 	name := f.Server(f.ID).ManagementHostname
-	for _, r := range f.CF.Records("tikhonnnnn.com") {
+	for _, r := range f.CF.Records("proxier.test") {
 		if r.Name == name {
 			f.CF.Change(r.ID, func(r *cloudflaretest.Record) { r.Comment = "by hand" })
 		}
@@ -328,7 +328,7 @@ func TestWaitAsksTheNameserversFirst(t *testing.T) {
 		t.Fatalf("job %s: %s", j.State, j.Error)
 	}
 	log := f.Log(j.ID)
-	ns := strings.Index(log, "tikhonnnnn.com's nameservers (ns.fake) answer "+newIP)
+	ns := strings.Index(log, "proxier.test's nameservers (ns.fake) answer "+newIP)
 	cf := strings.Index(log, "Cloudflare (doh) answered "+newIP)
 	if ns < 0 || cf < ns {
 		t.Fatalf("the nameservers should be asked first:\n%s", log)
@@ -339,7 +339,7 @@ func TestWaitAsksTheNameserversFirst(t *testing.T) {
 	if j.State != jobs.Succeeded || f.Server(f.ID).IP != "127.0.0.1" {
 		t.Fatalf("job %s: %s", j.State, j.Error)
 	}
-	if log := f.Log(j.ID); !strings.Contains(log, "Can't ask ns.fake (127.0.0.1) about nl-1.hosts.tikhonnnnn.com: i/o timeout; asking the public resolvers in 1ms instead") ||
+	if log := f.Log(j.ID); !strings.Contains(log, "Can't ask ns.fake (127.0.0.1) about nl-1.hosts.proxier.test: i/o timeout; asking the public resolvers in 1ms instead") ||
 		!strings.Contains(log, "Cloudflare (doh) answered 127.0.0.1") {
 		t.Fatalf("log:\n%s", log)
 	}

@@ -104,7 +104,7 @@ func TestFetchServesURIsAndHeaders(t *testing.T) {
 		t.Fatalf("status %d", rec.Code)
 	}
 	ls := mustServe(t, h, token, "🇳🇱 Netherlands 1", "🇩🇪 Germany 1")
-	if !strings.Contains(ls[0], substest.Credential(1)+"@nl-1.hosts.tikhonnnnn.com:443") {
+	if !strings.Contains(ls[0], substest.Credential(1)+"@nl-1.hosts.proxier.test:443") {
 		t.Errorf("nl-1's URI: %s", ls[0])
 	}
 	hd := rec.Header()

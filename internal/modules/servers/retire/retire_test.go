@@ -125,7 +125,7 @@ func TestRetireReachableServer(t *testing.T) {
 	if files := h.VPS.Files(dir); len(files) != 0 {
 		t.Errorf("files left on the server: %v", files)
 	}
-	if recs := h.CF.Records("tikhonnnnn.com"); len(recs) != 0 {
+	if recs := h.CF.Records("proxier.test"); len(recs) != 0 {
 		t.Errorf("DNS records left: %+v", recs)
 	}
 	list, err := h.Mod.EndpointCatalog().Active(bg)
@@ -137,7 +137,7 @@ func TestRetireReachableServer(t *testing.T) {
 		t.Fatalf("server.retired events: %d", len(ev))
 	}
 	pl := ev[0].Payload
-	if got := strs(pl["dns_removed"]); len(got) != 1 || got[0] != "nl-1.hosts.tikhonnnnn.com" || pl["stack_removed"] != true {
+	if got := strs(pl["dns_removed"]); len(got) != 1 || got[0] != "nl-1.hosts.proxier.test" || pl["stack_removed"] != true {
 		t.Errorf("payload: %v", pl)
 	}
 	if kept, _ := pl["dns_kept"].([]any); len(kept) != 0 {
@@ -161,7 +161,7 @@ func TestRetireUnreachableServer(t *testing.T) {
 	if !strings.Contains(log, "Skipped: unreachable") {
 		t.Errorf("the log does not say the stack step was skipped:\n%s", log)
 	}
-	if recs := h.CF.Records("tikhonnnnn.com"); len(recs) != 0 {
+	if recs := h.CF.Records("proxier.test"); len(recs) != 0 {
 		t.Errorf("DNS records left: %+v", recs)
 	}
 	if pl := h.Events("server.retired")[0].Payload; pl["stack_removed"] != false || len(strs(pl["dns_removed"])) != 1 {
@@ -171,7 +171,7 @@ func TestRetireUnreachableServer(t *testing.T) {
 
 func TestRetireKeepsForeignRecord(t *testing.T) {
 	h, id := stubbed(t)
-	recs := h.CF.Records("tikhonnnnn.com")
+	recs := h.CF.Records("proxier.test")
 	if len(recs) != 1 {
 		t.Fatalf("records: %+v", recs)
 	}
@@ -182,7 +182,7 @@ func TestRetireKeepsForeignRecord(t *testing.T) {
 	if s := h.Server(id); s.State != "retired" {
 		t.Fatalf("state %s", s.State)
 	}
-	if left := h.CF.Records("tikhonnnnn.com"); len(left) != 1 || left[0].Content != "198.51.100.9" {
+	if left := h.CF.Records("proxier.test"); len(left) != 1 || left[0].Content != "198.51.100.9" {
 		t.Errorf("the record someone else points elsewhere must stay: %+v", left)
 	}
 	pl := h.Events("server.retired")[0].Payload
@@ -191,7 +191,7 @@ func TestRetireKeepsForeignRecord(t *testing.T) {
 		t.Fatalf("payload: %v", pl)
 	}
 	k := kept[0].(map[string]any)
-	if k["name"] != "nl-1.hosts.tikhonnnnn.com" || k["reason"] != "points to 198.51.100.9" {
+	if k["name"] != "nl-1.hosts.proxier.test" || k["reason"] != "points to 198.51.100.9" {
 		t.Errorf("kept: %v", k)
 	}
 	var reason string

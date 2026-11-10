@@ -36,7 +36,7 @@ func custom(t *testing.T, rt *routing.Module, tag string, names ...string) int64
 
 func TestRealProvisioningRefusedByList(t *testing.T) {
 	h, rt := routingtest.WithServers(t)
-	sites := custom(t, rt, "my-sites", "tikhonnnnn.com")
+	sites := custom(t, rt, "my-sites", "proxier.test")
 	if err := rt.Lists.Add(context.Background(), 1, access.All, []int64{sites}, "admin"); err != nil {
 		t.Fatal(err)
 	}
@@ -52,14 +52,14 @@ func TestRealProvisioningRefusedByList(t *testing.T) {
 	_, err := h.Mod.Provision.Create(context.Background(), f, "admin")
 	var fe provision.FieldErrors
 	if !errors.As(err, &fe) || fe["routing"].Key != "servers.err.routed" || fe["routing"].Args["list"] != "Main" ||
-		fe["routing"].Args["service"] != "my-sites" || fe["routing"].Args["host"] != "nl-3.hosts.tikhonnnnn.com" {
+		fe["routing"].Args["service"] != "my-sites" || fe["routing"].Args["host"] != "nl-3.hosts.proxier.test" {
 		t.Fatalf("create: %v", err)
 	}
 	rec := h.Login.Post("/servers", url.Values{
 		"ip": {f.IP}, "ssh_port": {strconv.Itoa(f.SSHPort)}, "root_password": {f.RootPassword}, "country": {h.Country},
 		"template": {strconv.FormatInt(h.TemplateID, 10)}, "version": {"1"}, "param.letsencrypt_email": {"me@example.com"},
 	})
-	if rec.Code != 422 || !strings.Contains(rec.Body.String(), "nl-3.hosts.tikhonnnnn.com is covered by tikhonnnnn.com (my-sites) in Main") {
+	if rec.Code != 422 || !strings.Contains(rec.Body.String(), "nl-3.hosts.proxier.test is covered by proxier.test (my-sites) in Main") {
 		t.Fatalf("the form: %d", rec.Code)
 	}
 
@@ -85,10 +85,10 @@ func TestRealGuardNamesServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := rt.Services.SaveCustom(context.Background(), mine, access.All, services.Edit{Name: "mine", Tag: "mine", Rows: []services.DomainRow{
-		{Domain: "example.com"}, {Domain: "tikhonnnnn.com"},
+		{Domain: "example.com"}, {Domain: "proxier.test"},
 	}}, "admin")
 	var ge *lists.GuardError
-	if !errors.As(err, &ge) || ge.Server != "nl-1" || ge.Hostname != "nl-1.hosts.tikhonnnnn.com" || ge.List != "Main" {
+	if !errors.As(err, &ge) || ge.Server != "nl-1" || ge.Hostname != "nl-1.hosts.proxier.test" || ge.List != "Main" {
 		t.Fatalf("save: %v", err)
 	}
 	ev := h.Events("routing.list_refused_server_hostname")
@@ -97,7 +97,7 @@ func TestRealGuardNamesServer(t *testing.T) {
 	}
 	// the editor says so, naming nl-1
 	rec := h.Login.Post("/routing/services/"+strconv.FormatInt(mine, 10)+"/edit", url.Values{
-		"name": {"mine"}, "tag": {"mine"}, "rows": {"1"}, "domain.1": {"hosts.tikhonnnnn.com"}, "match.1": {"suffix"}, "note.1": {""},
+		"name": {"mine"}, "tag": {"mine"}, "rows": {"1"}, "domain.1": {"hosts.proxier.test"}, "match.1": {"suffix"}, "note.1": {""},
 	})
 	if rec.Code != 422 || !strings.Contains(rec.Body.String(), "the hostname of nl-1") {
 		t.Errorf("editor: %d", rec.Code)

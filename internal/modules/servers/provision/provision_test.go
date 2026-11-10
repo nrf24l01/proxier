@@ -63,7 +63,7 @@ func TestProvisionSucceeds(t *testing.T) {
 		t.Fatalf("job %s", j.State)
 	}
 	// DNS: one record for the hostname, DNS only, with Proxier's mark; stored with the server.
-	recs := h.CF.Records("tikhonnnnn.com")
+	recs := h.CF.Records("proxier.test")
 	if len(recs) != 1 || recs[0].Name != srv.ManagementHostname || recs[0].Content != "127.0.0.1" || recs[0].Proxied || recs[0].Comment != "proxier:nl-1" || recs[0].TTL != 60 {
 		t.Fatalf("Cloudflare records: %+v", recs)
 	}
@@ -353,12 +353,12 @@ func TestPersonalKeysInstalled(t *testing.T) {
 
 func TestDNSConflictThenOverwrite(t *testing.T) {
 	h := serverstest.NewHarness(t)
-	host := "nl-1.hosts.tikhonnnnn.com"
-	h.CF.AddRecord("tikhonnnnn.com", host, "203.0.113.9", "")
+	host := "nl-1.hosts.proxier.test"
+	h.CF.AddRecord("proxier.test", host, "203.0.113.9", "")
 	id := h.Create(h.Form())
 	h.Drain()
 	failed(t, h, id, "dns", "203.0.113.9")
-	if recs := h.CF.Records("tikhonnnnn.com"); len(recs) != 1 || recs[0].Content != "203.0.113.9" {
+	if recs := h.CF.Records("proxier.test"); len(recs) != 1 || recs[0].Content != "203.0.113.9" {
 		t.Fatalf("the foreign record was touched: %+v", recs)
 	}
 	// Retrying without Overwrite stops at the same place.
@@ -367,7 +367,7 @@ func TestDNSConflictThenOverwrite(t *testing.T) {
 	// Overwrite is the admin's explicit choice.
 	retry(t, h, id, "", true)
 	active(t, h, id)
-	recs := h.CF.Records("tikhonnnnn.com")
+	recs := h.CF.Records("proxier.test")
 	if len(recs) != 1 || recs[0].Content != "127.0.0.1" || recs[0].Comment != "proxier:nl-1" {
 		t.Fatalf("records after the overwrite: %+v", recs)
 	}
@@ -380,13 +380,13 @@ func TestDNSWaitTimeoutThenRetry(t *testing.T) {
 	id := h.Create(h.Form())
 	h.Drain()
 	failed(t, h, id, "dns", "not visible")
-	if n := len(h.CF.Records("tikhonnnnn.com")); n != 1 {
+	if n := len(h.CF.Records("proxier.test")); n != 1 {
 		t.Fatalf("%d records", n)
 	}
 	h.HideDNS(false)
 	retry(t, h, id, "", false)
 	active(t, h, id)
-	if n := len(h.CF.Records("tikhonnnnn.com")); n != 1 {
+	if n := len(h.CF.Records("proxier.test")); n != 1 {
 		t.Fatalf("a retry made %d records", n)
 	}
 	if recs, _ := store.DNSRecords(bg, h.App.DB.R, id); len(recs) != 1 {
@@ -406,7 +406,7 @@ func TestDNSWaitAsksTheNameserversFirst(t *testing.T) {
 	id := h.Provisioned()
 	active(t, h, id)
 	log := h.Log(h.Job(id).ID)
-	ns := strings.Index(log, "tikhonnnnn.com's nameservers (ns.fake) answer 127.0.0.1")
+	ns := strings.Index(log, "proxier.test's nameservers (ns.fake) answer 127.0.0.1")
 	cf := strings.Index(log, "Cloudflare (doh) answered 127.0.0.1")
 	if ns < 0 || cf < ns {
 		t.Fatalf("the nameservers should be asked first:\n%s", log)
@@ -416,7 +416,7 @@ func TestDNSWaitAsksTheNameserversFirst(t *testing.T) {
 	h.NameserversDown(true)
 	id = h.Provisioned()
 	active(t, h, id)
-	if log := h.Log(h.Job(id).ID); !strings.Contains(log, "Can't ask ns.fake (127.0.0.1) about nl-1.hosts.tikhonnnnn.com: i/o timeout; asking the public resolvers in 1ms instead") {
+	if log := h.Log(h.Job(id).ID); !strings.Contains(log, "Can't ask ns.fake (127.0.0.1) about nl-1.hosts.proxier.test: i/o timeout; asking the public resolvers in 1ms instead") {
 		t.Fatalf("log:\n%s", log)
 	}
 }
@@ -546,7 +546,7 @@ func TestCancelDuringDNS(t *testing.T) {
 		t.Fatalf("job %s", st)
 	}
 	failed(t, h, id, "dns", "cancelled")
-	if n := len(h.CF.Records("tikhonnnnn.com")); n != 1 {
+	if n := len(h.CF.Records("proxier.test")); n != 1 {
 		t.Errorf("the record must stay until retirement or retry: %d", n)
 	}
 	ev := h.Events("server.provisioning_failed")

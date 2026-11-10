@@ -111,7 +111,7 @@ button:disabled{cursor:not-allowed;opacity:.45}
 <h2 style="font-size:11px;line-height:16px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#908caa">Recent activity</h2>
 </div>
 <div style="height:8px"></div>
-<div style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:16px;padding:6px 16px"><span style="color:#908caa">2 min ago</span><span style="color:#908caa">Cloudflare connected: zone <span style="color:#e0def4">tikhonnnnn.com</span></span></div>
+<div style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:16px;padding:6px 16px"><span style="color:#908caa">2 min ago</span><span style="color:#908caa">Cloudflare connected: zone <span style="color:#e0def4">example.com</span></span></div>
 <div style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:16px;padding:6px 16px"><span style="color:#908caa">9 min ago</span><span style="color:#908caa">SSH key pair generated · <span style="color:#e0def4">ed25519</span></span></div>
 <div style="display:grid;grid-template-columns:96px minmax(0,1fr);gap:16px;padding:6px 16px"><span style="color:#908caa">9 min ago</span><span style="color:#908caa">Proxier started for the first time · routing list <span style="color:#e0def4">Main</span> created</span></div>
 </section>
@@ -172,7 +172,7 @@ class Component extends DCLogic {
       nav: this.nav('dashboard', {}),
       steps: [
         step(true, 'SSH key pair', 'Proxier made its key. It goes on every server, router and jump host.', 'done 9 min ago', '#'),
-        step(true, 'Cloudflare', 'Writes the DNS records for new servers. Zone tikhonnnnn.com.', 'done 2 min ago', '#'),
+        step(true, 'Cloudflare', 'Writes the DNS records for new servers. Zone example.com.', 'done 2 min ago', '#'),
         step(false, 'Telegram', 'Where alerts go. Without it nothing reaches you when a server is blocked.', 'Set up Telegram', 'RP-Settings.dc.html', true, true),
         step(false, 'Your SSH keys', 'Your own public keys, added to every new server so you can always log in.', 'Add keys', 'RP-Settings.dc.html'),
         step(false, 'First server', 'A fresh VPS with root access. Proxier installs the proxy and checks it.', 'New server', 'RP-Server-new.dc.html'),

@@ -116,12 +116,12 @@ func TestRedundancyInsideServiceKept(t *testing.T) {
 }
 
 func TestGuardedNamesCoverNothing(t *testing.T) {
-	srv := []Server{{Name: "nl-1", Hostnames: []string{"nl-1.hosts.tikhonnnnn.com"}}}
-	r := Compute([]Member{m(1, "mine", "tikhonnnnn.com", "example.com"), m(2, "api", "full:api.tikhonnnnn.com")}, srv, nil)
+	srv := []Server{{Name: "nl-1", Hostnames: []string{"nl-1.hosts.proxier.test"}}}
+	r := Compute([]Member{m(1, "mine", "proxier.test", "example.com"), m(2, "api", "full:api.proxier.test")}, srv, nil)
 	installs(t, r.Services[0], "example.com")
-	dropped(t, r.Services[0], Drop{Name: "tikhonnnnn.com", Reason: ReasonGuarded, By: "nl-1", Via: "nl-1.hosts.tikhonnnnn.com"})
-	installs(t, r.Services[1], "full:api.tikhonnnnn.com")
-	if g := r.Guarded(); len(g) != 1 || g[0].Tag != "mine" || g[0].Name != "tikhonnnnn.com" {
+	dropped(t, r.Services[0], Drop{Name: "proxier.test", Reason: ReasonGuarded, By: "nl-1", Via: "nl-1.hosts.proxier.test"})
+	installs(t, r.Services[1], "full:api.proxier.test")
+	if g := r.Guarded(); len(g) != 1 || g[0].Tag != "mine" || g[0].Name != "proxier.test" {
 		t.Errorf("guarded: %+v", g)
 	}
 }
@@ -135,20 +135,20 @@ func TestExcludedNames(t *testing.T) {
 }
 
 func TestCoveringAndCoveredBy(t *testing.T) {
-	srv := []Server{{Name: "de-1", Hostnames: []string{"de-1.example.net"}}, {Name: "nl-1", Hostnames: []string{"nl-1.hosts.tikhonnnnn.com", "proxy.tikhonnnnn.com"}}}
+	srv := []Server{{Name: "de-1", Hostnames: []string{"de-1.example.net"}}, {Name: "nl-1", Hostnames: []string{"nl-1.hosts.proxier.test", "proxy.proxier.test"}}}
 	for _, c := range []struct {
 		name   string
 		exact  bool
 		server string
 		host   string
 	}{
-		{"tikhonnnnn.com", false, "nl-1", "nl-1.hosts.tikhonnnnn.com"},
-		{"hosts.tikhonnnnn.com", false, "nl-1", "nl-1.hosts.tikhonnnnn.com"},
-		{"nl-1.hosts.tikhonnnnn.com", false, "nl-1", "nl-1.hosts.tikhonnnnn.com"},
-		{"nl-1.hosts.tikhonnnnn.com", true, "nl-1", "nl-1.hosts.tikhonnnnn.com"},
-		{"proxy.tikhonnnnn.com", true, "nl-1", "proxy.tikhonnnnn.com"},
-		{"tikhonnnnn.com", true, "", ""},
-		{"x.nl-1.hosts.tikhonnnnn.com", false, "", ""},
+		{"proxier.test", false, "nl-1", "nl-1.hosts.proxier.test"},
+		{"hosts.proxier.test", false, "nl-1", "nl-1.hosts.proxier.test"},
+		{"nl-1.hosts.proxier.test", false, "nl-1", "nl-1.hosts.proxier.test"},
+		{"nl-1.hosts.proxier.test", true, "nl-1", "nl-1.hosts.proxier.test"},
+		{"proxy.proxier.test", true, "nl-1", "proxy.proxier.test"},
+		{"proxier.test", true, "", ""},
+		{"x.nl-1.hosts.proxier.test", false, "", ""},
 		{"ikhonnnnn.com", false, "", ""},
 		{"example.net", false, "de-1", "de-1.example.net"},
 	} {
@@ -157,7 +157,7 @@ func TestCoveringAndCoveredBy(t *testing.T) {
 			t.Errorf("Covering(%s, %v) = %s %s %v", c.name, c.exact, s, h, ok)
 		}
 	}
-	if _, _, ok := Covering("tikhonnnnn.com", false, nil); ok {
+	if _, _, ok := Covering("proxier.test", false, nil); ok {
 		t.Error("no servers, nothing covered")
 	}
 

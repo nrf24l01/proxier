@@ -12,7 +12,7 @@ import (
 	"github.com/tikhonp/proxier/internal/modules/servers/store"
 )
 
-// routedGuard covers every hostname under tikhonnnnn.com, as a routing list
+// routedGuard covers every hostname under proxier.test, as a routing list
 // holding that suffix would.
 type routedGuard struct{ asked []string }
 
@@ -20,8 +20,8 @@ func (g *routedGuard) Covering(_ context.Context, hostnames []string) ([]servers
 	g.asked = append(g.asked, hostnames...)
 	var out []servers.RoutedName
 	for _, h := range hostnames {
-		if strings.HasSuffix(h, ".tikhonnnnn.com") {
-			out = append(out, servers.RoutedName{Hostname: h, Domain: "tikhonnnnn.com", Service: "my-sites", List: "Main"})
+		if strings.HasSuffix(h, ".proxier.test") {
+			out = append(out, servers.RoutedName{Hostname: h, Domain: "proxier.test", Service: "my-sites", List: "Main"})
 		}
 	}
 	return out, nil
@@ -36,7 +36,7 @@ func TestNewServerRefusedWhenRouted(t *testing.T) {
 		"ip": {f.IP}, "ssh_port": {strconv.Itoa(f.SSHPort)}, "root_password": {f.RootPassword}, "country": {h.Country},
 		"template": {sid(h.TemplateID)}, "version": {"1"}, "param.letsencrypt_email": {"me@example.com"},
 	}
-	const want = "nl-1.hosts.tikhonnnnn.com is covered by tikhonnnnn.com (my-sites) in Main: Proxier&#39;s checks would go into the tunnel. Take it out of the list first."
+	const want = "nl-1.hosts.proxier.test is covered by proxier.test (my-sites) in Main: Proxier&#39;s checks would go into the tunnel. Take it out of the list first."
 
 	// the live summary says it while the admin types
 	rec := h.Login.Post("/servers/new/summary", url.Values{
@@ -53,7 +53,7 @@ func TestNewServerRefusedWhenRouted(t *testing.T) {
 	if srvs, _ := store.ListServers(bg, h.App.DB.R); len(srvs) != 0 {
 		t.Fatalf("created anyway: %+v", srvs)
 	}
-	if len(g.asked) == 0 || g.asked[len(g.asked)-1] != "nl-1.hosts.tikhonnnnn.com" {
+	if len(g.asked) == 0 || g.asked[len(g.asked)-1] != "nl-1.hosts.proxier.test" {
 		t.Errorf("asked %v", g.asked)
 	}
 

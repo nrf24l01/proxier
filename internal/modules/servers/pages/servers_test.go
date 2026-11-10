@@ -133,7 +133,7 @@ func TestServerPageStates(t *testing.T) {
 	// Active: identity, endpoints, notes, events, tabs.
 	h4, id4 := provisioned(t)
 	body = page(t, h4, "/servers/"+sid(id4))
-	mustContain(t, body, "Unknown", "nl-1.hosts.tikhonnnnn.com", "VLESS XHTTP behind nginx", "v1", "Endpoints", "🇳🇱 Netherlands 1", "Reveal", "Notes",
+	mustContain(t, body, "Unknown", "nl-1.hosts.proxier.test", "VLESS XHTTP behind nginx", "v1", "Endpoints", "🇳🇱 Netherlands 1", "Reveal", "Notes",
 		"/jobs?subject=server:"+sid(id4), "/activity?subject=server:"+sid(id4), "is active", "Recent events")
 	mustNotContain(t, body, "Cancel provisioning", ">Retry<")
 	// The password and the generated credentials are nowhere on the page.
@@ -171,7 +171,7 @@ func TestRetryPage(t *testing.T) {
 
 	// A DNS conflict offers Overwrite with the stored error.
 	h2 := serverstest.NewHarness(t, serverstest.StubProxy())
-	h2.CF.AddRecord("tikhonnnnn.com", "nl-1.hosts.tikhonnnnn.com", "203.0.113.9", "")
+	h2.CF.AddRecord("proxier.test", "nl-1.hosts.proxier.test", "203.0.113.9", "")
 	id2 := h2.Create(h2.Form())
 	h2.Drain()
 	body = page(t, h2, "/servers/"+sid(id2)+"/retry")
@@ -208,7 +208,7 @@ func TestEndpointURIReveal(t *testing.T) {
 	if cc := rec.Header().Get("Cache-Control"); !strings.Contains(cc, "no-store") {
 		t.Errorf("Cache-Control %q", cc)
 	}
-	mustContain(t, rec.Body.String(), "vless://"+ep.Credential+"@nl-1.hosts.tikhonnnnn.com:443", "type=xhttp", "security=tls", "data-copy=", "Copy")
+	mustContain(t, rec.Body.String(), "vless://"+ep.Credential+"@nl-1.hosts.proxier.test:443", "type=xhttp", "security=tls", "data-copy=", "Copy")
 	if rec := h.Login.Get("/servers/" + sid(id) + "/endpoints/nope/uri"); rec.Code != 404 {
 		t.Errorf("an unknown endpoint: %d", rec.Code)
 	}
@@ -322,7 +322,7 @@ func TestCountryPickerFollowsTheIPUntilChosen(t *testing.T) {
 	// empty, nothing suggested yet: the IP's country comes in, out of band
 	s := summary("203.0.113.24", "", "")
 	mustContain(t, s, `<div id="country-pick" class="field" hx-swap-oob="true">`, `value="`+nl+`"`, `name="country_auto" value="NL"`,
-		"Suggested from the IP (NL)", "nl-1.hosts.tikhonnnnn.com", "🇳🇱 Netherlands 1")
+		"Suggested from the IP (NL)", "nl-1.hosts.proxier.test", "🇳🇱 Netherlands 1")
 	mustNotContain(t, s, `<datalist`) // the list stays on the page, out of the swap
 
 	// the suggestion still shown and the same IP: the field stays, its line too
@@ -343,7 +343,7 @@ func TestCountryPickerFollowsTheIPUntilChosen(t *testing.T) {
 		mustNotContain(t, s, `id="country-pick"`, "Suggested from the IP (")
 		mustContain(t, s, `<p class="help" id="country-hint" hx-swap-oob="true">Suggested from the IP&#39;s country.`)
 		if c.name != "" {
-			mustContain(t, s, c.name+".hosts.tikhonnnnn.com")
+			mustContain(t, s, c.name+".hosts.proxier.test")
 		} else {
 			// no name until a country is picked, and no complaint while typing
 			mustContain(t, s, "Pick a country to see the server&#39;s name.")
@@ -374,7 +374,7 @@ func TestNewServerForm(t *testing.T) {
 		t.Fatalf("%d\n%s", rec.Code, rec.Body)
 	}
 	s := rec.Body.String()
-	mustContain(t, s, "nl-1", "nl-1.hosts.tikhonnnnn.com", "A nl-1.hosts.tikhonnnnn.com → 203.0.113.24", "Netherlands 1")
+	mustContain(t, s, "nl-1", "nl-1.hosts.proxier.test", "A nl-1.hosts.proxier.test → 203.0.113.24", "Netherlands 1")
 	mustNotContain(t, s, "must-not-be-read", `id="params"`) // same template and version: the fields stay as they are
 
 	// Another version asks for its own fields, out of band.
@@ -434,9 +434,9 @@ func TestServersListSearchAndDashboard(t *testing.T) {
 	id := h.Create(h.Form())
 	h.Drain()
 	body := page(t, h, "/servers")
-	mustContain(t, body, "nl-1", "Failed", "127.0.0.1", "nl-1.hosts.tikhonnnnn.com", "VLESS XHTTP behind nginx v1", `href="/servers/`+sid(id)+`"`)
+	mustContain(t, body, "nl-1", "Failed", "127.0.0.1", "nl-1.hosts.proxier.test", "VLESS XHTTP behind nginx v1", `href="/servers/`+sid(id)+`"`)
 	// search finds it by name, IP and hostname
-	for _, q := range []string{"nl-1", "127.0.0", "hosts.tikh"} {
+	for _, q := range []string{"nl-1", "127.0.0", "hosts.prox"} {
 		mustContain(t, page(t, h, "/search?q="+url.QueryEscape(q)), `href="/servers/`+sid(id)+`"`)
 	}
 	// the dashboard names the failed server and its step
@@ -496,7 +496,7 @@ func TestPreviewForAServer(t *testing.T) {
 		t.Errorf("Cache-Control %q", rec.Header().Get("Cache-Control"))
 	}
 	body := rec.Body.String()
-	mustContain(t, body, "Rendered for nl-1 (127.0.0.1)", "Secrets are shown as •••", "Reveal secrets", "nl-1.hosts.tikhonnnnn.com", "•••")
+	mustContain(t, body, "Rendered for nl-1 (127.0.0.1)", "Secrets are shown as •••", "Reveal secrets", "nl-1.hosts.proxier.test", "•••")
 	mustNotContain(t, body, ep.Credential, ep.Params["path"], "Sample server")
 
 	// Reveal shows the real values.
@@ -615,13 +615,13 @@ func TestServerListColumns(t *testing.T) {
 
 	// no samples, no proxy result: dashes, no meters
 	body := page(t, h, "/servers")
-	mustContain(t, body, "nl-1", "Unknown", "127.0.0.1", "nl-1.hosts.tikhonnnnn.com", "VLESS XHTTP behind nginx v1", "Run checks now", "Upgrade to default version", "Pause checks")
+	mustContain(t, body, "nl-1", "Unknown", "127.0.0.1", "nl-1.hosts.proxier.test", "VLESS XHTTP behind nginx v1", "Run checks now", "Upgrade to default version", "Pause checks")
 	mustNotContain(t, body, `role="meter"`, "available")
 	mustContain(t, body, `<span class="subtle">—</span>`)
 	// zoomed in, the table scrolls in its own box and a cut-off value keeps its whole text in a tooltip
-	mustContain(t, body, `class="srv-table tbl"`, `title="nl-1"`, `title="nl-1.hosts.tikhonnnnn.com"`, `title="VLESS XHTTP behind nginx v1"`)
+	mustContain(t, body, `class="srv-table tbl"`, `title="nl-1"`, `title="nl-1.hosts.proxier.test"`, `title="VLESS XHTTP behind nginx v1"`)
 	// and the server's header line wraps between facts, never inside a hostname
-	mustContain(t, page(t, h, "/servers/"+sid(id)), `<p class="subtle facts"><span>Netherlands</span> · <span>`, `title="nl-1.hosts.tikhonnnnn.com">nl-1.hosts.tikhonnnnn.com</span></p>`)
+	mustContain(t, page(t, h, "/servers/"+sid(id)), `<p class="subtle facts"><span>Netherlands</span> · <span>`, `title="nl-1.hosts.proxier.test">nl-1.hosts.proxier.test</span></p>`)
 
 	// with a sample, a proxy test and a newer default version
 	insertSample(t, h, id, func(s *store.Sample) {

@@ -92,7 +92,7 @@ func TestSubscriptionPage(t *testing.T) {
 		"Servers · 2", "data-sortable", `data-sort-id="1"`, `data-sort-id="2"`, "data-sort-handle", `data-key="J"`, `data-key="K"`, "data-row-only",
 		"data-sortable-form", `name="order" value="1,2"`,
 		"Settings", `name="update_hours" value="12"`, "Save settings",
-		"Preview", "200 OK", "profile-title: base64:RmFtaWx5", "vless://••••••••@nl-1.hosts.tikhonnnnn.com:443", "%2F••••••••",
+		"Preview", "200 OK", "profile-title: base64:RmFtaWx5", "vless://••••••••@nl-1.hosts.proxier.test:443", "%2F••••••••",
 		"Links · 0", "No links yet.", "Activity", "Created subscription Family", "Added nl-1", "Added de-1")
 	mustNotContain(t, body, substest.Credential(1), substest.Path(1))
 	noInline(t, body)

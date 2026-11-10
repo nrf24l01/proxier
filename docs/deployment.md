@@ -95,7 +95,7 @@ Discovery's headless visits ([domain discovery](./processes/routing/domain-disco
 
 Routers that Proxier can't reach directly sit behind jump hosts on a tailnet. Proxier joins it as its own node through an embedded client ([ADR 0008](./adr/0008-tsnet-node-for-router-reachability.md)). Tailscale and headscale both work.
 
-- `PROXIER_TS_CONTROL_URL`: the control server, `https://controlplane.tailscale.com` for Tailscale or your headscale's URL.
+- `PROXIER_TS_CONTROL_URL`: the control server. The default is Tailscale's, `https://controlplane.tailscale.com`. For headscale, set its URL.
 - `PROXIER_TS_AUTHKEY`: a pre-auth key for the first login. Without it the tailnet is off, and routers must be reachable from Proxier's own network.
 - The tailnet's ACLs decide which jump hosts and routers the node `proxier` may reach.
 
@@ -114,7 +114,7 @@ The tailnet state is not in the database or its snapshots.
 1. Generate the master key (`openssl rand -base64 32`) and store a copy outside the machine, in a password manager. Without it, nobody can recover the database's secrets.
 2. Start the containers. Migrations run on startup. Proxier generates its SSH key pair (ed25519), the default routing list "Main" and the seed template.
 3. `docker compose exec proxier /bin/proxier manage create-admin` creates the first member interactively. It's the only way to create one.
-4. Sign in. In Settings, add the Cloudflare API token and zones, the Telegram bot (token and detected chat), your personal SSH public keys (installed on every new server), and the check-host nodes. Set the hostname pattern to a name in one of your zones, e.g. `{country}-{number}.hosts.example.com`, and set the time zone and languages.
+4. Sign in. In Settings, add the Cloudflare API token and zones, the Telegram bot (token and detected chat), your personal SSH public keys (installed on every new server), and the check-host nodes. Set the hostname pattern (Settings → Servers) to a name in one of your zones, e.g. `{country}-{number}.hosts.example.com`. It has no default, and the new-server form refuses every server until it is set. Then set the time zone and languages.
 5. Copy Proxier's public SSH key (Settings → SSH) to the jump hosts and routers you want to sync.
 
 ## Backups

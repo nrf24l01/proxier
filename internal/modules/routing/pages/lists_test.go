@@ -29,14 +29,14 @@ func listOrder(t *testing.T, h *routingtest.Harness, id int64) string {
 
 func TestListPages(t *testing.T) {
 	h := routingtest.New(t)
-	h.Servers.Put(1, "nl-1", "nl-1.hosts.tikhonnnnn.com")
+	h.Servers.Put(1, "nl-1", "nl-1.hosts.proxier.test")
 	h.Up.V2fly("anthropic", "anthropic.com\nclaude.ai\n")
 	anthropic := h.Upstream("anthropic")
 	mine := h.Custom("mine", "claude.ai", "example.com")
 	main := h.List("Main", anthropic, mine)
 	h.List("Parents")
 	// a refresh brings a name that covers nl-1: left out, with a warning
-	h.Exec(`UPDATE routing_snapshots SET suffix = 'anthropic.com' || char(10) || 'claude.ai' || char(10) || 'tikhonnnnn.com', suffix_count = 3
+	h.Exec(`UPDATE routing_snapshots SET suffix = 'anthropic.com' || char(10) || 'claude.ai' || char(10) || 'proxier.test', suffix_count = 3
 		WHERE service_id = ? AND status = 'accepted'`, anthropic)
 
 	body := h.Login.Get("/routing/lists").Body.String()
@@ -51,7 +51,7 @@ func TestListPages(t *testing.T) {
 		fmt.Sprintf(`data-sort-id="%d"`, mine), "data-sort-handle", `data-key="J"`, `data-key="K"`, "data-row-only", "data-sortable-form",
 		fmt.Sprintf(`name="order" value="%d,%d"`, anthropic, mine), "v2fly:anthropic",
 		"Targets · 0", "No routers or Shadowrocket configs follow Main yet.",
-		"Warnings · 1", "v2fly:anthropic has tikhonnnnn.com, which covers nl-1.hosts.tikhonnnnn.com (nl-1): left out of what targets get.",
+		"Warnings · 1", "v2fly:anthropic has proxier.test, which covers nl-1.hosts.proxier.test (nl-1): left out of what targets get.",
 		"Actions", "Rename…", "Delete…", "The default list can&#39;t be deleted.", "Activity", "Added anthropic", "Added mine")
 	// x opens the delete (the page's) or a row's remove, e renames; a row's x never reaches the page's
 	has(t, "list keys", body, `data-action="lists.delete" data-key="x">`, `data-action="lists.rename" data-key="e">`,
@@ -93,8 +93,8 @@ func TestListActions(t *testing.T) {
 	a := h.Custom("a", "a.com")
 	b := h.Custom("b", "b.com")
 	c := h.Custom("c", "c.com")
-	h.Servers.Put(1, "nl-1", "nl-1.hosts.tikhonnnnn.com")
-	bad := h.Custom("bad", "tikhonnnnn.com")
+	h.Servers.Put(1, "nl-1", "nl-1.hosts.proxier.test")
+	bad := h.Custom("bad", "proxier.test")
 
 	// the picker: services not in the list, filtered
 	body := h.Login.Get("/routing/lists/1/add").Body.String()
@@ -113,7 +113,7 @@ func TestListActions(t *testing.T) {
 	has(t, "band", h.Login.Get("/routing/lists/1?added=3").Body.String(), "Added 3 services.")
 	// the guard refuses on the picker, keeping the ticks
 	rec = h.Login.Post("/routing/lists/1/services", url.Values{"service": {fmt.Sprint(bad)}})
-	if rec.Code != 422 || !strings.Contains(rec.Body.String(), "Adding tikhonnnnn.com would cover nl-1.hosts.tikhonnnnn.com, the hostname of nl-1. It wasn&#39;t saved.") ||
+	if rec.Code != 422 || !strings.Contains(rec.Body.String(), "Adding proxier.test would cover nl-1.hosts.proxier.test, the hostname of nl-1. It wasn&#39;t saved.") ||
 		!strings.Contains(rec.Body.String(), fmt.Sprintf(`value="%d" checked`, bad)) {
 		t.Errorf("guard: %d %s", rec.Code, rec.Body)
 	}
@@ -290,12 +290,12 @@ func TestOwnershipOnServicePages(t *testing.T) {
 	}
 
 	// a guard refusal shows above the table and keeps the edits
-	h.Servers.Put(1, "nl-1", "nl-1.hosts.tikhonnnnn.com")
-	rec = h.Login.Post(fmt.Sprintf("/routing/services/%d/edit", mine), editForm("example.com", "tikhonnnnn.com"))
+	h.Servers.Put(1, "nl-1", "nl-1.hosts.proxier.test")
+	rec = h.Login.Post(fmt.Sprintf("/routing/services/%d/edit", mine), editForm("example.com", "proxier.test"))
 	if rec.Code != 422 {
 		t.Fatalf("guarded save: %d", rec.Code)
 	}
-	has(t, "guarded save", rec.Body.String(), "Adding tikhonnnnn.com would cover nl-1.hosts.tikhonnnnn.com, the hostname of nl-1.", `value="tikhonnnnn.com"`)
+	has(t, "guarded save", rec.Body.String(), "Adding proxier.test would cover nl-1.hosts.proxier.test, the hostname of nl-1.", `value="proxier.test"`)
 
 	// the remove refusal links the lists
 	has(t, "remove", h.Login.Get(fmt.Sprintf("/routing/services/%d/remove", mine)).Body.String(), `href="/routing/lists/1"`, `href="/routing/lists/2"`)

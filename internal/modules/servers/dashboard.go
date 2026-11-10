@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/tikhonp/proxier/internal/modules/servers/conf"
 	"github.com/tikhonp/proxier/internal/modules/servers/country"
 	"github.com/tikhonp/proxier/internal/modules/servers/dns/cloudflare"
 	"github.com/tikhonp/proxier/internal/modules/servers/health"
@@ -35,15 +36,20 @@ func (m *Module) Dashboard(ctx context.Context, _ access.Who) ([]ui.DashboardAre
 	if err != nil {
 		return nil, err
 	}
-	v.Checklist = []pages.DashCheck{
-		{Label: i18n.T(ctx, "health.dash.setup_cloudflare"), Href: "/settings/integrations/cloudflare", Done: token != ""},
-		{Label: i18n.T(ctx, "health.dash.setup_server"), Href: "/servers/new", Done: v.Total > 0},
+	pattern, err := m.deps.Settings.Get(ctx, conf.HostnamePatternKey)
+	if err != nil {
+		return nil, err
 	}
-	if token != "" && v.Total > 0 {
-		v.Checklist = nil
+	// A setup step shows until it is done. The first server shows while there
+	// is none, or while a setup step is missing.
+	if token == "" {
+		v.Checklist = append(v.Checklist, pages.DashCheck{Label: i18n.T(ctx, "health.dash.setup_cloudflare"), Href: "/settings/integrations/cloudflare"})
 	}
-	if v.Total == 0 && token != "" {
-		v.Checklist = v.Checklist[1:]
+	if pattern == "" {
+		v.Checklist = append(v.Checklist, pages.DashCheck{Label: i18n.T(ctx, "health.dash.setup_pattern"), Href: "/settings/servers"})
+	}
+	if len(v.Checklist) > 0 || v.Total == 0 {
+		v.Checklist = append(v.Checklist, pages.DashCheck{Label: i18n.T(ctx, "health.dash.setup_server"), Href: "/servers/new", Done: v.Total > 0})
 	}
 	home, since, err := store.GetHome(ctx, m.deps.DB.R)
 	if err != nil {

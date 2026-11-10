@@ -15,7 +15,7 @@ func TestChangeIPPages(t *testing.T) {
 	// The Overview offers it; the dialog says what to set up first.
 	mustContain(t, page(t, h, base), `href="`+base+`/ip"`)
 	body := page(t, h, base+"/ip")
-	mustContain(t, body, "Change the IP of nl-1", "Add the IP to the VPS at the hosting provider", "nl-1.hosts.tikhonnnnn.com → 127.0.0.1",
+	mustContain(t, body, "Change the IP of nl-1", "Add the IP to the VPS at the hosting provider", "nl-1.hosts.proxier.test → 127.0.0.1",
 		`name="keep" value="1" checked`)
 	mustNotContain(t, body, "This template&#39;s files use the IP") // the seed template names the hostname only
 

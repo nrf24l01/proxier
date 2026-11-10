@@ -56,7 +56,7 @@ func TestRealActivationJoinsSubscription(t *testing.T) {
 	}
 	// the preview serves the real endpoint
 	resp, _, err := mod.Subs.Preview(i18n.WithLocalizer(ctx, h.App.I18n.Localizer(i18n.EN, nil)), me, access.All, "", false)
-	if err != nil || resp.Outcome != output.OK || len(resp.Lines) != 1 || !strings.Contains(resp.Lines[0], "@nl-1.hosts.tikhonnnnn.com:443") ||
+	if err != nil || resp.Outcome != output.OK || len(resp.Lines) != 1 || !strings.Contains(resp.Lines[0], "@nl-1.hosts.proxier.test:443") ||
 		!strings.HasSuffix(resp.Lines[0], "#%F0%9F%87%B3%F0%9F%87%B1%20Netherlands%201") {
 		t.Errorf("preview: %+v %v", resp.Lines, err)
 	}

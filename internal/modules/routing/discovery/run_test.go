@@ -59,7 +59,7 @@ func blocked(url string) discovery.Result {
 
 func TestBlockedSiteAndVisitAgain(t *testing.T) {
 	h, b := newH(t)
-	h.Servers.Put(1, "nl-1", "nl-1.hosts.tikhonnnnn.com")
+	h.Servers.Put(1, "nl-1", "nl-1.hosts.proxier.test")
 	url := "https://www.blocked.example/"
 	b.Site(url, "", blocked(url))
 	b.Site(url, "nl-1", loaded(url, "Blocked at home",

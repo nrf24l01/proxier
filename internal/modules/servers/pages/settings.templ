@@ -24,8 +24,10 @@ templ serversSettingsPage(s ui.Shell, pages []ui.SettingsPage, sec settings.Sect
 				@ui.Alert("gold", "alert") {
 					<span>
 						{ v.Warning }
-						{ " " }
-						<a href="/settings/integrations/cloudflare">{ i18n.T(ctx, "servers.settings.zone_warning_link") }</a>
+						if v.ZoneLink {
+							{ " " }
+							<a href="/settings/integrations/cloudflare">{ i18n.T(ctx, "servers.settings.zone_warning_link") }</a>
+						}
 					</span>
 				}
 			</div>

@@ -214,8 +214,8 @@ button:disabled{cursor:not-allowed;opacity:.45}
 <div style="color:#908caa"><span style="color:#9ccfd8">profile-update-interval</span>: <span style="color:#f6c177">12</span></div>
 <div style="color:#908caa;word-break:break-all"><span style="color:#9ccfd8">subscription-userinfo</span>: upload=0; download=0; total=0; expire=0</div>
 <div style="height:8px"></div>
-<div style="word-break:break-all">vless://••••••••@nl-1.hosts.tikhonnnnn.com:443?…#🇳🇱 Netherlands 1</div>
-<div style="word-break:break-all">vless://••••••••@se-1.hosts.tikhonnnnn.com:443?…#🇸🇪 Sweden 1</div>
+<div style="word-break:break-all">vless://••••••••@nl-1.hosts.example.com:443?…#🇳🇱 Netherlands 1</div>
+<div style="word-break:break-all">vless://••••••••@se-1.hosts.example.com:443?…#🇸🇪 Sweden 1</div>
 </div>
 <p style="padding:8px 16px;border-top:1px solid #26233a;font-size:12px;color:#908caa">Built on every fetch. Nothing is cached.</p>
 </section>
@@ -288,8 +288,8 @@ class Component extends DCLogic {
         if (e.key === 'y') { e.preventDefault(); copy(); }
       },
       url: this.state.reveal
-        ? 'https://proxier.tikhonnnnn.com/s/k3Vq9TzR2mXw7LpA0eHn4Y'
-        : 'https://proxier.tikhonnnnn.com/s/••••••••••••••••••••••',
+        ? 'https://proxier.example.com/s/k3Vq9TzR2mXw7LpA0eHn4Y'
+        : 'https://proxier.example.com/s/••••••••••••••••••••••',
       revealLabel: this.state.reveal ? 'Hide' : 'Reveal',
       toggleReveal: () => this.setState({ reveal: !this.state.reveal }),
       copy: copy,

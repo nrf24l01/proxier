@@ -28,7 +28,7 @@ func TestEndpointCatalog(t *testing.T) {
 		t.Fatalf("active servers: %+v", list)
 	}
 	eps := list[0].Endpoints
-	if len(eps) != 1 || eps[0].Key != "main" || eps[0].Host != "nl-1.hosts.tikhonnnnn.com" || eps[0].Port != 443 ||
+	if len(eps) != 1 || eps[0].Key != "main" || eps[0].Host != "nl-1.hosts.proxier.test" || eps[0].Port != 443 ||
 		eps[0].Credential == "" || eps[0].Params["path"] == "" || eps[0].DisplayName != "🇳🇱 Netherlands 1" {
 		t.Fatalf("endpoints: %+v", eps)
 	}
@@ -58,8 +58,8 @@ func TestServerHostnamesNameTheServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(list) != 2 || list[0].ServerID != first || list[0].Name != "nl-1" || list[0].IP != "127.0.0.1" ||
-		strings.Join(list[0].Hostnames, " ") != "nl-1.hosts.tikhonnnnn.com" ||
-		list[1].ServerID != second || list[1].Name != "nl-2" || strings.Join(list[1].Hostnames, " ") != "nl-2.hosts.tikhonnnnn.com" {
+		strings.Join(list[0].Hostnames, " ") != "nl-1.hosts.proxier.test" ||
+		list[1].ServerID != second || list[1].Name != "nl-2" || strings.Join(list[1].Hostnames, " ") != "nl-2.hosts.proxier.test" {
 		t.Fatalf("servers: %+v", list)
 	}
 	// A retired server's names are free to use again.

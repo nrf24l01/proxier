@@ -122,7 +122,7 @@ func TestNoPublicQuestionBeforeTheNameserversServeTheRecord(t *testing.T) {
 	want := []string{
 		"gabe.ns.cloudflare.com (172.64.33.114) answered nothing",
 		"tia.ns.cloudflare.com (172.64.32.229) answered nothing",
-		"tikhonnnnn.com's nameservers (gabe.ns.cloudflare.com, tia.ns.cloudflare.com) answer " + waitIP,
+		"proxier.test's nameservers (gabe.ns.cloudflare.com, tia.ns.cloudflare.com) answer " + waitIP,
 		"Cloudflare (doh) answered " + waitIP,
 		"Google (doh) answered " + waitIP,
 	}
@@ -138,7 +138,7 @@ func TestNoPublicQuestionBeforeTheNameserversServeTheRecord(t *testing.T) {
 		func(time.Duration, dns.NameServer) ([]netip.Addr, error) { return ipAddrs("203.0.113.1"), nil },
 		func(time.Duration, dns.Resolver) ([]netip.Addr, error) { asked = true; return nil, nil })
 	err := w.Wait(t.Context(), waitZone, waitName, waitIP, nil)
-	if !errors.Is(err, dns.ErrNotVisible) || !strings.Contains(err.Error(), "tikhonnnnn.com's own nameservers don't serve it: gabe.ns.cloudflare.com (108.162.193.114) answered 203.0.113.1") {
+	if !errors.Is(err, dns.ErrNotVisible) || !strings.Contains(err.Error(), "proxier.test's own nameservers don't serve it: gabe.ns.cloudflare.com (108.162.193.114) answered 203.0.113.1") {
 		t.Errorf("err = %v", err)
 	}
 	if asked || c.since() != 10*time.Minute {
@@ -182,7 +182,7 @@ func TestUnreachableNameserversFallBackToAPause(t *testing.T) {
 		{"no nameservers found",
 			func(context.Context, string) (dns.Zone, error) { return dns.Zone{}, errors.New("Cloudflare: HTTP 502") },
 			nil,
-			"Can't find tikhonnnnn.com's nameservers: Cloudflare: HTTP 502; asking the public resolvers in 10 s instead"},
+			"Can't find proxier.test's nameservers: Cloudflare: HTTP 502; asking the public resolvers in 10 s instead"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -377,8 +377,8 @@ func TestAskTheNameserversOverPort53(t *testing.T) {
 		aa, udp bool
 		log     string
 	}{
-		{"UDP", true, true, "tikhonnnnn.com's nameservers (ns.local) answer " + waitIP},
-		{"TCP when UDP is closed", true, false, "tikhonnnnn.com's nameservers (ns.local) answer " + waitIP},
+		{"UDP", true, true, "proxier.test's nameservers (ns.local) answer " + waitIP},
+		{"TCP when UDP is closed", true, false, "proxier.test's nameservers (ns.local) answer " + waitIP},
 		{"without the AA flag", false, true, "WARN Can't ask ns.local (127.0.0.1) about " + waitName + ": the answer is not authoritative"},
 	}
 	for _, tc := range cases {

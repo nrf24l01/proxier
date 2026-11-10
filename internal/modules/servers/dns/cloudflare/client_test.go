@@ -15,8 +15,8 @@ import (
 
 const (
 	token = "cf-token-SECRET-123"
-	zone  = "tikhonnnnn.com"
-	name  = "nl-1.hosts.tikhonnnnn.com"
+	zone  = "proxier.test"
+	name  = "nl-1.hosts.proxier.test"
 )
 
 func TestEnsureCreatesThenReuses(t *testing.T) {

@@ -207,7 +207,7 @@ Environment variables hold what Proxier needs before the database is readable, a
 | `PROXIER_LISTEN` | HTTP listen address | `:8080` |
 | `PROXIER_BASE_URL` | Public base URL for the UI and public routes | required, e.g. `https://proxier.example.com` |
 | `PROXIER_TRUSTED_PROXIES` | Addresses or CIDRs whose `X-Real-IP` is believed: the reverse proxy's | empty: the TCP peer is the client |
-| `PROXIER_TS_CONTROL_URL` | Control server of the tailnet: `https://controlplane.tailscale.com` for Tailscale, or a headscale URL | the author's headscale: set your own when the tailnet is on |
+| `PROXIER_TS_CONTROL_URL` | Control server of the tailnet, Tailscale's or a headscale | `https://controlplane.tailscale.com` |
 | `PROXIER_TS_AUTHKEY` | Pre-auth key for the first tailnet login | empty: tailnet off |
 | `PROXIER_TS_HOSTNAME` | Tailnet node name | `proxier` |
 | `PROXIER_CHROMIUM_URL` | CDP endpoint of the sidecar | empty: headless visit off |

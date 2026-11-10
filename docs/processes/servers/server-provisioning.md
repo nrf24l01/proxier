@@ -17,6 +17,7 @@ Provisioning turns a freshly issued VPS (an IP and a root password) into an **ac
    - no non-retired server has this IP, as its IP or as a previous IP it keeps ([IP change](./ip-change.md));
    - the country is a country (an ISO code in use today), and the template version exists and the template isn't archived;
    - parameters pass validation;
+   - the hostname pattern in Settings → Servers is set;
    - Cloudflare is configured and a configured zone covers the hostname;
    - no routing list covers the hostname (when the routing module is enabled): a list holding `example.com`, or the hostname itself, would send Proxier's checks of the server into the router's tunnel. Any name listed in any list counts, even one the list doesn't install. The live summary says it too: "nl-3.hosts.example.com is covered by example.com (my-sites) in Main: Proxier's checks would go into the tunnel. Take it out of the list first."
 
@@ -87,6 +88,8 @@ The job makes one attempt and never retries by itself: a retry may need input, s
 - Typing "Neth" in the picker, emptying it, or picking Finland while the IP suggests another country → the field is left as it is; the summary shows no name for "Neth" and no complaint while it is typed.
 - "Atlantis", a withdrawn code (`UK`) or nothing in the picker → refused on **Create** ("Pick a country from the list." / "Pick a country."), the text kept, nothing created. `nl` or "Нидерланды" typed in full → the Netherlands.
 - "Main" holds a custom service with suffix `example.com`; the new server would be `nl-3.hosts.example.com` → refused on the form, naming the list and the service, nothing created.
+- A new install has no hostname pattern → the form's summary says so before a country is picked, and **Create** refuses it. Nothing is created. Settings → Servers and the dashboard's first-run list ask for the pattern.
+- An install that built servers while the pattern had a default, and never saved one → a migration saves the pattern rebuilt from the newest server's management hostname: `nl-2.hosts.example.com` gives `{country}-{number}.hosts.example.com`. A pattern saved in Settings stays.
 - Wrong root password → fails at preflight with "authentication failed". The password stays encrypted for retry. **Retry** asks for it again.
 - IP unreachable (timeout) → fails at preflight. The DNS is untouched.
 - Port 443 already in use on the VPS → fails at preflight, naming the process from `ss`.

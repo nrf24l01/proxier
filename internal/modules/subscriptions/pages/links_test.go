@@ -148,7 +148,7 @@ func TestLinkPage(t *testing.T) {
 	mustContain(t, body, "Alex", "Copy URL", `data-key="y"`, `data-copy="`+full+`"`,
 		"http://<wbr>proxier.test/<wbr>s/<wbr>"+strings.Repeat("•", 22), "The token is shown only here, never in notifications, events or logs.",
 		"Show QR", "In the app: add subscription → scan QR.", "What the app gets now", "Built on every fetch. Nothing is cached.",
-		"vless://••••••••@nl-1.hosts.tikhonnnnn.com", "profile-title: base64:", "Family", "nl-1, de-1",
+		"vless://••••••••@nl-1.hosts.proxier.test", "profile-title: base64:", "Family", "nl-1, de-1",
 		"no expiry", "English", "uri-plain (the subscription&#39;s default)", "just now · Other · 2001:db8:4f2::/48",
 		"kept 90 days", "Other: okhttp/4.12", "v2RayTun", "2001:db8:4f2::9", "Older →",
 		"Regenerate token…", "Change subscription…", "Set expiry…", "Edit…", "Delete…", "Disable…", "Created link Alex in Family")

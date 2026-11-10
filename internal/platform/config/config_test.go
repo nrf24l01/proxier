@@ -26,7 +26,7 @@ func TestDefaults(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 	if c.DataDir != "/data" || c.Listen != ":8080" || c.TSHostname != "proxier" ||
-		c.TSControlURL != "https://hs.tikhonnnnn.com" {
+		c.TSControlURL != "https://controlplane.tailscale.com" {
 		t.Errorf("unexpected defaults: %+v", c)
 	}
 	if c.TZ.String() != "Europe/Moscow" {

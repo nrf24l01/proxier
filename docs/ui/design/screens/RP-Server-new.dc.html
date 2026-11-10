@@ -153,7 +153,7 @@ button:disabled{cursor:not-allowed;opacity:.45}
 <dt style="color:#908caa">Server name</dt>
 <dd><span style="font-size:15px;font-weight:600">nl-2</span><div style="font-size:12px;color:#908caa">next number in nl · never reused</div></dd>
 <dt style="color:#908caa">Host</dt>
-<dd style="word-break:break-all">nl-2.hosts.tikhonnnnn.com<div style="font-size:12px;color:#908caa">management and proxy</div></dd>
+<dd style="word-break:break-all">nl-2.hosts.example.com<div style="font-size:12px;color:#908caa">management and proxy</div></dd>
 <dt style="color:#908caa">DNS record</dt>
 <dd><div style="word-break:break-all">A nl-2.hosts → 203.0.113.24</div><div style="font-size:12px;color:#908caa">DNS only · TTL 60 · proxier:nl-2</div></dd>
 <dt style="color:#908caa">Endpoint</dt>
@@ -220,7 +220,7 @@ class Component extends DCLogic {
       checks: [
         { m: ok, c: '#908caa', text: 'no other server uses 203.0.113.24' },
         { m: ok, c: '#908caa', text: 'location nl and template v3 exist' },
-        { m: ok, c: '#908caa', text: 'Cloudflare zone tikhonnnnn.com covers the name' },
+        { m: ok, c: '#908caa', text: 'Cloudflare zone example.com covers the name' },
         { m: ok, c: '#908caa', text: 'parameters are valid' }
       ]
     };

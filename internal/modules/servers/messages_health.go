@@ -134,6 +134,7 @@ var healthMessages = i18n.Messages{
 	"health.dash.top_traffic":       {EN: "Most traffic today", RU: "Больше всего трафика сегодня"},
 	"health.dash.setup":             {EN: "Set up", RU: "Настройка"},
 	"health.dash.setup_cloudflare":  {EN: "Connect Cloudflare", RU: "Подключить Cloudflare"},
+	"health.dash.setup_pattern":     {EN: "Set the hostname pattern", RU: "Задать шаблон имени хоста"},
 	"health.dash.setup_server":      {EN: "Add the first server", RU: "Добавить первый сервер"},
 
 	// notifications

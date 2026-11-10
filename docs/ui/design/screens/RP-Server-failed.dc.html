@@ -70,7 +70,7 @@ button:disabled{cursor:not-allowed;opacity:.45}
 <span style="display:inline-flex;align-items:center;gap:7px;white-space:nowrap;color:#eb6f92"><span aria-hidden="true" style="width:8px;height:8px;flex:none;background:#eb6f92"></span>failed</span>
 <span style="font-size:12px;color:#908caa">at step 4/11 · DNS</span>
 </div>
-<p style="color:#908caa;margin-top:4px">Netherlands · 203.0.113.24 · nl-2.hosts.tikhonnnnn.com · VLESS XHTTP behind nginx v3</p>
+<p style="color:#908caa;margin-top:4px">Netherlands · 203.0.113.24 · nl-2.hosts.example.com · VLESS XHTTP behind nginx v3</p>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px">
 <button type="button" class="pc-btn" aria-label="More actions for nl-2">More<span aria-hidden="true" style="color:#6e6a86">&#160;▾</span></button>
@@ -95,7 +95,7 @@ button:disabled{cursor:not-allowed;opacity:.45}
 <span style="font-size:12px;color:#908caa" title="Mon 5 Oct 2026, 16:50:40 MSK">16:50 · after 1 min 2 s</span>
 </div>
 <div style="padding:8px 16px 12px;display:flex;flex-direction:column;gap:4px;max-width:980px">
-<p>An A record for nl-2.hosts.tikhonnnnn.com already exists and points to 192.0.2.200.</p>
+<p>An A record for nl-2.hosts.example.com already exists and points to 192.0.2.200.</p>
 <p style="color:#908caa">Proxier didn't create it (it has no proxier: comment), so it was left alone. Delete or change it in Cloudflare and retry, or let Proxier replace it. Retry resumes at step 4; the root password is already erased, so you won't be asked for it again.</p>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 14px">
@@ -238,7 +238,7 @@ class Component extends DCLogic {
       ['16:50:33', '', 'docker 28.5.1 installed'],
       ['16:50:38', '', 'ufw allow 22/tcp 80/tcp 443/tcp · enabled'],
       ['16:50:39', 'h', '==> 4/11 DNS'],
-      ['16:50:40', '', 'cloudflare: look up A nl-2.hosts.tikhonnnnn.com in zone tikhonnnnn.com'],
+      ['16:50:40', '', 'cloudflare: look up A nl-2.hosts.example.com in zone example.com'],
       ['16:50:40', 'e', 'found A 192.0.2.200 · proxied no · comment none'],
       ['16:50:40', 'e', 'not created by Proxier: refusing to overwrite'],
       ['16:50:40', 'e', 'step 4/11 DNS failed · no retries left (provisioning retries are manual)'],

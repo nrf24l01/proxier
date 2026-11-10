@@ -193,17 +193,20 @@ func (s *Service) check(ctx context.Context, f Form, withPassword bool) (*checke
 	}
 
 	// the name, the hostname and Cloudflare
-	if c.prefix != "" {
+	pattern, perr := s.Settings.Get(ctx, conf.HostnamePatternKey)
+	if perr == nil && pattern == "" {
+		// Without a pattern no country gives a name, so this shows before one
+		// is picked.
+		fe(errs, "hostname", "servers.err.no_hostname_pattern")
+	}
+	if c.prefix != "" && perr == nil && pattern != "" {
 		n, err := store.NextNumber(ctx, s.DB.R, c.prefix)
 		if err == nil {
 			c.number = n
-			pattern, perr := s.Settings.Get(ctx, conf.HostnamePatternKey)
-			if perr == nil {
-				if h, herr := render.Hostname(pattern, c.prefix, n); herr != nil {
-					fe(errs, "hostname", "servers.err.hostname_pattern")
-				} else {
-					c.hostname = h
-				}
+			if h, herr := render.Hostname(pattern, c.prefix, n); herr != nil {
+				fe(errs, "hostname", "servers.err.hostname_pattern")
+			} else {
+				c.hostname = h
 			}
 		}
 	}

@@ -13,9 +13,9 @@ const uuid1 = "6f1c2b7e-0d3a-4c8e-9a51-2f7d8e4b1a90"
 
 func seedEndpoint() endpoint.Endpoint {
 	return endpoint.Endpoint{
-		Key: "main", Type: endpoint.VlessXHTTPTLS, Host: "nl-1.hosts.tikhonnnnn.com", Port: 443, Credential: uuid1,
+		Key: "main", Type: endpoint.VlessXHTTPTLS, Host: "nl-1.hosts.proxier.test", Port: 443, Credential: uuid1,
 		Params: map[string]string{
-			"path": "/0123456789abcdef", "sni": "nl-1.hosts.tikhonnnnn.com", "mode": "stream-up", "fp": "chrome", "alpn": "h2",
+			"path": "/0123456789abcdef", "sni": "nl-1.hosts.proxier.test", "mode": "stream-up", "fp": "chrome", "alpn": "h2",
 		},
 		DisplayName: "🇳🇱 Netherlands 1",
 	}
@@ -26,8 +26,8 @@ func TestVlessXHTTPURIGolden(t *testing.T) {
 	if !ok {
 		t.Fatal("the type is not registered")
 	}
-	want := "vless://" + uuid1 + "@nl-1.hosts.tikhonnnnn.com:443?encryption=none&security=tls" +
-		"&sni=nl-1.hosts.tikhonnnnn.com&fp=chrome&host=nl-1.hosts.tikhonnnnn.com&alpn=h2&type=xhttp" +
+	want := "vless://" + uuid1 + "@nl-1.hosts.proxier.test:443?encryption=none&security=tls" +
+		"&sni=nl-1.hosts.proxier.test&fp=chrome&host=nl-1.hosts.proxier.test&alpn=h2&type=xhttp" +
 		"&path=%2F0123456789abcdef&mode=stream-up#%F0%9F%87%B3%F0%9F%87%B1%20Netherlands%201"
 	if got := typ.URI(seedEndpoint()); got != want {
 		t.Errorf("URI\n got %s\nwant %s", got, want)
@@ -137,13 +137,13 @@ func TestProxyConfigShape(t *testing.T) {
 		t.Errorf("outbound: %+v", o)
 	}
 	if o.StreamSettings.Network != "xhttp" || o.StreamSettings.Security != "tls" ||
-		o.StreamSettings.TLSSettings["serverName"] != "nl-1.hosts.tikhonnnnn.com" || o.StreamSettings.TLSSettings["fingerprint"] != "chrome" ||
-		o.StreamSettings.XHTTPSettings["path"] != "/0123456789abcdef" || o.StreamSettings.XHTTPSettings["host"] != "nl-1.hosts.tikhonnnnn.com" {
+		o.StreamSettings.TLSSettings["serverName"] != "nl-1.hosts.proxier.test" || o.StreamSettings.TLSSettings["fingerprint"] != "chrome" ||
+		o.StreamSettings.XHTTPSettings["path"] != "/0123456789abcdef" || o.StreamSettings.XHTTPSettings["host"] != "nl-1.hosts.proxier.test" {
 		t.Errorf("stream settings: %+v", o.StreamSettings)
 	}
 	// without options it connects to the endpoint itself
 	b, _ = typ.ProxyConfig(seedEndpoint(), endpoint.ProxyOptions{})
-	if !strings.Contains(string(b), `"address":"nl-1.hosts.tikhonnnnn.com","port":443`) || strings.Contains(string(b), "pinnedPeerCertSha256") {
+	if !strings.Contains(string(b), `"address":"nl-1.hosts.proxier.test","port":443`) || strings.Contains(string(b), "pinnedPeerCertSha256") {
 		t.Errorf("defaults: %s", b)
 	}
 	// a broken endpoint gives no config

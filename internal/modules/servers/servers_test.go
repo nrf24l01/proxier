@@ -97,9 +97,10 @@ func TestModuleIsWired(t *testing.T) {
 		}
 	}
 
-	// settings: the section, its default, and the validation of the pattern
+	// settings: the section, its default (none: the zone is the install's own),
+	// and the validation of the pattern
 	v, err := app.Settings.Lookup(ctx, "servers.hostname_pattern")
-	if err != nil || v.Value != "{country}-{number}.hosts.tikhonnnnn.com" || !v.IsDefault {
+	if err != nil || v.Value != "" || !v.IsDefault {
 		t.Fatalf("setting: %+v %v", v, err)
 	}
 	for _, bad := range []string{"{country}.hosts.example.com", "x-{number}.example.com", "{country}-{number}", "{country}_{number}.example.com"} {
@@ -114,6 +115,10 @@ func TestModuleIsWired(t *testing.T) {
 	// a pattern saved before servers had a country still names them
 	if err := app.Settings.Set(ctx, "admin", "servers", map[string]string{"servers.hostname_pattern": "{location}-{number}.px.example.org"}); err != nil {
 		t.Errorf("a pattern with {location}: %v", err)
+	}
+	// and emptied again: not set
+	if err := app.Settings.Set(ctx, "admin", "servers", map[string]string{"servers.hostname_pattern": ""}); err != nil {
+		t.Errorf("an empty pattern: %v", err)
 	}
 	if !app.I18n.Has("settings.field.servers.hostname_pattern") || !app.I18n.Has("settings.servers") {
 		t.Error("settings texts are missing")

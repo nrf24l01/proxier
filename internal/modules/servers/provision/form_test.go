@@ -125,8 +125,13 @@ func TestFormRefusals(t *testing.T) {
 			setup: func() func() {
 				set("servers", map[string]string{"servers.hostname_pattern": "{country}-{number}.hosts.example.org"})
 				return func() {
-					set("servers", map[string]string{"servers.hostname_pattern": "{country}-{number}.hosts.tikhonnnnn.com"})
+					set("servers", map[string]string{"servers.hostname_pattern": "{country}-{number}.hosts.proxier.test"})
 				}
+			}},
+		{name: "no hostname pattern", field: "hostname", key: "servers.err.no_hostname_pattern",
+			setup: func() func() {
+				set("servers", map[string]string{"servers.hostname_pattern": ""})
+				return func() { set("servers", map[string]string{"servers.hostname_pattern": serverstest.HostnamePattern}) }
 			}},
 		{name: "no cloudflare", field: "dns", key: "servers.err.no_cloudflare",
 			setup: func() func() {
@@ -177,10 +182,10 @@ func TestLiveSummary(t *testing.T) {
 	if len(s.Errors) != 0 {
 		t.Fatalf("errors: %+v", s.Errors)
 	}
-	if s.Name != "nl-1" || s.ManagementHostname != "nl-1.hosts.tikhonnnnn.com" || s.ProxyHostname != s.ManagementHostname {
+	if s.Name != "nl-1" || s.ManagementHostname != "nl-1.hosts.proxier.test" || s.ProxyHostname != s.ManagementHostname {
 		t.Errorf("name and hosts: %+v", s)
 	}
-	if want := "A nl-1.hosts.tikhonnnnn.com → 127.0.0.1, DNS only, TTL 60"; s.DNSRecord != want {
+	if want := "A nl-1.hosts.proxier.test → 127.0.0.1, DNS only, TTL 60"; s.DNSRecord != want {
 		t.Errorf("DNS record %q, want %q", s.DNSRecord, want)
 	}
 	if len(s.Endpoints) != 1 || s.Endpoints[0] != "🇳🇱 Netherlands 1" {
@@ -197,6 +202,18 @@ func TestLiveSummary(t *testing.T) {
 	var rows int
 	if err := h.App.DB.R.Get(&rows, `SELECT count(*) FROM servers_servers`); err != nil || rows != 0 {
 		t.Errorf("the summary made a server: %d %v", rows, err)
+	}
+	// A new install has no hostname pattern: the summary says so before a
+	// country is picked, and shows no name.
+	if err := h.App.Settings.Set(bg, "admin", "servers", map[string]string{"servers.hostname_pattern": ""}); err != nil {
+		t.Fatal(err)
+	}
+	f.Country = ""
+	if s := h.Mod.Provision.Summarize(bg, f, false); s.Errors["hostname"].Key != "servers.err.no_hostname_pattern" || s.Name != "" {
+		t.Errorf("no pattern: %+v", s)
+	}
+	if err := h.App.Settings.Set(bg, "admin", "servers", map[string]string{"servers.hostname_pattern": serverstest.HostnamePattern}); err != nil {
+		t.Fatal(err)
 	}
 	// "if created now": the next number follows the highest ever used.
 	h.Create(h.Form())
@@ -280,7 +297,7 @@ func TestCreateStartsProvisioning(t *testing.T) {
 
 	srv := h.Server(id)
 	if srv.Name != "nl-1" || srv.Number != 1 || srv.State != "failed" || srv.TemplateVersion != 1 || srv.Notes != "from a test" ||
-		srv.ManagementHostname != "nl-1.hosts.tikhonnnnn.com" || srv.ProxyHostname != srv.ManagementHostname || srv.IP != "127.0.0.1" {
+		srv.ManagementHostname != "nl-1.hosts.proxier.test" || srv.ProxyHostname != srv.ManagementHostname || srv.IP != "127.0.0.1" {
 		t.Fatalf("server: %+v", srv)
 	}
 	if !strings.Contains(srv.Params, "admin@example.com") {
@@ -387,7 +404,7 @@ func TestServersFromLocationsKeepTheirNames(t *testing.T) {
 		}
 	}
 	id := h.Create(h.Form())
-	if got := h.Server(id); got.Name != "nl-2" || got.Country != "NL" || got.ManagementHostname != "nl-2.hosts.tikhonnnnn.com" {
+	if got := h.Server(id); got.Name != "nl-2" || got.Country != "NL" || got.ManagementHostname != "nl-2.hosts.proxier.test" {
 		t.Fatalf("the next server in NL: %s %s %s", got.Name, got.Country, got.ManagementHostname)
 	}
 	if ev := h.Events("server.created"); len(ev) != 1 || ev[0].Payload["country"] != "NL" {
