@@ -46,3 +46,5 @@ Unreachable over SSH and from 3/3 nodes abroad.
 ## Reachability
 
 Proxier sends from home. If `api.telegram.org` becomes unreachable from Russia, the home router's routing list can carry Telegram's domains like any other service, and Proxier's requests then go through the router's tunnel like the rest of the LAN. This is allowed: only traffic to Proxier's own servers must stay out of the tunnel ([architecture](../architecture.md#runtime-shape)).
+
+Another way around it is `PROXIER_TELEGRAM_API_URL` ([configuration](../architecture.md#configuration)). Every Bot API call goes to `<root>/bot<token>/<method>`, so the root can be a self-hosted [`telegram-bot-api`](https://github.com/tdlib/telegram-bot-api) server or a relay that forwards to `api.telegram.org`, under a path or not. The root can't hold credentials, a query or a fragment, because the token follows it in the URL; Proxier refuses to start with one. The bot token goes to whoever runs the root, so a relay must be one the Owner controls. A self-hosted server needs the bot logged out of Telegram's (`logOut`) before it takes over the bot's updates.

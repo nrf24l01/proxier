@@ -26,7 +26,7 @@ func TestDefaults(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 	if c.DataDir != "/data" || c.Listen != ":8080" || c.TSHostname != "proxier" ||
-		c.TSControlURL != "https://controlplane.tailscale.com" {
+		c.TSControlURL != "https://controlplane.tailscale.com" || c.TelegramAPIURL != "https://api.telegram.org" {
 		t.Errorf("unexpected defaults: %+v", c)
 	}
 	if c.TZ.String() != "Europe/Moscow" {
@@ -104,6 +104,32 @@ func TestBaseURL(t *testing.T) {
 		}
 		if ok && strings.HasSuffix(c.BaseURL.String(), "/") {
 			t.Errorf("%s: BaseURL keeps a trailing slash: %s", raw, c.BaseURL)
+		}
+	}
+}
+
+func TestTelegramAPIURL(t *testing.T) {
+	for raw, ok := range map[string]bool{
+		"https://tg.example.com":             true,
+		"http://telegram-bot-api:8081":       true,
+		"https://relay.example.com/tg/":      true,
+		"tg.example.com":                     false,
+		"ftp://tg.example.com":               false,
+		"https://u:secret@tg.example.com":    false,
+		"https://tg.example.com/?key=secret": false,
+		"https://tg.example.com/#x":          false,
+	} {
+		m := minimal()
+		m["PROXIER_TELEGRAM_API_URL"] = raw
+		c, err := Load(env(m))
+		if ok != (err == nil) {
+			t.Errorf("%s: err = %v", raw, err)
+		}
+		if err != nil && strings.Contains(err.Error(), "secret") {
+			t.Errorf("%s: the error echoes the value: %v", raw, err)
+		}
+		if ok && c.TelegramAPIURL != raw {
+			t.Errorf("%s: TelegramAPIURL = %s", raw, c.TelegramAPIURL)
 		}
 	}
 }

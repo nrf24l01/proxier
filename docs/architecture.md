@@ -211,6 +211,7 @@ Environment variables hold what Proxier needs before the database is readable, a
 | `PROXIER_TS_AUTHKEY` | Pre-auth key for the first tailnet login | empty: tailnet off |
 | `PROXIER_TS_HOSTNAME` | Tailnet node name | `proxier` |
 | `PROXIER_CHROMIUM_URL` | CDP endpoint of the sidecar | empty: headless visit off |
+| `PROXIER_TELEGRAM_API_URL` | Root of the Bot API: Telegram's, a self-hosted `telegram-bot-api` or a relay | `https://api.telegram.org` |
 | `PROXIER_TZ` | Display time zone | `Europe/Moscow` |
 | `PROXIER_LOG_LEVEL` | Log level | `info` |
 

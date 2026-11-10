@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -117,5 +119,20 @@ func TestErrorsNeverContainToken(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// A custom API root (PROXIER_TELEGRAM_API_URL) may be a relay under a path:
+// the methods go below it, and a trailing slash doesn't double.
+func TestCustomAPIRootUnderAPath(t *testing.T) {
+	f := telegram.NewFake(t, token)
+	up, _ := url.Parse(f.URL())
+	relay := httptest.NewServer(http.StripPrefix("/tg", httputil.NewSingleHostReverseProxy(up)))
+	t.Cleanup(relay.Close)
+	for _, base := range []string{relay.URL + "/tg", relay.URL + "/tg/"} {
+		c := telegram.NewChannel(nil, nil, base).Client(token)
+		if me, err := c.GetMe(bg); err != nil || me.Username != "proxier_test_bot" {
+			t.Errorf("%s: %+v %v", base, me, err)
+		}
 	}
 }

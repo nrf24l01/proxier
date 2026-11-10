@@ -34,6 +34,10 @@ type Config struct {
 
 	ChromiumURL string
 
+	// TelegramAPIURL is the Bot API's root: Telegram's, or a self-hosted
+	// telegram-bot-api server or a relay in front of Telegram's.
+	TelegramAPIURL string
+
 	TZ       *time.Location
 	LogLevel slog.Level
 }
@@ -65,6 +69,8 @@ func Load(getenv func(string) string) (*Config, error) {
 		TSAuthKey:    get("PROXIER_TS_AUTHKEY", ""),
 		TSHostname:   get("PROXIER_TS_HOSTNAME", "proxier"),
 		ChromiumURL:  get("PROXIER_CHROMIUM_URL", ""),
+
+		TelegramAPIURL: get("PROXIER_TELEGRAM_API_URL", "https://api.telegram.org"),
 	}
 
 	if key := get("PROXIER_MASTER_KEY", ""); key == "" {
@@ -107,6 +113,13 @@ func Load(getenv func(string) string) (*Config, error) {
 		if u, err := url.Parse(c.ChromiumURL); err != nil || u.Host == "" {
 			errs = append(errs, fmt.Errorf("PROXIER_CHROMIUM_URL: %q is not a URL", c.ChromiumURL))
 		}
+	}
+
+	if u, err := url.Parse(c.TelegramAPIURL); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" ||
+		u.RawQuery != "" || u.Fragment != "" || u.User != nil {
+		// The token goes into the path after this root, so a query or fragment would swallow it.
+		// The value isn't echoed: it may carry a relay's password.
+		errs = append(errs, errors.New("PROXIER_TELEGRAM_API_URL is not an http(s) URL without credentials, a query or a fragment"))
 	}
 
 	tz := get("PROXIER_TZ", "Europe/Moscow")

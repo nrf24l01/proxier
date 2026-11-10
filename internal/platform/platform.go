@@ -111,7 +111,7 @@ func Open(cfg *config.Config, log *slog.Logger, modules ...module.Module) (*App,
 	a.Jobs = jobs.New(d, v, a.Events, a.Settings, log)
 	a.Dispatcher = events.NewDispatcher(d, log)
 	a.Notify = notify.New(d, a.Events, a.I18n, a.Jobs, a.Auth, a.Settings, cfg.BaseURL, log)
-	a.Telegram = telegram.NewChannel(a.Settings, nil, "")
+	a.Telegram = telegram.NewChannel(a.Settings, nil, cfg.TelegramAPIURL)
 	a.Bot = bot.New(d, a.Settings, a.Auth, a.I18n, a.Telegram, log)
 	a.Tailnet = tailnet.New(cfg, log)
 	a.SSH = sshx.New(d, v, a.Events, a.Settings, a.Tailnet.Dial, log)
