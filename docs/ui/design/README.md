@@ -6,7 +6,7 @@ This folder says how the Proxier UI looks and behaves. [../README.md](../README.
 - `screens/`: the source of each designed screen, exported from the design canvas;
 - this file: the rules, so a new screen can be built without the canvas.
 
-The canvas is <https://claude.ai/artifact/TM7E3qaH69dDpV2aY4axec>, on the **Rosé Pine** page. Its **Console** page is an older look, not used.
+The screen sources in this folder are the design reference. They use example data.
 
 ## Principles
 
@@ -39,7 +39,7 @@ Type sizes:
 - Page title: 22/28 semibold. Dialog title: 15 px semibold.
 - The only weights are 400, 600 and 700 (logo).
 
-Code panes use Rosé Pine syntax colours, matching the user's nvim:
+Code panes use Rosé Pine syntax colours:
 
 | What | Style |
 |---|---|
@@ -95,7 +95,11 @@ The desktop layout, from top to bottom:
 - **Output previews** under padded controls (a subscription's preview under its format select, **Reveal** and **Hide**) sit inside the area's 16 px padding, so their edges are the controls' edges, and wrap anywhere, as the Subscription screen breaks its URIs, rather than scrolling sideways, since a sideways scrollbar covers the note under it. (The canvas draws this preview flush.) Its notes are the `.foot` note, 12 px below it, and are left out when there is nothing to say.
 - **A rendered config** (a Shadowrocket config's "What the phone gets") grows with the page, as the Shadowrocket config screen draws it, rather than scrolling in a box of its own, which would be a second scrollbar beside the page's. A long line wraps anywhere, and its continuation is indented 4 characters under the line's start, so it never reads as a new line. Its **Download** sits in its title band, not after its last line. On the config page the URL is a strip across the page above the columns, as the screen draws it; the columns are the preview (1.3) and versions, fetches and actions (at least 540 px), stacked below 1270 px with the short column first.
 - **Action rows** (an **Actions** area: a button and what it does) put the buttons in one column as wide as the longest button, the descriptions lined up beside it, so a long label never runs over its description.
-- **Code editors** (a template's draft, a router script's draft, a Shadowrocket base config) run flush across the page column, from its edge (or the file tree) to the side panel, under a title band whose right end holds **Wrap lines** (a checkbox, as a log's Follow) and **Full screen**, as the Script screen draws its draft. On a page whose job is the editor (the template editor, New config, Edit base config) the editor fills the window under the title down to the key line: the page doesn't scroll, the code and the side panels scroll on their own, and the page's actions stay in the title block. Below 1100 px the template editor's results take at most 40 % of the window under the code; a window too short for the code's minimum (360 px with its band) scrolls the page. **Full screen** hides the header and the sidebar and gives the editor the window under the title; **Exit full screen** or `esc` (after the `esc` that leaves the code) returns.
+- Code editors extend from the page edge or file tree to the side panel. Their title band holds **Wrap lines**, a checkbox, and **Full screen**.
+
+  Template, New config and Edit base config pages fill the window between title and key line. Code and side panels scroll independently while page actions remain in the title. Below 1100 px, the template results use at most 40% of the window below the code. The page scrolls when the window cannot fit the code's 360 px minimum and its band.
+
+  **Full screen** hides the header and sidebar. **Exit full screen** returns to the page. Pressing `esc` first leaves the code editor; a second press leaves full screen.
 - **Counts strip**: equal cells in a grid with 1 px gaps. Each cell holds a marker, a label and a big number. A zero count is muted.
 - **Key line** (28 px, desktop only), at the bottom.
 
@@ -140,7 +144,11 @@ Buttons say what they do. Some buttons start real work even though their label b
 
 ## Keys
 
-The keymap is small and vim-like, "not too crazy". Letters never fire inside a field, and nothing destructive happens on a single key: `x` only opens the delete, remove or retire confirmation (its dialog, or its own page), which asks as a click would. `⌃N ⌃P` move a selection down and up wherever `↓ ↑` do (the search and actions pop-up, a list's rows), as in Emacs and macOS lists; in any other field and in a code editor they stay the field's own, and with `⌘`, `⌥` or `⇧` they are the browser's. The key line's hints keep `j k move` for room; the keys sheet lists `⌃N ⌃P` under In a list. `⌃D ⌃U` move half a window the same way: the cursor through a list's rows, or the page (never in a field or the code, where `⌃D` is macOS's forward delete).
+The keymap uses vim-style navigation. Letters do not trigger actions inside fields. `x` opens a confirmation for delete, remove or retire; it never performs the action immediately.
+
+`⌃N` and `⌃P` move the selection wherever `↓` and `↑` do, including search results and list rows. Other fields and code editors keep their native behavior. With `⌘`, `⌥` or `⇧`, the browser handles the keys. The key line uses the shorter hint `j k move`; the keys sheet lists `⌃N ⌃P` under In a list.
+
+`⌃D` and `⌃U` move half a window through list rows or the page. They do not apply inside fields or code editors, where `⌃D` keeps macOS's forward-delete behavior.
 
 | Where | Keys |
 |---|---|

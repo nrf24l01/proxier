@@ -25,7 +25,7 @@ var bg = context.Background()
 // real-looking subscription link as subUrl's default.
 func script() []byte {
 	b := paramstest.Annotated()
-	b = paramstest.Replace(b, `:local subUrl "https://files....t"`, `:local subUrl "https://proxier.example/s/link-token-1"`)
+	b = paramstest.Replace(b, `:local subUrl "https://files.example.com/subscription"`, `:local subUrl "https://proxier.example/s/link-token-1"`)
 	b = paramstest.Replace(b, "# END PARAMETERS\n", "# router admin password\n# @secret\n:local adminPass \"pass word 1\"\n# END PARAMETERS\n")
 	return b
 }
@@ -267,7 +267,7 @@ func TestAgentReadsSecretsMasked(t *testing.T) {
 	status(t, rec, http.StatusOK)
 	body := rec.Body.String()
 	noLeak(t, "GET /draft", body)
-	if !strings.Contains(body, `:local subUrl "MASKED-BY-PROXIER"`) || !strings.Contains(body, `:local adminPass "MASKED-BY-PROXIER"`) || !strings.Contains(body, `:local lanNet "10.230.1"`) {
+	if !strings.Contains(body, `:local subUrl "MASKED-BY-PROXIER"`) || !strings.Contains(body, `:local adminPass "MASKED-BY-PROXIER"`) || !strings.Contains(body, `:local lanNet "10.20.1"`) {
 		t.Fatalf("draft as the agent reads it:\n%s", body)
 	}
 	d, _ := e.H.Mod.Scripts.Draft(bg, e.ID)
@@ -288,7 +288,7 @@ func TestAgentReadsSecretsMasked(t *testing.T) {
 	if v, hidden := out.Check.param("subUrl"); !out.Saved || v != agent.Masked || !hidden {
 		t.Errorf("subUrl in the check: %q %v (saved %v)", v, hidden, out.Saved)
 	}
-	if v, hidden := out.Check.param("lanNet"); v != "10.230.1" || hidden {
+	if v, hidden := out.Check.param("lanNet"); v != "10.20.1" || hidden {
 		t.Errorf("lanNet in the check: %q %v", v, hidden)
 	}
 }
@@ -298,7 +298,7 @@ func TestAgentSaveNeedsTheETagAndKeepsSecrets(t *testing.T) {
 	op := e.open(agent.Open{})
 	rec := e.get(op.Token, "/draft")
 	etag := rec.Header().Get("ETag")
-	edited := strings.Replace(rec.Body.String(), `:local lanNet "10.230.1"`, `:local lanNet "10.240.1"`, 1)
+	edited := strings.Replace(rec.Body.String(), `:local lanNet "10.20.1"`, `:local lanNet "10.240.1"`, 1)
 	before := len(e.H.Events("routerscript.draft_saved"))
 
 	status(t, e.put(op.Token, "", edited), http.StatusPreconditionRequired)
@@ -318,7 +318,7 @@ func TestAgentSaveNeedsTheETagAndKeepsSecrets(t *testing.T) {
 	if !out.Changed || out.ETag == etag || ok.Header().Get("ETag") != out.ETag || !out.Check.OK || !out.Check.Ended {
 		t.Fatalf("answer: %s", ok.Body.String())
 	}
-	want := strings.Replace(string(script()), "10.230.1", "10.240.1", 1)
+	want := strings.Replace(string(script()), "10.20.1", "10.240.1", 1)
 	if got := e.draftBody(); got != want {
 		t.Fatalf("saved draft lost a secret or changed more:\n%s", got)
 	}
@@ -380,8 +380,8 @@ func TestAgentSaveKeepsCRLF(t *testing.T) {
 	op := e.open(agent.Open{})
 	rec := e.get(op.Token, "/draft")
 	lf := strings.ReplaceAll(rec.Body.String(), "\r\n", "\n")
-	status(t, e.put(op.Token, rec.Header().Get("ETag"), strings.Replace(lf, "10.230.1", "10.240.1", 1)), http.StatusOK)
-	if got, want := e.draftBody(), strings.Replace(crlf, "10.230.1", "10.240.1", 1); got != want {
+	status(t, e.put(op.Token, rec.Header().Get("ETag"), strings.Replace(lf, "10.20.1", "10.240.1", 1)), http.StatusOK)
+	if got, want := e.draftBody(), strings.Replace(crlf, "10.20.1", "10.240.1", 1); got != want {
 		t.Fatal("an LF save of a CRLF draft changed its line endings or lost a secret")
 	}
 }
@@ -443,7 +443,7 @@ func TestContextAndDiff(t *testing.T) {
 	e := newEnv(t)
 	d, _ := e.H.Mod.Scripts.Draft(bg, e.ID)
 	// the draft changes a secret and a plain value; the diff shows only the plain one
-	body := strings.Replace(strings.Replace(d.Body, "pass word 1", "pass word 2", 1), "10.230.1", "10.240.1", 1)
+	body := strings.Replace(strings.Replace(d.Body, "pass word 1", "pass word 2", 1), "10.20.1", "10.240.1", 1)
 	if _, err := e.H.Mod.Scripts.SaveDraft(bg, e.ID, d.Revision, body, "admin"); err != nil {
 		t.Fatal(err)
 	}

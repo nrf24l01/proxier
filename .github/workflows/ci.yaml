@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        timeout-minutes: 10
+        with:
+          go-version-file: go.mod
+
+      - name: Download modules
+        timeout-minutes: 10
+        run: go mod download
+
+      - name: Generated templ files are up to date
+        run: |
+          go run github.com/a-h/templ/cmd/templ@v0.3.1100 generate
+          git diff --exit-code -- '*_templ.go' || (echo "::error::run templ generate and commit the result" && exit 1)
+
+      - name: gofmt
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then echo "::error::unformatted files:"; echo "$out"; exit 1; fi
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      # Match Forgejo's race exclusions and patience for slow CI runners.
+      - name: Test
+        env:
+          PROXIER_TEST_PATIENCE: "10"
+        run: make test GOTESTFLAGS=-timeout=60m
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        timeout-minutes: 10
+        with:
+          go-version-file: go.mod
+
+      - name: Download modules
+        timeout-minutes: 10
+        run: go mod download
+
+      # Keep in sync with the Dockerfile and Forgejo workflow.
+      - name: golangci-lint
+        timeout-minutes: 20
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15.0
+
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+
+  # Build only after validation of the commit that landed on main. PRs and
+  # release tags never build or publish images on GitHub.
+  image:
+    needs: [test, lint]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image tags
+        id: version
+        run: |
+          IMAGE="${REGISTRY}/${GITHUB_REPOSITORY,,}"
+          echo "tags=${IMAGE}:${GITHUB_SHA},${IMAGE}:main,${IMAGE}:latest" >> "$GITHUB_OUTPUT"
+          echo "version=main-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "created=$(git show -s --format=%cI HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: prod
+          push: true
+          platforms: linux/amd64
+          build-args: |
+            APP_VERSION=${{ steps.version.outputs.version }}
+            BUILD_DATE=${{ steps.version.outputs.created }}
+            VCS_REF=${{ github.sha }}
+          tags: ${{ steps.version.outputs.tags }}

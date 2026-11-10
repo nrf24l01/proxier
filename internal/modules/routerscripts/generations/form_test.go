@@ -45,7 +45,7 @@ func TestFormFromTodaysScript(t *testing.T) {
 		t.Errorf("headings: %+v", g)
 	}
 	// the 18 of today's script with their defaults
-	want := map[string]string{"lanNet": "10.230.1", "wanIface": "ether1", "timeZone": "Europe/Moscow", "containerNet": "192.168.89", "dohIP": "8.8.8.8", "image": "registry-1.docker.io/wiktorbgu/mihomo-mikrotik:latest"}
+	want := map[string]string{"lanNet": "10.20.1", "wanIface": "ether1", "timeZone": "Europe/Moscow", "containerNet": "192.168.89", "dohIP": "8.8.8.8", "image": "registry-1.docker.io/wiktorbgu/mihomo-mikrotik:latest"}
 	for k, d := range want {
 		if v.Form.Values[k] != d {
 			t.Errorf("%s = %q, want %q", k, v.Form.Values[k], d)
@@ -96,7 +96,7 @@ func TestHostDefaultFromLanNet(t *testing.T) {
 	h := rscriptstest.New(t)
 	id := h.Script("fresh-router", paramstest.Annotated())
 	v := form(t, h, id)
-	if v.Plan.Host != "10.230.1.1" || v.Plan.HostAuto != "10.230.1.1" {
+	if v.Plan.Host != "10.20.1.1" || v.Plan.HostAuto != "10.20.1.1" {
 		t.Fatalf("default host %q", v.Plan.Host)
 	}
 	f := v.Form
@@ -115,7 +115,7 @@ func TestHostDefaultFromLanNet(t *testing.T) {
 	}
 
 	// a version without lanNet needs a host
-	other := h.Script("other", paramstest.Replace(paramstest.WithEnd(paramstest.Today()), `:local lanNet "10.230.1"`, `:local lanBase "10.230.1"`))
+	other := h.Script("other", paramstest.Replace(paramstest.WithEnd(paramstest.Today()), `:local lanNet "10.20.1"`, `:local lanBase "10.20.1"`))
 	v = form(t, h, other)
 	if v.Plan.Host != "" || v.Plan.Errors["router.host"] != "generations.err.host" {
 		t.Fatalf("without lanNet: %q %+v", v.Plan.Host, v.Plan.Errors)

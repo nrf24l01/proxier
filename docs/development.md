@@ -1,14 +1,14 @@
 # Development
 
-How the code is organised and the rules it follows. What Proxier does is in the [module docs](./modules/) and the [process docs](./processes/README.md); why, in the [ADRs](./adr/). This page is about changing the code without breaking those.
+This page describes the code layout, implementation rules and checks. The [module docs](./modules/) and [process docs](./processes/README.md) describe behavior. The [ADRs](./adr/) explain the decisions behind it.
 
 ## Making a change
 
 1. Read the process doc of the flow before touching it. Its **Edge cases** are a test list: each one has a test, and a new edge case gets a test with it.
 2. Change the docs in the same commit when behaviour changes (process doc, module doc, [events.md](./events.md), [data-model.md](./data-model.md), [ui/README.md](./ui/README.md)). A decision that is hard to reverse, surprising and a real trade-off gets an ADR.
 3. Schema changes go only into **new** migrations (`NNNNN_name.sql` in the module's `migrations/`, goose `-- +goose Up` / `Down`, `STRICT` tables). Every module's schema is deployed; never edit an existing migration. Each module's `migrations_test.go` tests the constraints.
-4. `make check`, `make lint` (Docker Desktop must be running: `open -a Docker`), `docker build .`.
-5. Anything that only real hardware, accounts or phones can check is said so in the commit, not faked. What still waits for that is in [open-questions.md](./open-questions.md).
+4. Run `make check`, `make lint` and `docker build .`. The Docker commands need Docker Desktop running. On macOS, start it with `open -a Docker`.
+5. State in the commit which checks still need real hardware, accounts or phones. Track them in [open-questions.md](./open-questions.md). Do not report a simulated check as a real-device result.
 
 ## Layout
 
@@ -44,12 +44,12 @@ Modules are enabled in this order: `servers`, `subscriptions`, `routing`, `route
 Packages worth knowing by name:
 
 - **servers**: `remote` (every shell command sent to a server, and `remote.Parse`, its inverse), `sealed` (every AAD), `endpoint` (`vless-xhttp-tls`: checks, URI, masked URI), `proxy` (the only importer of xray: proxy test, `Dialer`, config validation), `dns` + `dns/cloudflare`, `checkhost`, `validate` (pure-Go validators), `agent` (`/agent/v1`).
-- **routing**: `change` (the sync seam), `sources` (the one outbound HTTP client), `routeros` (every RouterOS command and script, `Parse`/`ParseScript`), `routers` (plan, sync, drift, unmanaged tags, awaiting setup), `discovery` (+ `cdp`, `socks`), `shadowrocket/agent` (`/agent/v1/shadowrocket`; `mask.go` keeps `[Proxy]` lines and the MITM key from the agent).
-- **routerscripts**: `params` (the PARAMETERS block, literals, `Fill`, `Eval`; `params/paramstest` embeds the original `fresh-router.rsc` (at `b1e34f2`, without an end marker), never edited: tests build variants from it in code), `agent` (`/agent/v1/router-script`; `mask.go` keeps secret defaults from the agent).
+- **routing**: `change` (shared sync triggers), `sources` (the one outbound HTTP client), `routeros` (every RouterOS command and script, `Parse`/`ParseScript`), `routers` (plan, sync, drift, unmanaged tags, awaiting setup), `discovery` (+ `cdp`, `socks`), `shadowrocket/agent` (`/agent/v1/shadowrocket`; `mask.go` keeps `[Proxy]` lines and the MITM key from the agent).
+- The router scripts module uses `params` for PARAMETERS blocks, literals, `Fill` and `Eval`. Its `params/paramstest` package embeds a sanitized `fresh-router.rsc` fixture without an end marker. Tests build variants in code. The `agent` package serves `/agent/v1/router-script`, and `mask.go` hides secret defaults from the agent.
 
 ## Module interfaces
 
-All in `internal/platform/module`, found by type assertion; the platform implements the ones it needs like any module. `platform.Open` calls `Init` first and asks for job types, subscribers, renderers and namers after it, so they can point at services built in `Init`.
+`internal/platform/module` defines these interfaces. The platform discovers them through type assertions and implements them like any other module. `platform.Open` calls `Init` before requesting job types, subscribers, renderers and subject namers, so those methods can use services created in `Init`.
 
 | Interface | Method |
 |---|---|
@@ -97,7 +97,8 @@ All in `internal/platform/module`, found by type assertion; the platform impleme
 - Every signed-in route is on its area's group: what reads on `View`, what changes on `Manage`, what needs more on `At(level)`. `r.Member` holds only every member's own pages; `TestEverySignedInRouteChecksAnArea` (cmd/proxier) walks every route of the app as a member with no access and fails on any other that answers without 403.
 - A level is parsed at the boundary (`access.ParseArea`, `access.ParseLevel`): forms and rows become an `access.Area` or `access.Level` there and nowhere else.
 - A handler that checks more than its route (Cancel and Retry check the job's area) returns `web.Forbidden(area)`, an error, so it stops there; pages that show more to a higher level ask `web.Can(ctx, area, level)` or `Shell.Grant`.
-- Owned things (subscriptions, links, routing lists, routers, Shadowrocket configs, custom services, imports, discovery runs, generations) have an `owner_id`, a member ID with no foreign key, and every query of them takes an `access.Scope` ([ownership](./processes/platform/members.md#ownership)): `web.Scope(ctx, area)` in a handler, `access.All` in jobs, reactions and public fetches. The scope is a SQL argument (`? IN (0, owner_id)`); the zero `Scope` reads nothing. It reads the member's own at `own` and everyone's from `view_all`, and changes everyone's only at `manage_all`: a service loads a thing to change it through a `toChange` helper that answers not found outside the read scope and `access.Forbidden(area)` for one it reads but may not change (`scope.Writes(owner)`). Pickers offer `scope.Writable()`. A page hides the controls of a thing the member may not change, and names another member's owner with `web.OwnerNote`.
+- Owned resources have an `owner_id` with no cross-module foreign key. Every query takes an `access.Scope`. Handlers use `web.Scope(ctx, area)`; jobs, reactions and public fetches use `access.All`. SQL applies it with `? IN (0, owner_id)`. A zero scope reads nothing. See [ownership](./processes/platform/members.md#ownership).
+- At `own`, the scope reads the member's resources. From `view_all`, it reads everyone's. Only `manage_all` writes everyone's resources. A service's `toChange` helper returns not found outside the read scope, or `access.Forbidden(area)` when `scope.Writes(owner)` is false. Pickers use `scope.Writable()`. Pages hide unavailable controls and use `web.OwnerNote` to identify another member's ownership.
 - Creating takes the owner from `access.Who` (`web.Who(ctx)`): a port that creates for another module (`LinkIssuer.Issue`, `RouterRegistrar.Register`) takes the `Who` and decides the scope of its own area.
 - Each owning module reacts to `member.removed` (`auth.HandoverOf`) by giving the removed member's things to the heir in the reaction's transaction, recording one `*.handed_over` event only when it moved something.
 
@@ -138,7 +139,9 @@ All in `internal/platform/module`, found by type assertion; the platform impleme
 - A side panel beside a long form or list is an `aside` that the grid stretches to the row's height (no `align-items: start`), with the divider as its border, and its content in a `<div class="stick">` (sticky at `top: 0`, since the header scrolls away; capped at the window above the key line, scrolling on its own). Stacked under 1100 px, `.stick` is static (`TestSidePanelsStickToTheTop`).
 - A job's log is `ui.JobLog` (the `#log` box, one per page) in a `section.jobmain` whose head holds `ui.LogTools` (Follow while live, Expand); the box scrolls on its own (`max-height: max(240px, 60vh)`) and Expand makes the column the window's height (`.jobmain.log-full`). The script follows by setting the box's `scrollTop`, never `scrollIntoView`, which scrolls the page too (`TestLogScrollsOnItsOwn`).
 - A choice among hundreds (New server's country) is an `input` with a `datalist`: the browser searches it as the member types, with no script, and the handler reads the text back (`country.Parse`). Keep the `datalist` out of any out-of-band swap, so a live answer stays small.
-- `proxier.js`: sortable lists (`[data-sortable]`), `[data-cursor]`, `data-copy`, `[data-esc]`, `[data-reveal]` (the answer to that element's htmx request is scrolled into view, smoothly unless reduced motion is asked for, when its start is out of the window, and focused if its target has `tabindex="-1"`: Validate's results under the code), the keymap. `ctrlStep(e)` reads `⌃N`/`⌃P` (by `e.code` when the layout isn't Latin, so a Russian layout's `⌃т` counts) for every selection the arrows move: the pop-up's results, and the rows before the early return for modified keys, never in a field or a dialog; a new arrow-driven list uses it too (`TestCtrlNPMoveLikeTheArrows`). The code editors stop keys at their host, so these never reach the page from the code. The country `datalist` is the browser's own pop-up, out of the page's reach. Polling with `hx-trigger="every Ns"`, only while something waits.
+- `proxier.js` handles sortable lists, cursor selection, copy, escape, reveal and the keymap. A `[data-reveal]` response scrolls into view if needed and focuses a target with `tabindex="-1"`. Scrolling honors reduced-motion preferences.
+- Every arrow-driven list also uses `ctrlStep(e)` for `⌃N` and `⌃P`. It reads `e.code` for non-Latin layouts, so Russian `⌃т` works. Modified-key handling must not discard these events before row navigation. Fields and dialogs keep their own behavior. Code editors stop their key events at the editor host. See `TestCtrlNPMoveLikeTheArrows`.
+- The country `datalist` belongs to the browser and cannot use page key handling. Use `hx-trigger="every Ns"` polling only while something is waiting.
 - A code editor's height is the page's: `editor.js` sets none, and `app.css` makes CodeMirror fill its box. A page whose job is its editor marks the part under the title `.code-fill` (the Shadowrocket form, the template editor's `.ed`): it fills the window to the key line and the code takes what is left (`.code-frame`, at least 360 px), so the page doesn't scroll; its actions go in the title block (`form="…"`, `data-code-save` for `⌘S`), and the sidebar is `contain: size` there so a long nav doesn't stretch it. Every editor's band holds `ui.CodeTools()` (Wrap lines, kept in `localStorage` by the bundle; Full screen, `#app.code-full` in `proxier.js`, which `esc` leaves after the editor's own `esc` has left the code, never from a dialog) and its page adds `ui.CodeKeys` to the keys sheet (`TestCodeEditorsFillTheWindow`).
 - CodeMirror lives on the page itself, not in a shadow root, where Safari's Vimlike takes typed keys as commands. CodeMirror writes `<style>` tags the CSP blocks, so `web/editor/build.sh` patches style-mod to use adopted stylesheets. Code areas are `textarea[data-code="<mode>"]` (`initCodeAreas()`), so forms work without JS; a page loads the bundle with `Shell.Scripts`.
 - After editing `*.templ`, `make templ`; generated files are committed and `make check` compares them against the index (stage them).
@@ -146,11 +149,29 @@ All in `internal/platform/module`, found by type assertion; the platform impleme
 ## Tests
 
 - Test names are CamelCase sentences (`TestRolledBackChangeLeavesNoEvent`). No test touches the network or sleeps longer than 100 ms; clocks are fake. SQLite in temp files (`dbtest.Open`); a set of migrations runs once per test binary and every test gets a copy of the migrated file (`dbtest.Seed`, which `sitetest.New` uses too), since migrating takes most of a second under `-race`.
-- Harnesses: `sitetest` (the whole app over HTTP, fake auth clock; `Join` adds a member with a grant through a setup link and signs them in), `authtest.Authenticator` (a software passkey: `Create` and `Get` answer the server's options; its fields misbehave on purpose), `jobstest` (fake clock, `Drain`), `sshxtest.Server` (`Freeze`, and `Session.Freeze` for one connection: a host that stops answering; `OnUpload`; `BreakOnGlobalRequest`: a keepalive closes the connection, as RouterOS's answer does), `sshxtest.Links` (as `SSH.Dial`; `Stall` kills the open connections to an address without a word: nothing arrives, every write blocks until closed), `telegram.Fake` (`Message`, `GroupMessage`, `Tap` queue updates; a test runs the bot with `App.Bot.Poll`), `serverstest` (fake VPS answering `remote`'s commands, `NewHarness(t, serverstest.StubProxy())`, one VPS per test, 127.0.0.1 only; the zone's nameservers serve what the fake Cloudflare holds, `HideDNS` hides it from the resolvers, `NameserversDown` drops port 53 to the nameservers; external checks go to its `CH`, a `checkhosttest` fake, and the reference check to a local site that always answers), `proxytest` (in-process xray XHTTP server), `cloudflaretest`, `checkhosttest`, `substest` (`New` on a fake catalog, `WithServers`, `NoRotator`), `routingtest` (`New`, `WithServers`, `WithBrowser`; `h.Router`, `h.JumpFake`, `h.Settle`, `h.Advance`), `sourcestest`, `routerostest` (fake RouterOS, which a keepalive breaks and whose held import runs on until its user's jobs are ended, and jump host; `Hold`, `ForgetImport`, `SlowDNSRead`), `discoverytest`, `rscriptstest` (`New` on fake ports, `WithModules` with the real ones).
+The test helpers provide the following components:
+
+| Helper | Use |
+|---|---|
+| `sitetest` | Runs the application over HTTP with a fake auth clock. `Join` creates a member through a setup link and signs them in. |
+| `authtest.Authenticator` | Implements a software passkey. `Create` and `Get` answer server options; fields let tests simulate invalid behavior. |
+| `jobstest` | Provides a fake clock and `Drain`. |
+| `sshxtest.Server` | Simulates SSH hosts. `Freeze` stops all responses, `Session.Freeze` stops one connection, and `OnUpload` observes uploads. `BreakOnGlobalRequest` simulates RouterOS rejecting a keepalive. |
+| `sshxtest.Links` | Replaces `SSH.Dial`. `Stall` stops traffic on existing connections to an address, leaving writes blocked until close. |
+| `telegram.Fake` | Queues updates with `Message`, `GroupMessage` and `Tap`. Tests run the bot through `App.Bot.Poll`. |
+| `serverstest` | Simulates a VPS answering `remote` commands. `NewHarness(t, serverstest.StubProxy())` uses one VPS per test on loopback. Fake nameservers serve records held by fake Cloudflare. `HideDNS` hides records from resolvers; `NameserversDown` drops DNS requests. External checks use `CH`, and reference checks use a local site. |
+| `proxytest` | Runs an in-process xray XHTTP server. |
+| `cloudflaretest`, `checkhosttest`, `sourcestest` | Simulate upstream APIs and sources. |
+| `substest` | Tests subscriptions against a fake catalog. Options include `WithServers` and `NoRotator`. |
+| `routingtest` | Tests routing with `New`, `WithServers` and `WithBrowser`. Helpers include `h.Router`, `h.JumpFake`, `h.Settle` and `h.Advance`. |
+| `routerostest` | Simulates RouterOS and jump hosts. Imports continue after a session ends until the user's script jobs stop. Helpers include `Hold`, `ForgetImport` and `SlowDNSRead`. |
+| `discoverytest` | Simulates browser visits for discovery. |
+| `rscriptstest` | Uses fake ports with `New` or real modules with `WithModules`. |
+
 - Test files that use a module harness are external test packages (`package links_test`): the harness imports the module root, which imports every service.
 - xray's XHTTP client has a data race (`splithttp.WaitReadCloser.Set`), so packages that push XHTTP traffic (`servers/proxy`, `provision`, `deploy`) run without `-race` (`XRAY_TESTS` in the Makefile). Other tests use `StubProxy()` and run under `-race`. SQLite is instrumented too (`RACEFLAGS` in the Makefile), so the race detector sees its synchronization. The two runs of `make test` go side by side. This xray has no `allowInsecure`: tests pin the self-signed certificate.
 - Never assert the absence of a bare word in a page (CSRF tokens are random): use `>Name<`.
-- A wait on real time (a harness's `Drain`, `Settle`, `WaitFor`, a test's own polling loop) takes its limit from `testwait.Deadline(d)`, never `time.Now().Add(d)`: `d` is sized for a laptop, and CI sets `PROXIER_TEST_PATIENCE=10` (and `-timeout=60m` through `GOTESTFLAGS`) because its runner, every package at once under `-race`, is ten times slower or more.
+- Set real-time wait limits through `testwait.Deadline(d)`, including `Drain`, `Settle`, `WaitFor` and polling loops. Do not use `time.Now().Add(d)`. Choose `d` for a laptop. CI scales it with `PROXIER_TEST_PATIENCE=10` and sets `GOTESTFLAGS=-timeout=60m` because concurrent race tests run more slowly there.
 - Move a harness clock only with `Advance`. The display zone in tests is Moscow.
 - `TestRealChromium` runs only with `PROXIER_TEST_CHROMIUM_URL` (and `PROXIER_TEST_PAGE_HOST=host.docker.internal` when Chromium is a container).
 - `TestKeymapInRealChromium` (routing pages) presses `proxier.js`'s keys on routing's pages and runs only with `PROXIER_TEST_CHROMIUM_URL` (and `PROXIER_TEST_PAGE_HOST`). It types as a keyboard does, one `keyDown` carrying the character: `chromedp.KeyEvent` sends the character as a separate event, which a handler's `preventDefault` can't drop, so it lands in the next page's autofocused field. The page's CSP refuses a `style` attribute: a test that shapes the page sets `el.style` from script.
@@ -158,4 +179,6 @@ All in `internal/platform/module`, found by type assertion; the platform impleme
 
 ## Looking in a real browser
 
-Headless Chrome on the host doesn't start; the `chromedp/headless-shell` container does. Run it with `-p 127.0.0.1:19222:9222`, serve the app from a throwaway test or `go run ./cmd/proxier serve` on the host, and drive pages over CDP with `host.docker.internal`. Plain http isn't a secure context there, so stub `navigator.clipboard`. On desktop a click can land on the fixed key line: submit with `⌘↵` or JS. A leftover throwaway instance may hold 127.0.0.1:18099; use another port.
+For container-based browser checks, run `chromedp/headless-shell` with `-p 127.0.0.1:19222:9222`. Start a temporary application instance on the host with a test or `go run ./cmd/proxier serve`. Connect over CDP and use `host.docker.internal` to reach the application.
+
+Plain HTTP at that address is not a secure context. Clipboard tests may need a stub for `navigator.clipboard`; WebAuthn tests need the localhost forwarding described above. Choose an unused application port and stop the temporary instance after the check.

@@ -12,7 +12,9 @@ The external checker. It tells whether a server's port 443 is reachable over TCP
 
 From home, check-host.net's own addresses get no answer. On 2026-11-01, `check-host.net` resolved to Cloudflare's `104.21.74.214` and `172.67.163.103`. TCP connected to both, and the TLS handshake hung after the Client Hello whatever the SNI. Cloudflare answered the same request on another of its addresses, `104.16.123.96`, so the block is on the addresses and not on the name.
 
-Each check's client tries the direct way first. When a request fails before any HTTP answer, such as a timeout, a hung handshake or a refused connection, the client opens one route through a server. That request and the rest of the check go through the route. The route is an xray client on the first endpoint of the first active, healthy server by ID. The checked server comes last, because a blocked server can't carry the question of whether it is blocked. The job log names the server.
+Each check first connects directly. If a request fails before receiving an HTTP response, for example through a timeout or refused connection, the client opens a route through a proxy server. That request and the rest of the check use the route.
+
+The route uses xray and the first endpoint of the first active, healthy server by ID. The checked server is the last choice because it may be blocked. The job log names the server carrying the request.
 
 An HTTP error or an unreadable answer shows that the direct way works, so the client opens no route. With no healthy server, the check is `unavailable`, and its reason says "no server is healthy to go through". The daily node refresh works the same way, with no server to put last.
 
@@ -26,5 +28,5 @@ An HTTP error or an unreadable answer shows that the direct way works, so the cl
 
 ## Limits of what it tells
 
-- A TCP connect from a Russian node doesn't prove the proxy works from Russia. DPI and throttling act after the handshake, which is why the proxy test from home is the ground truth.
+- A TCP connection from a Russian node does not prove the proxy works there. DPI and throttling can act after the handshake. The proxy test from home checks whether traffic passes through the endpoint.
 - The nodes sit in data centres, not on home or mobile networks, so blocks specific to an ISP or to mobile networks are invisible to them. Probe agents, in the [backlog](../overview.md#backlog), would cover that.

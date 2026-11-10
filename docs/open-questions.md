@@ -1,68 +1,43 @@
 # Open questions
 
-Facts that only the real deployment can confirm: real apps, real routers, real networks. Nothing here is a decision still to take. When a question is answered, write the answer into the relevant doc (an ADR if it qualifies) and delete it here. Never fake an answer with a test against a fake.
+These integration checks need real devices, accounts or networks. Record each result in the relevant integration or process document.
 
-## Client apps and the stub entry
+## Client subscription refresh
 
-Which apps replace their list when a refresh returns one stub entry, and which keep the old list on a `404`. [ADR 0004](./adr/0004-one-shared-credential-per-endpoint.md) rests on the first. What Shadowrocket, Hiddify, Happ and v2rayNG do is in [subscription format](./integrations/subscription-format.md#stub-entry). Not tried: INCY, v2RayTun and Streisand, and the iOS apps' answer to a `404`.
+Check whether each supported app replaces its server list when a refresh returns a stub entry, and what it keeps after a `404`. See [subscription format](./integrations/subscription-format.md#stub-entry) and [ADR 0004](./adr/0004-one-shared-credential-per-endpoint.md).
 
-## check-host.net limits
+## External checks and throttling
 
-No page states the rate limits or terms for automated use ([check-host.net](./integrations/check-host.md)). Proxier stays at 6 nodes per check, one check per 30 min per server and 60 checks an hour; a refusal shows as an HTTP error (`unavailable`). No refusal has been seen.
+Confirm check-host.net's limits for automated use. Proxier currently caps requests at 6 nodes per check, one check per 30 minutes per server and 60 checks per hour.
 
-## Russian throttling and the proxy test
+Verify whether the proxy test's 256 KB object and `stalled` result detect throttling on the networks Proxier monitors. A result from one network does not establish reachability from another. See [server health](./processes/servers/server-health.md).
 
-Whether the proxy test's 256 KB object and its `stalled` class catch the throttling of foreign hosting networks that stalls after the first 16 to 20 KB ([health](./processes/servers/server-health.md)). Only a real server in a throttled network answers it. Seen once, without the facts to settle it: people found a server very slow while Proxier, testing from home with the default object, called it healthy (so home measured at least 1 Mbit/s). Where they connected from isn't known, so it doesn't tell whether home's own network is spared the throttling (probe agents on other networks, in the backlog, would cover that) or 256 KB is too small to show it.
+Check how a router's proxy container handles a subscription with no usable servers and whether bursts of handshakes trigger temporary connection failures.
 
-## Bursts of handshakes to one server
+## Tailnet key expiry
 
-From a laptop, a burst of connections from one address (five mihomo instances to one server) was followed by about 10 minutes in which every handshake to that server failed. Not known: whether a router's own rate of connections ever sets it off, and what a router's mihomo container does when its subscription has no usable servers (an empty group would send its traffic out the WAN, but that was not tried).
+Verify that replacing the pre-auth key in Settings restores connectivity after a node key expires, for each supported control server. See [tailnet](./modules/platform.md#tailnet).
 
-## The tailnet key's expiry
+## Router bootstrap and sync
 
-The node joins headscale 0.29 with a pre-auth key and survives restarts on its saved state. What happens when the node key expires is not seen: whether Settings → Integrations → Tailnet's new pre-auth key brings it back as expected ([platform](./modules/platform.md#tailnet)).
+- On a reset router, verify the first script fetch, its one-use URL, the fetch notification and the interaction between a temporary WAN DHCP client and the script's own client. See [script generation](./processes/router-scripts/script-generation.md).
+- Verify the SSH user commands copied from the add-router page and the DNS forwarder connection check. See [RouterOS](./integrations/routeros.md#proxiers-user-on-the-router).
+- Check RouterOS behavior when an exact subdomain and its parent suffix belong to separate services, including when their addresses enter the routing list. See [ADR 0016](./adr/0016-every-listed-name-reaches-the-router.md).
 
-## A reset router's first fetch
+Check long RouterOS imports, including sessions that finish without an exit status or never close. Verify timeout, reconnect and cleanup behavior behind a jump host, and confirm that retries detect blocks already applied.
 
-After `/system reset-configuration no-defaults=yes` a router has no internet, so `/tool fetch` needs a DHCP client on the WAN port first, and the script then adds its own (`/ip dhcp-client add interface=$wanIface`). RouterOS may refuse a second client on the port and stop the import. Seen: a file uploaded by hand imports whole on 7.24.5, the script's own DHCP client comes up, and the router connects and syncs 2 to 10 minutes later. Not tried: `/tool fetch` itself (its user agent, the "was fetched" notification, the `404` of a second fetch) and a hand-added DHCP client beside the script's. Until then the generation page tells the member to give the WAN port a DHCP client before fetching ([script generation](./processes/router-scripts/script-generation.md)).
+## Server lifecycle
 
-## Proxier's user from the add page
+Verify bootstrap, credential rotation and IP change on supported VPS images and providers. For an added IP, confirm whether the provider configures the interface automatically, whether SSH and the proxy stack answer on both addresses, and whether the new IP works from the monitored network before DNS changes. See [IP change](./processes/servers/ip-change.md).
 
-The key commands work from an imported router script on 7.24.5, and the `proxier` group is enough for the sync's `/import` ([RouterOS](./integrations/routeros.md#proxiers-user-on-the-router)). Not tried: the same lines pasted from the add page (expected to behave alike), and `/ip dns forwarders` in the connection check.
+## Browsers and authentication
 
-## A subdomain beside its parent suffix
+Verify passkeys with Safari, iCloud Keychain, Android, password managers and hardware keys. Check username autofill and synced passkey counters. Verify authenticator QR enrollment and clock tolerance on real phones. See [sign-in](./processes/platform/sign-in.md).
 
-A name under another service's suffix (`console.anthropic.com` in `mine`, `anthropic.com` in `anthropic`) is installed as its own FWD entry and address-list entry ([ADR 0016](./adr/0016-every-listed-name-reaches-the-router.md)). Expected, as with mtvpn: a query for the subdomain, matched by both static entries, goes to the same forwarder and fills the same address list. Not seen on a real router: which static entry RouterOS matches first, and whether the subdomain's addresses reach `to_vpn_list` before any client asks for it.
+Check mobile forms, dialogs, logs and charts on real iOS and Android devices. For each client app, verify the subscription page's import button, clipboard instructions and QR code. App availability varies by store region. See [subscription format](./integrations/subscription-format.md#browser-page).
 
-## Base bootstrap on a real VPS
+## Notifications and agent sessions
 
-Base bootstrap turns TCP BBR on and resets ufw ([provisioning](./processes/servers/server-provisioning.md#steps-the-job)). Seen in an Ubuntu 24.04 container with systemd: ufw's reset keeps an open session. Not seen: BBR on a real VPS's kernel (Docker Desktop's has no `tcp_bbr`, so only the warning was seen). The first real provisioning answers it.
+Verify Telegram delivery to private and group chats, isolation between members, long polling over extended periods and the bot's subscription commands. Check IP country lookups from the deployment network.
 
-## RouterOS ending a long `/import`
-
-RouterOS 7.24.5 answers an SSH global request (`keepalive@openssh.com`) with `SSH_MSG_UNIMPLEMENTED`, which ends Go's SSH packet loop ("ssh: unexpected message type 3"). Every command still running at the first keepalive, 30 s in, ended without an exit status, direct or behind a jump host, and once reading a router took over 30 s, every sync failed. Proxier sends routers no keepalive, only their jump hosts ([router sync](./processes/routing/router-sync.md#rules)). Since then, reads of 30–33 s on RB5009s have ended with their exit status. Not seen yet: an `/import` past 30 s ending with its.
-
-## A hEX S resolving 3,226 names
-
-Once its routing list reached 3,226 names, Telepat's (hEX S, 7.24.5) every read of its DNS entries outlasted 10 min, and its connect, which counts `/ip dns forwarders`, took 18.5 s instead of 2.7 s. Two RB5009s with the same names read in 30–33 s. A CHR whose dns process was saturated (resolving the same names through an unreachable forwarder) answered nothing under `/ip dns` for 10 min, so Telepat's dns process is likely saturated too ([reading state](./integrations/routeros.md#reading-state)). Its import of microsoft's 678 names didn't end within 2m41.7s, neither with each address-list entry right after its DNS entry nor with them last, while its read took about 9 min; the RB5009s imported it in 36–40 s. The import now has twice the read's time on top ([router sync](./processes/routing/router-sync.md#rules)). Not seen: what saturates it, whether it's the slow forwarder through the VPN, the CPU, or a full cache (`cache-used` at `cache-size`, 16 MiB on Telepat and full) evicting names that are then resolved again; and whether its import of 678 names ends within about 20 min.
-
-## Passkeys and the authenticator app on real devices
-
-Checked with a software passkey in tests, Chrome's virtual authenticator and Bitwarden ([sign-in](./processes/platform/sign-in.md#steps-passkeys)). Not seen: adding and using a passkey in Safari on macOS and iOS (iCloud Keychain; in the iOS simulator Safari's passkey sheet opens, but asks for Face ID to be enrolled), in 1Password, on Android, and with a hardware key; whether the username field's autofill offers the passkey in each; whether a synced passkey's signature counter stays 0 (a counter that goes back is refused). Not seen either: a real authenticator app scanning the QR code and its codes being accepted. An Android phone's clock was within 0.3 s of the server's, far inside the one 30 s step allowed; an iPhone's wasn't measured. Google Password Manager on Android makes no passkey on a phone without a screen lock.
-
-## The browser page's apps
-
-The [browser page](./integrations/subscription-format.md#browser-page)'s Android tab was tried on a real phone; its iPhone & iPad, macOS, Windows, Linux and TV tabs were not: whether each **Add to {app}** button there opens its app and adds the link under the subscription's title, and whether the loose words of each manual import ("tap + and choose to import from the clipboard") match what the app shows. The Shadowrocket link syntax comes from other panels' code, not from the app's maker. Which apps are in the Russian App Store changes month to month: re-check with `https://itunes.apple.com/lookup?id=<id>&country=ru` (an empty `results` means not there) and update the notes in `linkpage/apps.yaml`. In Safari in the iOS 27 simulator the page opens on iPhone & iPad, fits 402 px, and folds the QR code; without a real tap Copy link fell back to selecting the link, and the simulator has none of the apps. Not seen either: the buttons and Copy link tapped on a real iPhone, the QR code scanned by another phone, and the tab an iPad opens.
-
-## An IP change on a real VPS
-
-Tested only against the fake VPS: Change IP from a blocked IP to one added at the provider, on the deployment. Not seen yet: whether that provider configures an added IP on the interface by itself or it needs netplan; that SSH and the stack (nginx in Docker, published on every address) answer on the new IP while the old one stays; that the proxy test aimed at the new IP passes from home while the hostname still leads to the old one; and how long the previous IP's test finds it failing. Whether Russia blocks an added IP from the same subnet along with the old one is the question the change itself answers.
-
-## Not yet seen on real devices
-
-- The pages in Safari on a real iPhone. In the iOS 27 simulator (402 px) none of the pages scrolls sideways, and a field no longer zooms the page as it takes focus. On an Android phone (Chrome, 360 px) the forms (new server with its country suggestions, generate, new subscription and link), dialogs, live logs and charts work.
-- Telegram delivery of every notification text (only Send test was seen).
-- Several members on one real bot: **Detect chat** offered a second member only their own private chat, and Send test went there. Not seen: a group chat, and each member's notifications reaching only their chat.
-- Long polling from home holding up for days (through the router's tunnel too, if `api.telegram.org` goes there). On an Android phone `/link` works from the command menu, with its subscription buttons and the URL copied with a tap from the `<code>` block.
-- The IP country lookup (ipinfo.io) from the deployment.
-- An agent session for a router script (`/agent/v1/router-script`), and one driven by Codex. A template's, driven by Claude Code, works ([template authoring](./processes/servers/template-authoring.md#steps-handing-the-draft-to-an-agent)); not seen in it: a `412` from a stale ETag, a preview, the editor's band, and the `401` after the session ends.
+Exercise template and router-script agent sessions with supported clients, including stale ETags, previews and token rejection after a session ends. See [template authoring](./processes/servers/template-authoring.md).

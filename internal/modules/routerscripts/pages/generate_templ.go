@@ -996,7 +996,7 @@ func registerSection(v genView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "\" autocomplete=\"off\" placeholder=\"dacha-pi\"></div><div class=\"field\"><label for=\"gen-jport\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "\" autocomplete=\"off\" placeholder=\"jump-host\"></div><div class=\"field\"><label for=\"gen-jport\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

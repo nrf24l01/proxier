@@ -78,7 +78,7 @@ type update struct {
 }
 
 // AddUpdate queues a raw update, e.g.
-// {"update_id":1,"message":{"chat":{"id":5,"type":"private","first_name":"Tikhon"}}}.
+// {"update_id":1,"message":{"chat":{"id":5,"type":"private","first_name":"Alex"}}}.
 func (f *Fake) AddUpdate(raw string) {
 	var u struct {
 		ID int64 `json:"update_id"`

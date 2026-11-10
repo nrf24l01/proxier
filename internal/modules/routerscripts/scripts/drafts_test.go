@@ -113,7 +113,7 @@ func TestEditorLineEndings(t *testing.T) {
 	if d, _ := h.Mod.Scripts.Draft(ctx, 1); d.Body != crlf || d.Revision != 1 {
 		t.Errorf("unchanged save: revision %d, CRLF kept %v", d.Revision, d.Body == crlf)
 	}
-	edited := strings.Replace(crlf, `"10.230.1"`, `"10.40.1"`, 1)
+	edited := strings.Replace(crlf, `"10.20.1"`, `"10.40.1"`, 1)
 	h.Login.PostMultipart("/router-scripts/1/draft", map[string][]string{"revision": {"1"}, "body": {edited}}, nil)
 	if d, _ := h.Mod.Scripts.Draft(ctx, 1); d.Body != edited || d.Revision != 2 {
 		t.Errorf("edited save: revision %d, CRLF kept %v", d.Revision, d.Body == edited)

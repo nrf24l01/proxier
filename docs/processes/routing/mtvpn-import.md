@@ -2,7 +2,9 @@
 
 **Actors**: a member with `routing: manage_all`; routing module.
 
-A one-time move of an mtvpn setup into Proxier: the services and hosted service lists from `mtvpn.yaml` become services in a routing list, your own domain-list files become custom services if you want, and the Shadowrocket base becomes a hosted Shadowrocket config. Routers aren't touched by the import. They are added afterwards ([router sync](./router-sync.md)), and their first sync changes nothing that already matches.
+Import moves services and hosted lists from `mtvpn.yaml` into a Proxier routing list. It can convert domain-list files into custom services and host the Shadowrocket base as a config.
+
+The import does not change routers. Add them afterwards through [router sync](./router-sync.md). Their first sync leaves matching entries unchanged.
 
 ## Steps
 
@@ -30,7 +32,7 @@ A one-time move of an mtvpn setup into Proxier: the services and hosted service 
 - Selectors are deduplicated by tag, and the first spelling wins (mtvpn's rule).
 - Credentials in the file are never stored, not even temporarily in a job payload.
 - The import adds v2fly, iplist and URL services, which are shared, so it needs `routing: manage_all`. What it creates (a converted custom service, the Shadowrocket config) is its starter's; the job reads the owner from the import ([routing: owners](../../modules/routing.md#owners)).
-- Running the import again is harmless: existing services are reused, and a service already in the list isn't added twice.
+- Repeating the import reuses existing services and does not add a service to a list twice.
 
 ## Edge cases (each is a test)
 

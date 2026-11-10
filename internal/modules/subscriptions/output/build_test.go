@@ -79,7 +79,7 @@ func TestStubPrecedence(t *testing.T) {
 	}
 	r := request(nl1())
 	r.Link = output.Link{State: "disabled", Expires: past}
-	if resp := build(t, r); !strings.HasSuffix(resp.Lines[0], output.Escape("⛔ Link disabled · @tikhonp")) {
+	if resp := build(t, r); !strings.HasSuffix(resp.Lines[0], output.Escape("⛔ Link disabled · @example_admin")) {
 		t.Errorf("disabled and expired: %s", resp.Lines[0])
 	}
 }

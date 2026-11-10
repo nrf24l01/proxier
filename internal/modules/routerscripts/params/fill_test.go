@@ -19,7 +19,7 @@ func TestFillChangesOnlyLiterals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := bytes.Replace(body, []byte(":local lanNet \"10.230.1\"\n"), []byte(":local lanNet \"10.40.1\"\n"), 1)
+	want := bytes.Replace(body, []byte(":local lanNet \"10.20.1\"\n"), []byte(":local lanNet \"10.40.1\"\n"), 1)
 	if !bytes.Equal(out, want) {
 		t.Fatal("the output differs from the fixture elsewhere than lanNet's literal")
 	}

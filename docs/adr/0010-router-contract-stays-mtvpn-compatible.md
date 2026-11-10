@@ -1,6 +1,8 @@
 # The router-side contract stays compatible with mtvpn
 
-Router sync writes exactly the objects `mtvpn.py` wrote: per domain a DNS static FWD entry and an address-list hostname entry, tagged with the same service tags, in `to_vpn_list`, forwarded to `vpn-doh`. Entries commented `mtvpn:` stay untouchable infra pins, and `telegram-cidr` stays out of bounds. A router set up by `fresh-router.rsc` and managed by mtvpn needs no migration: its first sync is a no-op for every tag that already matches. A rename to `proxier:` was rejected: it would change the router script and every router at once for no functional gain.
+Router sync writes the same objects as `mtvpn.py`. Each domain gets a DNS static FWD entry and an address-list hostname entry, tagged by service, in `to_vpn_list` and forwarded to `vpn-doh`. Proxier leaves `mtvpn:` infra pins and `telegram-cidr` unchanged.
+
+A router set up by `fresh-router.rsc` and managed by mtvpn needs no migration. Its first sync leaves matching tags unchanged. Renaming the prefix to `proxier:` would require changes to the script and every router without changing behavior.
 
 ## Consequences
 

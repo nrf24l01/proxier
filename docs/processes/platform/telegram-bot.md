@@ -2,7 +2,7 @@
 
 **Actors**: a member, in the private Telegram chat they chose for their notifications; the bot (the platform's poller); the module that declares the command; Telegram Bot API.
 
-The bot that sends notifications also answers members. A member writes a command in their own chat, and the bot runs it as that member, with their levels, in their language. Each command is a short conversation: the bot may ask for a text or offer buttons, and the member's answer goes to the command's next step. The decision and its trade-offs: [ADR 0019](../../adr/0019-members-give-the-bot-commands-in-their-own-chat.md).
+The notification bot also accepts commands from members in their private chats. It runs each command with the member's permissions and language. A command can ask for text or offer buttons; the answer selects its next step. See [ADR 0019](../../adr/0019-members-give-the-bot-commands-in-their-own-chat.md) for the access and storage decisions.
 
 Commands:
 

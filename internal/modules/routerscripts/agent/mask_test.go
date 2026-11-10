@@ -16,7 +16,7 @@ const secretScript = `# PARAMETERS
 :local empty ""
 # @fill subscription-link
 :local subUrl "https://proxier.example/s/tok123"
-:local lanNet "10.230.1"
+:local lanNet "10.20.1"
 :local derived ($pass . "-x")
 # END PARAMETERS
 :put $pass
@@ -29,7 +29,7 @@ func TestMaskHidesSecretAndLinkDefaults(t *testing.T) {
 			t.Errorf("masked body holds %q:\n%s", leak, got)
 		}
 	}
-	for _, want := range []string{`:local pass "MASKED-BY-PROXIER"`, `:local pin MASKED-BY-PROXIER`, `:local subUrl "MASKED-BY-PROXIER"`, `:local empty ""`, `:local lanNet "10.230.1"`, ":put $pass\n"} {
+	for _, want := range []string{`:local pass "MASKED-BY-PROXIER"`, `:local pin MASKED-BY-PROXIER`, `:local subUrl "MASKED-BY-PROXIER"`, `:local empty ""`, `:local lanNet "10.20.1"`, ":put $pass\n"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("masked body lacks %q:\n%s", want, got)
 		}
@@ -40,12 +40,12 @@ func TestMaskHidesSecretAndLinkDefaults(t *testing.T) {
 }
 
 func TestUnmaskPutsTheDefaultsBack(t *testing.T) {
-	edited := strings.Replace(maskBody(secretScript), `:local lanNet "10.230.1"`, `:local lanNet "10.231.1"`, 1)
+	edited := strings.Replace(maskBody(secretScript), `:local lanNet "10.20.1"`, `:local lanNet "10.231.1"`, 1)
 	got, err := unmask(edited, secretScript)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := strings.Replace(secretScript, "10.230.1", "10.231.1", 1); got != want {
+	if want := strings.Replace(secretScript, "10.20.1", "10.231.1", 1); got != want {
 		t.Fatalf("unmasked:\n%s\nwant:\n%s", got, want)
 	}
 	// a secret the agent replaced with a real value keeps that value
@@ -63,7 +63,7 @@ func TestUnmaskPutsTheDefaultsBack(t *testing.T) {
 func TestUnmaskRefusesAMaskWithNothingBehindIt(t *testing.T) {
 	for name, body := range map[string]string{
 		"renamed":       strings.Replace(maskBody(secretScript), ":local pass ", ":local password ", 1),
-		"not a secret":  strings.Replace(maskBody(secretScript), `:local lanNet "10.230.1"`, `:local lanNet "MASKED-BY-PROXIER"`, 1),
+		"not a secret":  strings.Replace(maskBody(secretScript), `:local lanNet "10.20.1"`, `:local lanNet "MASKED-BY-PROXIER"`, 1),
 		"quotes gone":   strings.Replace(maskBody(secretScript), `:local pass "MASKED-BY-PROXIER"`, `:local pass MASKED-BY-PROXIER`, 1),
 		"new parameter": strings.Replace(maskBody(secretScript), "# END PARAMETERS", ":local extra MASKED-BY-PROXIER\n# END PARAMETERS", 1),
 	} {

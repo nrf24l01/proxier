@@ -18,7 +18,7 @@ func homeRun(t *testing.T, h *routingtest.Harness, b interface {
 }) int64 {
 	t.Helper()
 	url := "https://proxier.test/"
-	b.Site(url, "", loaded(url, "Tikhon's site",
+	b.Site(url, "", loaded(url, "Alex's site",
 		req(url, "proxier.test"), req("https://www.proxier.test/a", "www.proxier.test"),
 		req("https://assets.example.org/x.css", "assets.example.org"), req("https://cdn.example.org/y.js", "cdn.example.org")))
 	return wait(t, h, start(t, h, discovery.Start{Owner: 1, Website: "proxier.test", Via: discovery.ViaDirect}), discovery.Done).ID

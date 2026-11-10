@@ -80,7 +80,7 @@ func TestBrowserGetsThePage(t *testing.T) {
 		// the recommended app's deep link, and Hiddify's, whose title comes from profile-title
 		`href="shadowrocket://add/sub://`,
 		`href="hiddify://import/` + u + `"`,
-		`data-lp-copy="` + u + `"`, "Questions? Write to @tikhonp.",
+		`data-lp-copy="` + u + `"`, "Questions? Write to @example_admin.",
 		"/js/linkpage.js",
 	} {
 		if !strings.Contains(body, want) {
@@ -173,7 +173,7 @@ func TestStubLinksShowOnlyTheirMessage(t *testing.T) {
 			if !strings.Contains(body, "<h1>"+c.want+"</h1>") {
 				t.Errorf("no message %q", c.want)
 			}
-			if !strings.Contains(body, "@tikhonp") {
+			if !strings.Contains(body, "@example_admin") {
 				t.Error("no contact")
 			}
 			for _, not := range []string{token, "://add", "://import", "install-", "data-lp-copy", `class="qr"`, "lp-tab"} {
@@ -194,7 +194,7 @@ func TestRussianStubPageIsInRussian(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := isPage(t, browse(h, "GET", "/s/"+token, android, htmlAccept))
-	for _, want := range []string{`<html lang="ru">`, "Добавить в Happ", "Есть вопросы? Пишите @tikhonp."} {
+	for _, want := range []string{`<html lang="ru">`, "Добавить в Happ", "Есть вопросы? Пишите @example_admin."} {
 		if !strings.Contains(body, want) {
 			t.Errorf("no %s", want)
 		}

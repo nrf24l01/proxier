@@ -2,17 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Proxier** is a self-hosted control panel for one person's proxy setup, shared with the members they add (a level per area, their own things, their own notifications; ADR 0018): it builds VPS proxy servers from templates and watches whether they work from Russia, gives people and devices subscription links, keeps domain routing on MikroTik routers and the Shadowrocket config in sync, and hosts the router setup script. One Go binary, one SQLite file, templ + htmx UI, deployed on blackberry (home) behind the sh-main gateway. Docs, code and logs are English; the UI is English and Russian.
+Proxier is a self-hosted control panel for proxy servers and routing. It builds VPS proxy servers from templates and checks whether they work from Russia. It provides subscription links, syncs domain routing to MikroTik routers and Shadowrocket, and hosts router setup scripts. Members have separate permissions, resources and notifications. See ADR 0018.
 
-**State:** every module (platform, servers, subscriptions, routing, router scripts) is built and deployed. New work comes from the backlog in `docs/overview.md`. Facts only the real deployment shows (`docs/open-questions.md`) need hardware, accounts or phones and are the user's: say so instead of faking such checks.
+The application uses one Go binary, one SQLite database and a templ + htmx UI. Docs, code and logs use English. The UI supports English and Russian.
+
+The platform, servers, subscriptions, routing and router scripts modules are implemented. New work comes from the backlog in `docs/overview.md`. Integration checks in `docs/open-questions.md` need hardware, accounts or phones. Report which checks you ran and their results.
 
 ## Read first
 
-- `docs/README.md` — the docs map and reading order. For code: `docs/architecture.md` → **`docs/development.md`** (layout, module interfaces, rules, test harnesses, real-browser checks) → `docs/adr/` → `docs/data-model.md` → the module doc → **the process doc of a flow before touching it**.
+- Start with `docs/README.md` for the documentation map. Read `docs/architecture.md`, `docs/development.md`, the relevant ADRs, `docs/data-model.md` and the module doc. Read the process doc for a flow before changing it.
 - [Glossary](#glossary) below. Use its words, never the ones under _Avoid_.
-- `docs/overview.md` (scope and the backlog), `docs/open-questions.md` (what the real deployment hasn't confirmed yet).
+- Read `docs/overview.md` for scope and the backlog. Read `docs/open-questions.md` for integration checks that require real devices.
 - Docs describe Proxier as it is now: no phases, build history or dated decision notes (git has those).
-- UI: `docs/ui/README.md` (what each screen does) and `docs/ui/design/README.md` + `tokens.css` + `screens/RP-*.dc.html` (how it looks: the Rosé Pine page of the design canvas).
+- Read `docs/ui/README.md` for screen behavior. Use `docs/ui/design/README.md`, `tokens.css` and `screens/RP-*.dc.html` for appearance.
 
 ## Rules for all code
 
@@ -29,9 +31,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## How to work
 
-- Run `/tikhon:unslop` on every change to `docs/**` or this file before committing.
+- Review changes to documentation and this file with `unslop` before committing.
 - When tests, lint, a build or a subagent's work fails, fix it and go on. Ask only when it can't be solved, and mention the fix in the summary.
-- Never run `caffeinate` or `pkill caffeinate`. The user keeps the display on with Amphetamine. When screenshots go black or WebDriver clicks stop landing, ask them to keep the display on.
 
 ## Commands
 
@@ -44,7 +45,7 @@ make dev             # docker compose: air hot reload on :8080; needs .env (cp .
 make manage ARGS="migrate status"     # inside the dev container
 make editor          # rebuild the template editor's CodeMirror bundle in Docker (web/editor → internal/platform/ui/static/js/editor.bundle.js, committed)
 make check-editor    # make editor + fail if the committed bundle differs (part of make check; needs Docker running)
-make build-image     # code.tikhonnnnn.com/tikhon/proxier:local; IMAGE=<name> tags another name
+make build-image     # proxier:local; IMAGE=<name> tags another name
 go run ./cmd/proxier serve            # on the host, with PROXIER_MASTER_KEY, PROXIER_BASE_URL, PROXIER_DATA_DIR=./data
 ```
 
@@ -75,7 +76,7 @@ web/editor/                   source of the CodeMirror bundle (package.json, edi
 
 ## Deployment
 
-Image `code.tikhonnnnn.com/tikhon/proxier` (Forgejo's registry; distroless static, uid 65532, `/data` volume owned by it, `ENTRYPOINT /bin/proxier`, `CMD serve`), built by Forgejo Actions on code.tikhonnnnn.com (`.forgejo/workflows/ci.yaml`, secret `REGISTRY_TOKEN`) only after tests pass: main → `:<sha>`, `:main`, `:latest`; tag `v*` → `:<tag>`; `APP_VERSION=<ref>-<sha7>`. Production compose lives in `~/projects/sh-blackberry/proxier.yaml` and the gateway in `~/projects/sh-main` (tunnel port 10005); the user commits those. Details in `docs/deployment.md`.
+The production image is distroless, runs as uid 65532 and stores its data in `/data`. GitHub Actions validates changes before publishing `ghcr.io/tikhonp/proxier` on pushes to `main`. For Forgejo publishing, set the repository variable `REGISTRY` and secret `REGISTRY_TOKEN`. See `docs/deployment.md`.
 
 ## Glossary
 

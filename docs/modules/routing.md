@@ -77,7 +77,7 @@ Target kinds are pluggable. There are two:
 |---|---|---|
 | Name | e.g. "Home", "Parents". | — |
 | Routing list | The list it follows. | default list |
-| Host, SSH port, user | How to reach it, e.g. its LAN address `10.230.1.1` behind a jump host. | port 22 |
+| Host, SSH port, user | How to reach it, e.g. its LAN address `10.20.1.1` behind a jump host. | port 22 |
 | Jump host | Optional tailnet machine (host, port, user) to connect through. | none |
 | Address list | RouterOS firewall address-list name. Must match the router script. | `to_vpn_list` |
 | DoH forwarder | RouterOS DNS forwarder name. Must match the router script. | `vpn-doh` |
@@ -95,7 +95,11 @@ Sync makes a router hold exactly what its routing list says, per tag, using the 
 4. Tags on the router that Proxier never installed are **unmanaged**: kept per router with their names, notified once per new set and never deleted on their own: a member can **Adopt** them (the catalog's selector, an existing service, or a custom service made from the router's names), **Remove** them from the router, or **Ignore** them.
 5. Push the blocks in the order that never loses a name (updates gaining names, other updates, removals), packed into files of at most 2 000 names over SFTP and `/import`; scan the output, delete each file, verify, and record each tag as soon as its file succeeded.
 
-Routers are added through **Test connection** (the jump host's and the router's fingerprints confirmed by the member) and **Save**, which may also be done untested: such a router waits for its first passing test before any sync. The first hop is direct or through the tailnet node (the default while it runs). Syncs are triggered by changes (5 s later by default, `routing.sync_delay`, coalesced per router), by **Sync now**, by **Resume**, and by repair after a **drift check** (every `routing.drift_every`, read-only, against what Proxier applied; with `routing.drift_repair` off it notifies and offers **Repair**). A router can be **paused** and **removed**, keeping or cleaning what Proxier installed. Every attempt re-reads the router and re-plans; a failure is recorded per attempt, retried after 5 min, 15 min and 1 h, and notifies only when the job gives up. Entries commented `mtvpn:…` (infra pins) and dynamic entries are never touched. Details: [router sync](../processes/routing/router-sync.md).
+Members add a router with **Test connection** and **Save**. During the test they confirm the jump-host and router fingerprints. Saving without a test is allowed, but the router waits for a passing test before its first sync. The first hop is direct or through the tailnet node, which is the default while that node runs.
+
+Changes queue a sync after `routing.sync_delay`, 5 seconds by default, with requests coalesced per router. **Sync now**, **Resume** and drift repair also queue syncs. Drift checks run every `routing.drift_every` and compare the router with Proxier's applied record. When `routing.drift_repair` is off, a detected drift notifies and offers **Repair**.
+
+Every attempt reloads the router and rebuilds the plan. Retries wait 5 minutes, 15 minutes and 1 hour. Proxier notifies only when the job gives up. Pausing stops syncs; removal can keep or clean installed entries. Sync never changes dynamic entries or `mtvpn:` infra pins. See [router sync](../processes/routing/router-sync.md).
 
 ## Shadowrocket config
 

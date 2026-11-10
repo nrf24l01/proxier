@@ -375,7 +375,7 @@ func (c core) SettingsSections() []settings.Section {
 			{Key: "general.instance_name", Kind: settings.String, Default: "Proxier", MaxLen: 64},
 			{Key: "general.time_zone", Kind: settings.String, Default: c.cfg.TZ.String(), MaxLen: 64, Validate: validTimeZone},
 			{Key: "general.language", Kind: settings.Enum, Default: "en", Options: []string{"en", "ru"}},
-			// Shown in stub entries, e.g. "@tikhonp".
+			// Shown in stub entries, e.g. "@example_admin".
 			{Key: "general.admin_contact", Kind: settings.String, MaxLen: 64},
 		},
 	}}

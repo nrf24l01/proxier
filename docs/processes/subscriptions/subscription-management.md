@@ -2,7 +2,7 @@
 
 **Actors**: a member with `subscriptions` access; subscriptions module; servers (through `EndpointCatalog` and its events).
 
-A subscription is the set of servers a group of links gets: "Family", "Friends", "Me — everything". Its owner chooses and orders the servers, and sets how the output is written and whether broken servers disappear from it on their own. Links then just point at a subscription ([link lifecycle](./link-lifecycle.md)).
+A subscription defines the servers returned by a group of links. Examples include "Family", "Friends" and "Me, everything". Its owner chooses the server order, output formats and whether to hide unhealthy servers. Each link points to one subscription. See [link lifecycle](./link-lifecycle.md).
 
 ## Steps: creating and editing
 
@@ -51,4 +51,4 @@ A subscription is the set of servers a group of links gets: "Family", "Friends",
 - Two members at `own` → each lists and searches only their own subscriptions; the other's by URL, its delete page or a change → 404.
 - `view_all` on another member's subscription → shown without Add servers, ordering, removing, settings or delete; its delete forged → 403, nothing changed.
 
-- Delete a subscription whose only link was deleted 10 days ago → deleted; the link’s URL serves “⛔ Link removed” until its tombstone ends, then `404` (`TestDeletedLinkTombstone`).
+- Delete a subscription whose only link was deleted 10 days ago → deleted; the link's URL serves “⛔ Link removed” until its tombstone ends, then `404` (`TestDeletedLinkTombstone`).

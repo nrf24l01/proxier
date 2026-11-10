@@ -2,17 +2,17 @@
 
 ## What it replaced
 
-Before Proxier, every part of the proxy setup was manual and lived in a different place:
+The following manual tasks led to Proxier:
 
 | Before | Problem |
 |---|---|
-| A fresh VPS got `servers-templates/proxy/setup.sh` piped into bash. It asked for the domain, email and link name, and printed a `vless://` link into `credentials.txt`. DNS records were made by hand. | Every server was a manual session. Nothing remembered which servers existed, how they were built, or their secrets. Changing a server meant SSH and editing by hand. |
+| A fresh VPS got a shell setup script piped into bash. It asked for the domain, email and link name, and printed a `vless://` link into `credentials.txt`. DNS records were made by hand. | Every server was a manual session. Nothing remembered which servers existed, how they were built, or their secrets. Changing a server meant SSH and editing by hand. |
 | Connection links were copied out of `credentials.txt` and sent to people one by one. | No list of who had access to what. A new server meant re-sending links; taking access away meant rebuilding the server. |
 | Nothing watched the servers. | A blocked or dead server showed up as a complaint. |
 | `mtvpn.py` (a CLI) filled the MikroTik address list from v2fly, iplist and URL sources over SSH, rendered the Shadowrocket config and uploaded it to copyparty. The service lists were text files on copyparty. | It ran only when run. Upstream changes reached routers only after a manual `update`. Finding a new site's domains was guesswork. |
 | `fresh-router.rsc` was edited by hand for every new router. | Its current version and parameters lived in memory and git history. |
 
-Proxier does all of this as one always-on service: a web UI for its members, background jobs for long work, and public URLs for client apps, routers and phones.
+Proxier runs these tasks as one service. Members use the web UI, background jobs handle long operations, and client apps and routers use public token URLs.
 
 ## Who uses it
 
@@ -66,7 +66,7 @@ flowchart LR
 
 ## Backlog
 
-Not built, roughly in order of value. Each needs an extension point or a new flow; nothing built so far stands in the way.
+These features are not implemented. The list is roughly in order of value.
 
 - More formats: mihomo/Clash YAML (also for the router's mihomo container), sing-box JSON.
 - Moving a blocked server to another VPS while keeping its name and credentials, with DNS repointed. Another IP of the same VPS is an [IP change](./processes/servers/ip-change.md).
@@ -85,4 +85,4 @@ Not built, roughly in order of value. Each needs an extension point or a new flo
 - The blocking Proxier must detect is Russian. Home, where Proxier runs, is in Russia, so Proxier is itself a Russian vantage point ([ADR 0005](./adr/0005-home-is-the-russian-vantage-point.md)).
 - Proxier runs on a machine at home, behind an HTTPS reverse proxy ([deployment](./deployment.md)). The UI and the public URLs share one public host with password sign-in ([ADR 0006](./adr/0006-one-public-host-for-admin-and-public-urls.md)).
 - DNS is Cloudflare. Notifications go to Telegram. Servers run Debian or Ubuntu with Docker.
-- Go and SQLite in one binary ([ADR 0001](./adr/0001-single-binary-sqlite-in-process-jobs.md)), images built by Forgejo Actions, a server-rendered UI with templ and htmx ([ADR 0014](./adr/0014-server-rendered-ui-templ-htmx.md)).
+- Proxier uses Go and SQLite in one binary. CI validates changes and publishes images. The server renders the UI with templ and htmx. See [ADR 0001](./adr/0001-single-binary-sqlite-in-process-jobs.md) and [ADR 0014](./adr/0014-server-rendered-ui-templ-htmx.md).

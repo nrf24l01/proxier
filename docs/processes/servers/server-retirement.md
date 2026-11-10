@@ -2,7 +2,9 @@
 
 **Actors**: a member with `servers: manage`; the retire job (queue `provisioning`); Cloudflare; the server (if reachable); subscriptions (reacting to the event).
 
-Retirement takes a server out of service for good: it leaves every subscription, its checks stop, its DNS records go, and optionally its stack is removed from the VPS. The VPS itself is cancelled by hand at the hosting provider; Proxier has no provider APIs. History stays: events, jobs, deployments, stats (until retention). The name stays taken forever.
+Retirement permanently removes a server from subscriptions, stops its checks and removes its DNS records. It can also remove the proxy stack from the VPS. Cancel the VPS separately at the provider; Proxier has no provider API integration.
+
+Proxier keeps the server's events, jobs, deployments and stats subject to retention. Its name remains reserved.
 
 ## Steps
 

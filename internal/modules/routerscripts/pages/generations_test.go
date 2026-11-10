@@ -22,11 +22,11 @@ import (
 )
 
 // genPost is the generate form for Dacha on v1: a new link in "Me", a new
-// router through dacha-pi, lanNet 10.40.1.
+// router through jump-host, lanNet 10.40.1.
 func genPost() url.Values {
 	return url.Values{
 		"version": {"1"}, "router_name": {"Dacha"}, "link_mode": {"create"}, "link_sub": {"2"},
-		"router_mode": {"new"}, "router_jump": {"dacha-pi:22"}, "router_port": {"22"}, "router_user": {"proxier"},
+		"router_mode": {"new"}, "router_jump": {"jump-host:22"}, "router_port": {"22"}, "router_user": {"proxier"},
 		"p.lanNet": {"10.40.1"},
 	}
 }
@@ -44,7 +44,7 @@ func contains(t *testing.T, name, page string, want ...string) {
 func TestGenerateFormPage(t *testing.T) {
 	h := rscriptstest.New(t)
 	id := h.Script("fresh-router", paramstest.Annotate(paramstest.WithEnd(paramstest.Today()), "subUrl", "@fill subscription-link"))
-	h.Routers().Jumps = []routing.JumpHost{{Host: "dacha-pi", Port: 22, User: "admin", Tailnet: true}}
+	h.Routers().Jumps = []routing.JumpHost{{Host: "jump-host", Port: 22, User: "admin", Tailnet: true}}
 	old := h.Links().Add("Router — Old", "Family", "disabled")
 
 	res := h.Login.Get("/router-scripts/1/generate")
@@ -53,15 +53,15 @@ func TestGenerateFormPage(t *testing.T) {
 		t.Fatalf("form: %d", res.Code)
 	}
 	contains(t, "form", page, "v1 · current", `name="router_name"`, "Register for routing", "Register a new router", "Use a router already in Routing",
-		"Don't register", "Main · default", "dacha-pi:22 as admin · tailnet", "Another jump host…", "Subscription link", "Create a link",
+		"Don't register", "Main · default", "jump-host:22 as admin · tailnet", "Another jump host…", "Subscription link", "Create a link",
 		"Use an existing link", "Type a URL", "Family · 3 servers", "Router — Old · Family · disabled", "# interface names",
-		"from the link above", "192.168.89.2", `($containerNet . ".2")`, "10.230.1.1 · lanNet + .1", "Generate", "On generate")
+		"from the link above", "192.168.89.2", `($containerNet . ".2")`, "10.20.1.1 · lanNet + .1", "Generate", "On generate")
 	checkNoInline(t, "form", page)
 
 	// the summary follows the fields and swaps the computed values and the host
 	res = h.Login.Post("/router-scripts/1/generate/summary", genPost())
 	sum := res.Body.String()
-	contains(t, "summary", sum, "Create link Router — Dacha in Me", "Register router Dacha, awaiting setup, following Main, at 10.40.1.1 through dacha-pi",
+	contains(t, "summary", sum, "Create link Router — Dacha in Me", "Register router Dacha, awaiting setup, following Main, at 10.40.1.1 through jump-host",
 		"Write fresh-router-Dacha-v1.rsc · 2 lines differ from v1: lanNet, subUrl", "Every value is a valid RouterOS literal.",
 		"Proxier hasn't confirmed this jump host's key", "The file holds the router's subscription link", `id="cv-vpnGateway"`,
 		`id="router-host-field" hx-swap-oob="true"`, "10.40.1.1 · lanNet + .1", `id="pf-subUrl" hx-swap-oob="true"`)
@@ -183,7 +183,7 @@ func TestGenerationPage(t *testing.T) {
 		t.Fatalf("changes: %d", res.Code)
 	}
 	contains(t, "changes", changes, `"10.40.1"`, `:local subUrl "•••"`, `:local image "•••"`, "secret values shown as •••")
-	if strings.Contains(changes, "s3cr3t-image") || strings.Contains(changes, "proxier.test/s/") || strings.Contains(changes, "files....t") {
+	if strings.Contains(changes, "s3cr3t-image") || strings.Contains(changes, "proxier.test/s/") || strings.Contains(changes, "files.example.com/subscription") {
 		t.Error("a secret in the changes")
 	}
 	checkNoInline(t, "changes", changes)
@@ -390,9 +390,9 @@ func TestAfterTheImport(t *testing.T) {
 	if _, _, err := h.Mod.Generations.CreateFetchURL(ctx, gid, access.All, "admin"); err != nil {
 		t.Fatal(err)
 	}
-	h.Routers().Update(1, func(r *routing.RegisteredRouter) { r.Jump = "dacha-pi:22" })
+	h.Routers().Update(1, func(r *routing.RegisteredRouter) { r.Jump = "jump-host:22" })
 	a := after()
-	contains(t, "waiting", a, "waiting", "You get a Telegram message with the router's IP when it happens.", ", through dacha-pi.",
+	contains(t, "waiting", a, "waiting", "You get a Telegram message with the router's IP when it happens.", ", through jump-host.",
 		`hx-trigger="every 10s"`, `id="fetch-url-state"`, `hx-swap-oob="true"`, "expires at 16:00 · in 60 min")
 	if strings.Contains(a, "<html") || h.Login.Get("/router-scripts/generations/1/after").Header().Get("Cache-Control") != "no-store" {
 		t.Error("the area is a whole page, or stored")

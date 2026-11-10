@@ -1,6 +1,10 @@
 # One shared credential per endpoint; links control updates, rotation controls access
 
-Every link that includes a server serves the same credential (the VLESS UUID) for each of its endpoints. Proxier never adds or removes per-person clients on servers. Disabling, expiring or deleting a link therefore stops its **updates**, not its access: the link then serves one stub entry with a `200`. Apps replace their list on a successful refresh, whereas on an error they would keep the old servers, so the stub is what actually clears the app. Real revocation is **rotation** of the servers' credentials, offered for a single link as **cut-off**. That rotation is a setting, off by default, because a copied URI that keeps working is an accepted risk. This was chosen for simplicity: nothing to sync to servers when links change, servers that work without Proxier, and no per-user state on the VPS.
+Every link that includes a server returns the same VLESS UUID for each endpoint. Proxier does not add or remove clients on servers for individual links.
+
+Disabling, expiring or deleting a link stops its updates. The link returns one stub entry with HTTP `200`, so apps can replace their cached server list. An error response would let apps keep the old list. Copied connection URIs remain usable until the server's credentials rotate.
+
+**Cut-off** disables a link and can rotate the credentials of every server in its subscription. Rotation is off by default because it affects every link using those servers. Shared credentials avoid per-link sync jobs and let servers keep working when Proxier is unavailable.
 
 ## Considered options
 

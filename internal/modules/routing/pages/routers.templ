@@ -92,7 +92,7 @@ templ connFields(f routerForm, errs map[string]string, tailnetUp bool) {
 		<div class="inline-fields">
 			<div class="field">
 				<label for="rt-host">{ i18n.T(ctx, "routers.field.host") }</label>
-				<input id="rt-host" class="pc-inp" name="host" value={ f.Conn.Host } placeholder="10.230.1.1" autocomplete="off" aria-invalid?={ errs["host"] != "" }/>
+				<input id="rt-host" class="pc-inp" name="host" value={ f.Conn.Host } placeholder="10.20.1.1" autocomplete="off" aria-invalid?={ errs["host"] != "" }/>
 				if errs["host"] != "" {
 					<p class="err" role="alert">{ errs["host"] }</p>
 				}

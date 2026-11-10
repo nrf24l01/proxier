@@ -1,6 +1,8 @@
 # Proxier joins the tailnet as its own node to reach routers
 
-Routers sit on LANs that Proxier reaches through jump hosts on a tailnet (mtvpn's `-r JUMPHOST:HOST`). Proxier embeds a tailnet client (`tsnet`) and joins the tailnet (Tailscale or headscale) as its own node, `proxier`, using it only for outgoing SSH to jump hosts and routers. This keeps the container off the host network, gives Proxier its own identity in the tailnet's ACLs, and makes the dependency explicit in Proxier's configuration rather than in how the host happens to be set up.
+Proxier reaches remote router LANs through jump hosts on a tailnet, as mtvpn did with `-r JUMPHOST:HOST`. It embeds `tsnet` and joins Tailscale or headscale as its own node, `proxier`. The node makes outgoing SSH connections to jump hosts and routers.
+
+The container does not need host networking or the host's tailnet state. Proxier has its own identity in the tailnet ACLs, and its configuration declares the connection settings.
 
 ## Considered options
 

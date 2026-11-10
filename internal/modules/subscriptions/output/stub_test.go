@@ -18,17 +18,17 @@ func TestStubTexts(t *testing.T) {
 		contact string
 		want    string
 	}{
-		{en, output.StubDisabled, "@tikhonp", "⛔ Link disabled · @tikhonp"},
+		{en, output.StubDisabled, "@example_admin", "⛔ Link disabled · @example_admin"},
 		{en, output.StubDisabled, "", "⛔ Link disabled"},
-		{ru, output.StubDisabled, "@tikhonp", "⛔ Ссылка отключена · @tikhonp"},
+		{ru, output.StubDisabled, "@example_admin", "⛔ Ссылка отключена · @example_admin"},
 		{ru, output.StubDisabled, "", "⛔ Ссылка отключена"},
-		{en, output.StubExpired, "@tikhonp", "⏳ Expired on 1 Dec 2026 · @tikhonp"},
+		{en, output.StubExpired, "@example_admin", "⏳ Expired on 1 Dec 2026 · @example_admin"},
 		{en, output.StubExpired, "", "⏳ Expired on 1 Dec 2026"},
-		{ru, output.StubExpired, "@tikhonp", "⏳ Истекла 1 дек 2026 · @tikhonp"},
+		{ru, output.StubExpired, "@example_admin", "⏳ Истекла 1 дек 2026 · @example_admin"},
 		{ru, output.StubExpired, "", "⏳ Истекла 1 дек 2026"},
-		{en, output.StubDeleted, "@tikhonp", "⛔ Link removed"},
+		{en, output.StubDeleted, "@example_admin", "⛔ Link removed"},
 		{ru, output.StubDeleted, "", "⛔ Ссылка удалена"},
-		{en, output.StubEmpty, "@tikhonp", "⚠️ No servers yet"},
+		{en, output.StubEmpty, "@example_admin", "⚠️ No servers yet"},
 		{ru, output.StubEmpty, "", "⚠️ Серверов пока нет"},
 	} {
 		if got := output.StubText(c.l, c.outcome, expires, c.contact); got != c.want {
@@ -38,8 +38,8 @@ func TestStubTexts(t *testing.T) {
 }
 
 func TestStubURIMatchesTheDoc(t *testing.T) {
-	const want = "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:1?encryption=none&type=tcp&security=none#%E2%9B%94%20Link%20disabled%20%C2%B7%20%40tikhonp"
-	got := output.StubURI(output.StubText(loc(i18n.EN), output.StubDisabled, time.Time{}, "@tikhonp"))
+	const want = "vless://00000000-0000-0000-0000-000000000000@127.0.0.1:1?encryption=none&type=tcp&security=none#%E2%9B%94%20Link%20disabled%20%C2%B7%20%40example_admin"
+	got := output.StubURI(output.StubText(loc(i18n.EN), output.StubDisabled, time.Time{}, "@example_admin"))
 	if got != want {
 		t.Errorf("\n got %s\nwant %s", got, want)
 	}

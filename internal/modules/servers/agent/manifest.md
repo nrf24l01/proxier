@@ -1,6 +1,6 @@
 ### Manifest
 
-The seed template comes from `servers-templates/proxy`. See the [VLESS XHTTP integration](../../../../docs/integrations/vless-xhttp.md). Preflight checks the server against `requires.os` and `requires.arch`. In `requires.os`, `ubuntu-22.04+` accepts Ubuntu 22.04 and later Ubuntu releases. An entry without `+` accepts only the listed release.
+The [seed template](../../../../docs/integrations/vless-xhttp.md) shows the manifest's fields. Preflight checks the server against `requires.os` and `requires.arch`. In `requires.os`, `ubuntu-22.04+` accepts Ubuntu 22.04 and later Ubuntu releases. An entry without `+` accepts only the listed release.
 
 ```yaml
 name: VLESS XHTTP behind nginx

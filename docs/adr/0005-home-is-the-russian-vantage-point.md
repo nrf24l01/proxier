@@ -1,6 +1,8 @@
 # Proxier runs at home, which makes it its own Russian vantage point
 
-Proxier runs at home in Russia, behind an HTTPS reverse proxy. Its outbound connections therefore see the Russian network: the proxy test from Proxier is the ground truth for "usable from Russia", including throttling that only shows after the first 16–20 KB of a connection. check-host.net nodes abroad, together with the SSH self-check, separate **blocked** (fine on the server, reachable abroad, unusable from Russia) from **down**. A reference check of home's own internet freezes verdicts when home is offline or cut off from foreign sites, so that a home problem never looks like a fleet problem.
+Proxier runs at home in Russia behind an HTTPS reverse proxy. Its proxy tests measure whether a server works from that network, including throttling that starts after the first 16 to 20 KB. An SSH self-check and check-host.net nodes abroad help distinguish a blocked server from a failed one.
+
+A reference check tests home's internet connection. Proxier freezes server verdicts when home is offline or cannot reach foreign sites. A failure of home's connection must not change the health state of every server.
 
 ## Considered options
 

@@ -1,6 +1,8 @@
 # One binary on SQLite, with durable job queues inside the process
 
-Proxier is a single Go binary in one container. Its state is one SQLite file, and its background work (provisioning, checks, syncs, refreshes, notifications) runs as jobs stored in that file and executed by worker pools inside the same process. Proxier serves a few members and a handful of servers and routers, so a separate database server, a message broker or a worker fleet would add moving parts to deploy and back up without solving a problem it has. SQLite (one writer, WAL) fits a single process, a backup is copying one file, and stored jobs give the restart-safety, retries, cancellation and live logs that the long tasks need.
+Proxier runs as one Go binary in one container and stores its state in one SQLite file. Worker pools in that process execute jobs stored in the database, including provisioning, checks, syncs, refreshes and notifications.
+
+The application serves a few members and a small number of servers and routers. A separate database server, message broker or worker service would add deployment and backup work at this scale. SQLite uses one writer and WAL mode. Stored jobs support retries, cancellation, live logs and recovery after a restart. Backups use consistent database snapshots.
 
 ## Considered options
 

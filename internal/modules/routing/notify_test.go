@@ -87,7 +87,7 @@ func TestRouterNotificationTexts(t *testing.T) {
 	subj := events.Subject{Type: "router", ID: strconv.FormatInt(id, 10)}
 	en := h.App.I18n.Localizer(i18n.EN, time.UTC)
 	ru := h.App.I18n.Localizer(i18n.RU, time.UTC)
-	problem := "Proxier can't reach the router 10.230.1.1:22: connection refused. Nothing was changed on the router."
+	problem := "Proxier can't reach the router 10.20.1.1:22: connection refused. Nothing was changed on the router."
 	for _, c := range []struct {
 		e                  events.Event
 		enT, enB, ruT, ruB string
@@ -95,9 +95,9 @@ func TestRouterNotificationTexts(t *testing.T) {
 		{events.Event{Type: "routing.router_sync_failed", Subject: subj, Payload: map[string]any{"step": "connect", "error": problem, "attempt": 4.0, "final": true}},
 			"Home: sync gave up at connect", problem + " · after 4 attempts",
 			"Home: синхронизация прекращена на шаге connect", problem + " · после 4 попыток"},
-		{events.Event{Type: "routing.router_sync_failed", Subject: subj, Payload: map[string]any{"step": "connect", "error": "The router 10.230.1.1 refused Proxier's key: install it on the router.", "attempt": 1.0, "final": true}},
-			"Home: sync gave up at connect", "The router 10.230.1.1 refused Proxier's key: install it on the router.",
-			"Home: синхронизация прекращена на шаге connect", "The router 10.230.1.1 refused Proxier's key: install it on the router."},
+		{events.Event{Type: "routing.router_sync_failed", Subject: subj, Payload: map[string]any{"step": "connect", "error": "The router 10.20.1.1 refused Proxier's key: install it on the router.", "attempt": 1.0, "final": true}},
+			"Home: sync gave up at connect", "The router 10.20.1.1 refused Proxier's key: install it on the router.",
+			"Home: синхронизация прекращена на шаге connect", "The router 10.20.1.1 refused Proxier's key: install it on the router."},
 		{events.Event{Type: "routing.router_recovered", Subject: subj, Payload: map[string]any{"failures": 4.0, "notified": true}},
 			"Home is in sync again", "After 4 failed attempts.",
 			"Home снова синхронизирован", "После 4 неудачных попыток."},

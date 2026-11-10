@@ -103,8 +103,8 @@ func TestGoneParameterWarnsOnPublish(t *testing.T) {
 	h := rscriptstest.New(t)
 	end := paramstest.WithEnd(paramstest.Today())
 	id := h.Script("fresh-router", end)
-	h.Publish(id, paramstest.Replace(end, `"10.230.1"`, `"10.230.2"`))
-	if n := h.Publish(id, paramstest.Replace(end, `"10.230.1"`, `"10.230.3"`)); n != 3 {
+	h.Publish(id, paramstest.Replace(end, `"10.20.1"`, `"10.20.2"`))
+	if n := h.Publish(id, paramstest.Replace(end, `"10.20.1"`, `"10.20.3"`)); n != 3 {
 		t.Fatalf("v%d", n)
 	}
 	d, _ := h.Mod.Scripts.EditDraft(ctx, id, "admin")

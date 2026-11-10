@@ -1,6 +1,8 @@
 # Proxier
 
-A self-hosted control panel for one person's proxy setup: VPS proxy servers built from templates and checked from Russia, subscription links for people and devices, domain routing kept in sync on MikroTik routers and in Shadowrocket, and the router setup script. One Go binary, one SQLite file, a templ + htmx UI in English and Russian.
+Proxier is a self-hosted control panel for proxy servers and domain routing. It builds VPS proxy servers from templates and checks whether they work from Russia. It provides subscription links for people and devices, syncs routing to MikroTik routers and Shadowrocket, and hosts router setup scripts.
+
+It runs as one Go binary with a SQLite database and a templ + htmx UI in English and Russian.
 
 ![Proxier dashboard](docs/assets/screenshot-dashboard.png)
 
@@ -11,7 +13,7 @@ Save this as `compose.yaml`:
 ```yaml
 services:
   proxier:
-    image: code.tikhonnnnn.com/tikhon/proxier:latest
+    image: ghcr.io/tikhonp/proxier:latest
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -24,6 +26,8 @@ services:
 volumes:
   proxier-data:
 ```
+
+The image comes from GitHub Container Registry. You can also [build it yourself](docs/deployment.md#images-and-ci).
 
 Then:
 

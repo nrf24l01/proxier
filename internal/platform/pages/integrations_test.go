@@ -85,20 +85,20 @@ func TestDetectChatWithoutUpdates(t *testing.T) {
 	}
 
 	// After /start the chat is offered, and choosing it makes it the member's.
-	f.AddUpdate(`{"update_id":1,"message":{"chat":{"id":5,"type":"private","first_name":"Tikhon"}}}`)
+	f.AddUpdate(`{"update_id":1,"message":{"chat":{"id":5,"type":"private","first_name":"Alex"}}}`)
 	poll(t, s)
 	body = l.Post("/settings/notifications/telegram/detect", nil).Body.String()
-	if !strings.Contains(body, "Tikhon") || !strings.Contains(body, `name="chat_id" value="5"`) || !strings.Contains(body, `action="/settings/notifications/telegram/chat"`) {
+	if !strings.Contains(body, "Alex") || !strings.Contains(body, `name="chat_id" value="5"`) || !strings.Contains(body, `action="/settings/notifications/telegram/chat"`) {
 		t.Fatalf("%s", body)
 	}
-	if rec := l.Post("/settings/notifications/telegram/chat", url.Values{"chat_id": {"5"}, "chat_title": {"Tikhon"}}); rec.Code != 303 {
+	if rec := l.Post("/settings/notifications/telegram/chat", url.Values{"chat_id": {"5"}, "chat_title": {"Alex"}}); rec.Code != 303 {
 		t.Fatalf("%d", rec.Code)
 	}
 	if got := chatOf(t, s, 1); got != "5" {
 		t.Fatalf("member 1's chat %q", got)
 	}
 	// templ drops a space that opens an element, so the one before "·" sits outside the span
-	if page := l.Get("/settings/notifications?saved=chat").Body.String(); !strings.Contains(page, "Chat saved.") || !strings.Contains(page, `>Tikhon <span class="muted">· 5</span>`) {
+	if page := l.Get("/settings/notifications?saved=chat").Body.String(); !strings.Contains(page, "Chat saved.") || !strings.Contains(page, `>Alex <span class="muted">· 5</span>`) {
 		t.Errorf("the page doesn't show the saved chat:\n%s", page)
 	}
 }
@@ -108,19 +108,19 @@ func TestDetectChatWithoutUpdates(t *testing.T) {
 func TestDetectChatLeavesOutOtherMembersChats(t *testing.T) {
 	s, l, f := telegramSite(t)
 	saveToken(t, l)
-	if rec := l.Post("/settings/notifications/telegram/chat", url.Values{"chat_id": {"5"}, "chat_title": {"Tikhon"}}); rec.Code != 303 {
+	if rec := l.Post("/settings/notifications/telegram/chat", url.Values{"chat_id": {"5"}, "chat_title": {"Alex"}}); rec.Code != 303 {
 		t.Fatalf("%d", rec.Code)
 	}
 	anna := s.Join("anna", access.PresetViewer.Grant(), "198.51.100.2:1")
-	f.AddUpdate(`{"update_id":1,"message":{"chat":{"id":5,"type":"private","first_name":"Tikhon"}}}`)
+	f.AddUpdate(`{"update_id":1,"message":{"chat":{"id":5,"type":"private","first_name":"Alex"}}}`)
 	f.AddUpdate(`{"update_id":2,"message":{"chat":{"id":6,"type":"private","first_name":"Anna"}}}`)
 	poll(t, s)
 	body := anna.Post("/settings/notifications/telegram/detect", nil).Body.String()
-	if strings.Contains(body, "Tikhon") || strings.Contains(body, `value="5"`) || !strings.Contains(body, "Anna") {
+	if strings.Contains(body, "Alex") || strings.Contains(body, `value="5"`) || !strings.Contains(body, "Anna") {
 		t.Fatalf("anna is offered:\n%s", body)
 	}
 	// Member 1's own chat is still offered to member 1.
-	if body := l.Post("/settings/notifications/telegram/detect", nil).Body.String(); !strings.Contains(body, "Tikhon") {
+	if body := l.Post("/settings/notifications/telegram/detect", nil).Body.String(); !strings.Contains(body, "Alex") {
 		t.Fatalf("member 1 isn't offered their own chat:\n%s", body)
 	}
 }
@@ -129,7 +129,7 @@ func TestSendTestErrorKeepsChat(t *testing.T) {
 	s, l, f := telegramSite(t)
 	saveToken(t, l)
 	f.Block("5")
-	if rec := l.Post("/settings/notifications/telegram/chat", url.Values{"chat_id": {"5"}, "chat_title": {"Tikhon"}}); rec.Code != 303 {
+	if rec := l.Post("/settings/notifications/telegram/chat", url.Values{"chat_id": {"5"}, "chat_title": {"Alex"}}); rec.Code != 303 {
 		t.Fatalf("%d", rec.Code)
 	}
 	body := l.Post("/settings/notifications/telegram/test", nil).Body.String()

@@ -40,5 +40,5 @@ func loc(lang i18n.Lang) *i18n.Localizer {
 }
 
 func request(servers ...output.Server) output.Request {
-	return output.Request{Link: output.Link{State: "active"}, Title: "Family", UpdateHours: 12, Format: "uri-plain", Servers: servers, Contact: "@tikhonp", Now: now}
+	return output.Request{Link: output.Link{State: "active"}, Title: "Family", UpdateHours: 12, Format: "uri-plain", Servers: servers, Contact: "@example_admin", Now: now}
 }

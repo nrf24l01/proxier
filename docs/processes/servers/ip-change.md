@@ -18,7 +18,7 @@ The dialog lists these steps.
 
 ## Steps: the dialog
 
-1. Server page → Actions → **Change IP** (active servers only). The dialog shows the two provider steps, what the job will do, the DNS records it will repoint (`nl-1.hosts.example.com → 201.58.181.185`), and a band when the template's stack uses `.Server.IP` (a redeploy is needed after the change).
+1. Server page → Actions → **Change IP** (active servers only). The dialog shows the two provider steps, what the job will do, the DNS records it will repoint (`nl-1.hosts.example.com → 203.0.113.10`), and a band when the template's stack uses `.Server.IP` (a redeploy is needed after the change).
 2. Fields:
    - **New IP**, an IPv4 address. The field suggests the server's previous IPs.
    - **Keep the old IP as a previous IP and test it from home**, checked. Unchecked when the provider takes the IP away.
@@ -53,7 +53,7 @@ A failed or cancelled job → `server.ip_change_failed{to, step, error, cancelle
 1. Every 30 minutes (Settings → Servers, **Previous IPs tested every**), a round queues a test of each active, unpaused, not retiring server that keeps a previous IP. An IP change queues one too (above).
 2. The test runs the proxy test from home through every endpoint of the server, aimed at each previous IP in turn. A previous IP **works** when every endpoint passes, and **fails** otherwise, with the first failing endpoint's class and error. Like the proxy test, it stores nothing while another job is changing the server.
 3. While home is not `online`, results are stored marked inconclusive and change nothing.
-4. A previous IP starts as **untested**, and its first conclusive result applies at once. After that its state changes only when as many results in a row agree as a server's health needs (**Flap confirmations**, 2 by default). Each change → `server.previous_ip_changed{ip, from, to, error}`. Only `fails` → `works` notifies: "🟢 nl-1: previous IP 201.58.181.185 works again".
+4. A previous IP starts as **untested**, and its first conclusive result applies at once. After that its state changes only when as many results in a row agree as a server's health needs (**Flap confirmations**, 2 by default). Each change → `server.previous_ip_changed{ip, from, to, error}`. Only `fails` → `works` notifies: "🟢 nl-1: previous IP 203.0.113.10 works again".
 5. The Health tab lists the previous IPs: the IP and until when it was the server's, its state and since when, the latest result, and a 24 h strip. Per IP:
    - **Switch back** opens Change IP with that IP filled in. The same job runs, and the IP the server leaves becomes a previous IP when **Keep** stays checked.
    - **Forget** (confirmed) stops testing it, deletes its results and forgets its pinned host key. The IP is then free for another server. → `server.previous_ip_forgotten{ip}`

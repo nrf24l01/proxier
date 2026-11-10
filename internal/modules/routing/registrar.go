@@ -53,7 +53,7 @@ type RegisteredRouter struct {
 	LastSyncAt    time.Time
 	LastResult    string // "", synced, failed
 	LastError     string
-	Host, Jump    string // "10.230.3.1:22", "dacha-pi:22" ("" without one)
+	Host, Jump    string // "10.20.3.1:22", "jump-host:22" ("" without one)
 	AddressList   string
 	Forwarder     string
 	KeyCommands   string // the three commands that install Proxier's key for its user

@@ -698,7 +698,7 @@ func connFields(f routerForm, errs map[string]string, tailnetUp bool) templ.Comp
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "\" placeholder=\"10.230.1.1\" autocomplete=\"off\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "\" placeholder=\"10.20.1.1\" autocomplete=\"off\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

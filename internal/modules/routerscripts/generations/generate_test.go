@@ -156,7 +156,7 @@ func routerRows(t *testing.T, m *rscriptstest.Modules) int {
 func TestRequiredValueRefusesEverything(t *testing.T) {
 	m := rscriptstest.WithModules(t)
 	id := m.Script("fresh-router", paramstest.Annotate(paramstest.Annotated(), "wanIface", "@required"))
-	f := realForm(t, m, id, m.Subscription("Family"), "10.230.3.1")
+	f := realForm(t, m, id, m.Subscription("Family"), "10.20.3.1")
 	f.Values["wanIface"] = "  "
 	fe := refused(t, m.Harness, id, f)
 	if fe["param.wanIface"] != "params.err.required" || len(fe) != 1 {
@@ -207,7 +207,7 @@ func TestRegisterForRouting(t *testing.T) {
 	b := paramstest.Replace(paramstest.Annotated(), `:local vpnList "to_vpn_list"`, `:local vpnList "my_list"`)
 	b = paramstest.Replace(b, `:local dohForwarder "vpn-doh"`, `:local dohForwarder "my-doh"`)
 	id := m.Script("fresh-router", b)
-	f := realForm(t, m, id, 0, "10.230.3.1")
+	f := realForm(t, m, id, 0, "10.20.3.1")
 	f.Link.Mode = generations.LinkType
 	v, err := m.Mod.Generations.Check(bg, rscriptstest.Owner, id, f)
 	if err != nil || v.Locked["vpnList"] != "router" || v.LockedValues["vpnList"] != "to_vpn_list" || v.LockedValues["dohForwarder"] != "vpn-doh" {
@@ -221,7 +221,7 @@ func TestRegisterForRouting(t *testing.T) {
 		t.Fatalf("the router: %+v %v", g.Router, err)
 	}
 	rt, err := m.Routing.Routers.Get(bg, g.RouterID, access.All)
-	if err != nil || rt.CreatedBy != "routerscripts" || rt.Conn.Host != "10.230.3.1" {
+	if err != nil || rt.CreatedBy != "routerscripts" || rt.Conn.Host != "10.20.3.1" {
 		t.Fatalf("routing's router: %+v %v", rt, err)
 	}
 	if ev := m.Events("routing.router_added"); len(ev) != 1 || ev[0].Payload["by"] != "routerscripts" || ev[0].Actor != events.MemberActor(1) {
@@ -243,7 +243,7 @@ func TestPortRefusalsRollBackTogether(t *testing.T) {
 	id := m.Script("fresh-router", paramstest.Annotated())
 	fam := m.Subscription("Family")
 	m.Link("Router — Parents", fam)
-	f := realForm(t, m, id, fam, "http://10.230.3.1")
+	f := realForm(t, m, id, fam, "http://10.20.3.1")
 	fe := refused(t, m.Harness, id, f)
 	if fe["link.name"] != "generations.err.link_taken" || fe["router.host"] != "routers.err.host" {
 		t.Fatalf("both refusals: %+v", fe)
@@ -267,7 +267,7 @@ func TestGenerateAgainReusesLinkAndRouter(t *testing.T) {
 	m := rscriptstest.WithModules(t)
 	id := m.Script("fresh-router", paramstest.Annotate(paramstest.Annotated(), "image", "@secret"))
 	f := realForm(t, m, id, m.Subscription("Family"), "")
-	f.Values["image"], f.Values["lanNet"] = "registry.example/mihomo:1", "10.230.3"
+	f.Values["image"], f.Values["lanNet"] = "registry.example/mihomo:1", "10.20.3"
 	first := generate(t, m.Harness, id, f)
 
 	v, err := m.Mod.Generations.Form(bg, rscriptstest.Owner, id, 0, first)
@@ -276,7 +276,7 @@ func TestGenerateAgainReusesLinkAndRouter(t *testing.T) {
 	}
 	g1, _ := m.Mod.Generations.Get(bg, first, access.All)
 	if v.Form.RouterName != "Parents" || v.Form.Link.Mode != generations.LinkExisting || v.Form.Link.LinkID != g1.LinkID ||
-		v.Form.Router.Mode != generations.RouterExisting || v.Form.Router.RouterID != g1.RouterID || v.Form.Values["lanNet"] != "10.230.3" {
+		v.Form.Router.Mode != generations.RouterExisting || v.Form.Router.RouterID != g1.RouterID || v.Form.Values["lanNet"] != "10.20.3" {
 		t.Fatalf("the form again: %+v", v.Form)
 	}
 	if _, ok := v.Form.Values["image"]; ok || !v.Kept["image"] {

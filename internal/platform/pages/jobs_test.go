@@ -202,7 +202,7 @@ func TestRunDemoJob(t *testing.T) {
 func TestJobsNameTheMemberWhoStartedThem(t *testing.T) {
 	s := sitetest.New(t, sitetest.Options{})
 	l := s.SignIn("")
-	if _, err := s.App.DB.W.Exec(`UPDATE members SET username = 'tikhon' WHERE id = 1`); err != nil {
+	if _, err := s.App.DB.W.Exec(`UPDATE members SET username = 'alex' WHERE id = 1`); err != nil {
 		t.Fatal(err)
 	}
 	old := finishedJob(t, s, "succeeded", 0)
@@ -211,12 +211,12 @@ func TestJobsNameTheMemberWhoStartedThem(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, id := range []int64{old, e.ID} {
-		if page := l.Get(fmt.Sprintf("/jobs/%d", id)).Body.String(); !strings.Contains(page, "started by tikhon") {
+		if page := l.Get(fmt.Sprintf("/jobs/%d", id)).Body.String(); !strings.Contains(page, "started by alex") {
 			t.Errorf("job %d doesn't name its member:\n%s", id, page)
 		}
 	}
 	list := l.Get("/jobs").Body.String()
-	if strings.Count(list, "tikhon") < 3 || strings.Contains(list, "member:1") || strings.Contains(list, "admin ·") {
+	if strings.Count(list, "alex") < 3 || strings.Contains(list, "member:1") || strings.Contains(list, "admin ·") {
 		t.Errorf("the list shows a stored actor:\n%s", list)
 	}
 }

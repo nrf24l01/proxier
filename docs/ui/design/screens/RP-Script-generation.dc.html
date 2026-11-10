@@ -142,7 +142,7 @@ button:disabled{cursor:not-allowed;opacity:.45}
 <span style="color:#908caa">3</span>
 <div style="display:flex;flex-direction:column;gap:2px">
 <span style="display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px"><span style="font-weight:600">Proxier connects and runs the first sync</span><span style="display:inline-flex;align-items:center;gap:7px;color:#908caa"><span aria-hidden="true" style="width:8px;height:8px;flex:none;border-radius:50%;box-shadow:inset 0 0 0 1.5px #908caa"></span>awaiting setup</span></span>
-<span style="font-size:12px;color:#908caa">It tries <a href="#">Dacha</a> every 10 min for 7 days, through dacha-pi.</span>
+<span style="font-size:12px;color:#908caa">It tries <a href="#">Dacha</a> every 10 min for 7 days, through jump-host.</span>
 </div>
 </li>
 </ol>
@@ -292,7 +292,7 @@ class Component extends DCLogic {
       noMsg: !this.state.msg,
       msg: this.state.msg,
       values: [
-        { k: 'lanNet', v: '10.230.3 · changed', kc: '#ebbcba' },
+        { k: 'lanNet', v: '10.20.3 · changed', kc: '#ebbcba' },
         { k: 'subUrl', v: 'https://proxier.example.com/s/•••••• · secret', kc: '#ebbcba' },
         { k: 'vpnList', v: 'to_vpn_list · from router Dacha', kc: '#e0def4' },
         { k: 'dohForwarder', v: 'vpn-doh · from router Dacha', kc: '#e0def4' },

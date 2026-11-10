@@ -57,7 +57,7 @@ func NoRotator() Option { return func(o *options) { o.noRotator = true } }
 const Tunnel = "127.0.0.1:41000"
 
 // New: the app with the module on a fake catalog holding nl-1 (🇳🇱 Netherlands 1,
-// id 1) and de-1 (🇩🇪 Germany 1, id 2), general.admin_contact "@tikhonp", the
+// id 1) and de-1 (🇩🇪 Germany 1, id 2), general.admin_contact "@example_admin", the
 // tunnel (127.0.0.1) trusted, and a fake Rotator whose job type FakeRotate is
 // registered. No job workers run. The public rate limiter runs on the harness
 // clock.
@@ -84,7 +84,7 @@ func New(t *testing.T, opts ...Option) *Harness {
 	h := &Harness{T: t, Site: site, App: site.App, Mod: mod, Catalog: cat, Rotator: rot, Now: time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)}
 	mod.Now = func() time.Time { return h.Now }
 	h.App.PublicLimit.Now = func() time.Time { return h.Now }
-	if err := h.App.Settings.Set(context.Background(), "admin", "general", map[string]string{"general.admin_contact": "@tikhonp"}); err != nil {
+	if err := h.App.Settings.Set(context.Background(), "admin", "general", map[string]string{"general.admin_contact": "@example_admin"}); err != nil {
 		t.Fatal(err)
 	}
 	h.Login = site.SignIn("")

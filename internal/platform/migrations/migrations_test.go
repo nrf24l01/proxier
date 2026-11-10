@@ -57,9 +57,9 @@ const member = `INSERT INTO members (username, password_hash, language, webauthn
 
 func TestAuthTablesRefuseWhatTheContractForbids(t *testing.T) {
 	d := dbtest.Open(t)
-	mustExec(t, d, member, "tikhon", "en", now, now)
+	mustExec(t, d, member, "alex", "en", now, now)
 	mustExec(t, d, member, "anna", "ru", now, now)
-	mustFail(t, d, "a username taken in another case", member, "Tikhon", "en", now, now)
+	mustFail(t, d, "a username taken in another case", member, "Alex", "en", now, now)
 	mustFail(t, d, "unknown language", `UPDATE members SET language = 'de'`)
 	mustFail(t, d, "empty username", member, "", "en", now, now)
 
@@ -135,7 +135,7 @@ func TestSecondFactorMigrationKeepsSessions(t *testing.T) {
 func TestMembersMigrationMakesTheAdminMemberOneAndBack(t *testing.T) {
 	d := dbtest.Open(t)
 	dbtest.DownTo(t, d, dbtest.Platform, 6)
-	mustExec(t, d, `INSERT INTO admin (id, username, password_hash, language, created_at, password_changed_at, jobs_seen_at, webauthn_user_id) VALUES (1, 'Tikhon', 'h', 'ru', ?, ?, ?, x'0102')`, now, now, now)
+	mustExec(t, d, `INSERT INTO admin (id, username, password_hash, language, created_at, password_changed_at, jobs_seen_at, webauthn_user_id) VALUES (1, 'Alex', 'h', 'ru', ?, ?, ?, x'0102')`, now, now, now)
 	mustExec(t, d, `INSERT INTO sessions (token_hash, admin_id, created_at, last_seen_at, expires_at, created_ip, last_ip, ended_at, end_reason) VALUES (x'aa', 1, ?, ?, ?, 'ip', 'ip', ?, 'second_factor_reset')`, now, now, now, now)
 	mustExec(t, d, `INSERT INTO sessions (token_hash, admin_id, created_at, last_seen_at, expires_at, created_ip, last_ip) VALUES (x'bb', 1, ?, ?, ?, 'ip', 'ip')`, now, now, now)
 	mustExec(t, d, `INSERT INTO totp (id, secret, created_at, last_step) VALUES (1, x'5ec2e7', ?, 42)`, now)
@@ -154,7 +154,7 @@ func TestMembersMigrationMakesTheAdminMemberOneAndBack(t *testing.T) {
 	if err := d.R.Get(&m, `SELECT id, username, language, webauthn_user_id, jobs_seen_at, created_by FROM members`); err != nil {
 		t.Fatal(err)
 	}
-	if m.ID != 1 || m.Username != "Tikhon" || m.Language != "ru" || string(m.Handle) != "\x01\x02" || m.Seen != now || m.By != "cli" {
+	if m.ID != 1 || m.Username != "Alex" || m.Language != "ru" || string(m.Handle) != "\x01\x02" || m.Seen != now || m.By != "cli" {
 		t.Fatalf("member 1: %+v", m)
 	}
 	for q, want := range map[string]int{
@@ -177,7 +177,7 @@ func TestMembersMigrationMakesTheAdminMemberOneAndBack(t *testing.T) {
 	mustExec(t, d, `INSERT INTO passkeys (member_id, credential_id, name, credential, created_at) VALUES (2, x'c2', 'Phone', '{}', ?)`, now)
 	dbtest.DownTo(t, d, dbtest.Platform, 6)
 	for q, want := range map[string]int{
-		`SELECT count(*) FROM admin WHERE id = 1 AND username = 'Tikhon' AND jobs_seen_at = '` + now + `'`: 1,
+		`SELECT count(*) FROM admin WHERE id = 1 AND username = 'Alex' AND jobs_seen_at = '` + now + `'`: 1,
 		`SELECT count(*) FROM admin`:                                                          1,
 		`SELECT count(*) FROM sessions WHERE admin_id = 1`:                                    2,
 		`SELECT count(*) FROM sessions`:                                                       2,
@@ -238,7 +238,7 @@ func TestJobsTablesCoalesceAndCascade(t *testing.T) {
 
 func TestNotificationTablesAreOnePerEventChannelAndMember(t *testing.T) {
 	d := dbtest.Open(t)
-	mustExec(t, d, member, "tikhon", "en", now, now)
+	mustExec(t, d, member, "alex", "en", now, now)
 	ins := `INSERT INTO notifications (event_id, channel, member_id, lang, message, state, created_at) VALUES (7, 'telegram', ?, 'en', '{}', 'queued', ?) ON CONFLICT DO NOTHING`
 	mustExec(t, d, ins, 1, now)
 	mustExec(t, d, ins, 1, now)
@@ -314,7 +314,7 @@ func TestAccessTablesRefuseWhatTheContractForbids(t *testing.T) {
 func TestAccessMigrationKeepsMembersAndMakesThemOwners(t *testing.T) {
 	d := dbtest.Open(t)
 	dbtest.DownTo(t, d, dbtest.Platform, 7)
-	mustExec(t, d, member, "tikhon", "ru", now, now)
+	mustExec(t, d, member, "alex", "ru", now, now)
 	mustExec(t, d, member, "gone", "en", now, now)
 	mustExec(t, d, `DELETE FROM members WHERE username = 'gone'`)
 	mustExec(t, d, `INSERT INTO sessions (token_hash, member_id, created_at, last_seen_at, expires_at, created_ip, last_ip) VALUES (x'aa', 1, ?, ?, ?, 'ip', 'ip')`, now, now, now)
@@ -374,7 +374,7 @@ func TestAccessMigrationKeepsMembersAndMakesThemOwners(t *testing.T) {
 func TestMemberNotificationsMigrationGivesTheChatToMemberOne(t *testing.T) {
 	d := dbtest.Open(t)
 	dbtest.DownTo(t, d, dbtest.Platform, 8)
-	mustExec(t, d, member, "tikhon", "ru", now, now)
+	mustExec(t, d, member, "alex", "ru", now, now)
 	mustExec(t, d, `INSERT INTO settings (key, value, updated_at) VALUES ('telegram.chat_id', '-1001', ?), ('telegram.chat_title', 'Home', ?), ('telegram.bot_username', 'bot', ?)`, now, now, now)
 	mustExec(t, d, `INSERT INTO notification_rules (event_type, enabled, updated_at) VALUES ('auth.locked', 0, ?)`, now)
 	note := `INSERT INTO notifications (id, event_id, channel, lang, message, state, created_at) VALUES (?, ?, 'telegram', 'en', '{}', 'sent', ?)`
@@ -422,7 +422,7 @@ func TestMemberNotificationsMigrationGivesTheChatToMemberOne(t *testing.T) {
 
 func TestTelegramChatsAreOneRowPerChat(t *testing.T) {
 	d := dbtest.Open(t)
-	mustExec(t, d, `INSERT INTO telegram_chats (chat_id, type, title, heard_at) VALUES (5, 'private', 'Tikhon', ?)`, now)
+	mustExec(t, d, `INSERT INTO telegram_chats (chat_id, type, title, heard_at) VALUES (5, 'private', 'Alex', ?)`, now)
 	mustFail(t, d, "the same chat twice", `INSERT INTO telegram_chats (chat_id, type, title, heard_at) VALUES (5, 'group', 'Family', ?)`, now)
 	mustFail(t, d, "an unknown type", `INSERT INTO telegram_chats (chat_id, type, title, heard_at) VALUES (6, 'bot', 'x', ?)`, now)
 	mustFail(t, d, "a long title", `INSERT INTO telegram_chats (chat_id, type, title, heard_at) VALUES (7, 'group', ?, ?)`, strings.Repeat("x", 257), now)

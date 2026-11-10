@@ -28,7 +28,7 @@ func TestRegisterRunsInTheCallersTransaction(t *testing.T) {
 	h := routingtest.New(t)
 	ctx := context.Background()
 	port := h.Mod.RouterRegistrar()
-	reg := routing.RouterRegistration{Name: "Parents", Host: "10.230.3.1"}
+	reg := routing.RouterRegistration{Name: "Parents", Host: "10.20.3.1"}
 
 	err := h.App.DB.Write(ctx, func(tx *sqlx.Tx) error {
 		if _, err := port.Register(ctx, tx, routingtest.Owner, reg, "admin"); err != nil {
@@ -51,7 +51,7 @@ func TestRegisterRunsInTheCallersTransaction(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if got.Name != "Parents" || got.List != "Main" || got.State != "awaiting" || got.Host != "10.230.3.1:22" || got.Jump != "" ||
+	if got.Name != "Parents" || got.List != "Main" || got.State != "awaiting" || got.Host != "10.20.3.1:22" || got.Jump != "" ||
 		got.AddressList != "to_vpn_list" || got.Forwarder != "vpn-doh" || !got.AwaitingUntil.Equal(h.Clock().Add(routers.AwaitingFor)) {
 		t.Fatalf("registered: %+v", got)
 	}
@@ -97,7 +97,7 @@ func TestRegistrarReads(t *testing.T) {
 	var id int64
 	if err := h.App.DB.Write(ctx, func(tx *sqlx.Tx) error {
 		reg := registration("Dacha", fake)
-		reg.JumpHost, reg.JumpPort, reg.JumpUser = "dacha-pi", 2222, "admin"
+		reg.JumpHost, reg.JumpPort, reg.JumpUser = "jump-host", 2222, "admin"
 		reg.Tailnet = true
 		r, err := port.Register(ctx, tx, routingtest.Owner, reg, "admin")
 		id = r.ID
@@ -112,8 +112,8 @@ func TestRegistrarReads(t *testing.T) {
 	if j := jumps[0]; j.Host != "127.0.0.1" || j.User != "pi" || !j.Pinned {
 		t.Errorf("the office's jump host is pinned: %+v", j)
 	}
-	if j := jumps[1]; j.Host != "dacha-pi" || j.Port != 2222 || j.User != "admin" || !j.Tailnet || j.Pinned {
-		t.Errorf("dacha-pi isn't: %+v", j)
+	if j := jumps[1]; j.Host != "jump-host" || j.Port != 2222 || j.User != "admin" || !j.Tailnet || j.Pinned {
+		t.Errorf("jump-host isn't: %+v", j)
 	}
 
 	// KeyCommands is the add page's text

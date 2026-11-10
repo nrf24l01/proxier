@@ -47,7 +47,7 @@ The generation page says when the link's URL changed after the generation (its t
    /import fresh-router.rsc
    ```
 
-   The file is saved under the script's slug. The router needs the internet to fetch: after a reset with `no-defaults`, give its WAN port a DHCP client first ([open questions](../../open-questions.md#a-reset-routers-first-fetch)).
+   The file is saved under the script's slug. The router needs the internet to fetch: after a reset with `no-defaults`, give its WAN port a DHCP client first ([open questions](../../open-questions.md#router-bootstrap-and-sync)).
 
    → `routerscript.fetch_url_created{expires, replaced}`
 3. The router requests the URL with `GET`, and Proxier answers with the generation's file (`200`, `text/plain`, as an attachment named like the download, byte for byte what **Download** gives). The URL is used up when Proxier answers, so a download cut short needs a new URL; the file is made before, and a failure to make it leaves the URL working. The URL's token is erased. → `routerscript.fetched{ip, user_agent}` (actor `system`, notifies)
@@ -55,7 +55,15 @@ The generation page says when the link's URL changed after the generation (its t
 5. An unused fetch URL that expired → `routerscript.fetch_url_expired{expired}`, recorded by the scan `routerscripts.fetch_urls` every 5 minutes, which also erases its token.
 6. After the import, the router has Proxier's user and key when the script used `@fill proxier-ssh-key`; otherwise the member installs them with the commands the generation page shows. Routing's awaiting-setup probe then connects within 10 minutes, and the first sync runs ([router sync](../routing/router-sync.md)).
 
-The generation page follows it in **After the import**, three steps: **the router fetches the file** (waiting while a URL is live, then "fetched at 16:41 from 198.51.100.4 · Mikrotik/7.24.5 Fetch", or "the fetch URL expired unused"), **Proxier's key** (the script's key parameter, or the router's key commands with **Copy**, or not needed without a router) and **Proxier connects and runs the first sync** (awaiting setup until its deadline and through which jump host, never connected, connected and synced, first sync queued or failed, paused, removed, not registered). The area polls every 10 seconds only while something waits (a live URL, an awaiting router before its deadline, a first sync queued) and stops by itself; each answer also refreshes the Fetch URL area's state line. **Fetch history** lists every fetch URL of the generation, newest first: created (time, by), expires, and waiting, used (time, IP, user agent), expired unused or replaced by a newer one, with the time. Generations and their fetch URLs are kept.
+The generation page tracks progress in **After the import**:
+
+1. **The router fetches the file** shows waiting, the fetch time with IP and user agent, or an unused expiry.
+2. **Proxier's key** shows the script's key parameter, or the router's key commands with **Copy**. Without a registered router, no key step is needed.
+3. **Proxier connects and runs the first sync** shows the awaiting deadline and jump host, then the connection and sync result. It also identifies paused, removed or unregistered routers and routers that never connected.
+
+The area polls every 10 seconds while a fetch URL is live, a router is awaiting setup before its deadline or the first sync is queued. It stops when nothing is waiting. Each response also refreshes the Fetch URL state line.
+
+**Fetch history** lists every URL for the generation, newest first. It shows creation time and actor, expiry, and whether the URL is waiting, used, expired unused or replaced. Used URLs include time, IP and user agent. Proxier keeps generations and their fetch URL history.
 
 ## Rules
 
