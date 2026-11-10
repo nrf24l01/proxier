@@ -4,6 +4,7 @@ import (
 	"context"
 	"io/fs"
 	"maps"
+	"slices"
 	"strings"
 	"testing"
 
@@ -275,4 +276,35 @@ func TestSeedSupportsUbuntu26(t *testing.T) {
 	if err := d.R.GetContext(ctx, &def, `SELECT default_version FROM servers_templates WHERE id = 2`); err != nil || def != 1 {
 		t.Fatalf("the member's default version %d, %v", def, err)
 	}
+
+	t.Run("rollback and reapply preserves the published files", func(t *testing.T) {
+		type file struct {
+			VersionID int64 `db:"version_id"`
+			Path      string
+			Content   string
+		}
+		const query = `SELECT f.version_id, f.path, CAST(f.content AS TEXT) AS content
+			FROM servers_template_files f
+			JOIN servers_template_versions v ON v.id = f.version_id
+			WHERE v.template_id = 1 AND v.number = 2 ORDER BY f.path`
+		var before, after []file
+		if err := d.R.SelectContext(ctx, &before, query); err != nil {
+			t.Fatal(err)
+		}
+		if err := db.MigrateDown(ctx, d, dbtest.Discard, source{}); err != nil {
+			t.Fatalf("down: %v", err)
+		}
+		if err := d.R.SelectContext(ctx, &after, query); err != nil || !slices.Equal(before, after) {
+			t.Fatalf("rollback changed the published files: %v, %v", after, err)
+		}
+		if err := db.MigrateUp(ctx, d, dbtest.Discard, source{}); err != nil {
+			t.Fatalf("up again: %v", err)
+		}
+		if err := d.R.SelectContext(ctx, &after, query); err != nil || !slices.Equal(before, after) {
+			t.Fatalf("reapplying changed the published files: %v, %v", after, err)
+		}
+		if err := d.R.GetContext(ctx, &def, `SELECT default_version FROM servers_templates WHERE id = 1`); err != nil || def != 2 {
+			t.Fatalf("default version after reapplying %d, %v", def, err)
+		}
+	})
 }

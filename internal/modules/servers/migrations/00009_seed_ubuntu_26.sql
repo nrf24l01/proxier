@@ -16,6 +16,8 @@ WHERE t.slug = 'vless-xhttp'
                   WHERE later.template_id = t.id AND later.number > 1)
   AND instr(CAST(f.content AS TEXT), 'os: [debian-12, debian-13, ubuntu-22.04, ubuntu-24.04]') > 0;
 
+-- Down preserves the published version and its files. Skip existing files
+-- when this migration is applied again after a rollback.
 INSERT INTO servers_template_files (version_id, path, content)
 SELECT v2.id, f.path,
        CAST(CASE WHEN f.path = 'manifest.yaml'
@@ -29,7 +31,9 @@ JOIN servers_template_files f ON f.version_id = v1.id
 JOIN servers_template_versions v2 ON v2.template_id = t.id AND v2.number = 2
 WHERE t.slug = 'vless-xhttp' AND v1.number = 1
   AND v2.published_by = 'system'
-  AND v2.notes = 'Supports Ubuntu 26.04 and later Ubuntu releases.';
+  AND v2.notes = 'Supports Ubuntu 26.04 and later Ubuntu releases.'
+  AND NOT EXISTS (SELECT 1 FROM servers_template_files existing
+                  WHERE existing.version_id = v2.id AND existing.path = f.path);
 
 UPDATE servers_templates SET default_version = 2
 WHERE slug = 'vless-xhttp' AND default_version = 1
