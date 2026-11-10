@@ -61,6 +61,7 @@ type newView struct {
 	Access      string
 	SSHUser     string
 	Setup       string
+	SkipDNS     bool
 	Errs        map[string]string // translated, by form field
 	Country     string            // the picker's text: a country's label, or what was typed
 	Auto        string            // the country the IP suggested last, "" for none
@@ -87,7 +88,7 @@ func formOf(c *echo.Context) provision.Form {
 		AccessMode: c.FormValue("access"), SSHUser: c.FormValue("ssh_user"), Setup: c.FormValue("setup"),
 		Country: countryOf(c.FormValue("country")), TemplateID: atoi("template"), Version: int(atoi("version")),
 		Notes: c.FormValue("notes"), Hostname: c.FormValue("hostname"), Params: map[string]string{},
-		CheckDNS: c.FormValue("check_dns") == "1",
+		CheckDNS: c.FormValue("check_dns") == "1", SkipDNS: c.FormValue("skip_dns") == "1",
 	}
 	if err := c.Request().ParseForm(); err == nil {
 		for k, vs := range c.Request().PostForm {
@@ -113,7 +114,7 @@ func countryOf(text string) string {
 // is shown by its label in the admin's language, anything else as typed.
 func (h *handler) newViewOf(ctx context.Context, f provision.Form, auto string) (newView, error) {
 	lang := string(i18n.From(ctx).Lang)
-	v := newView{IP: f.IP, Notes: f.Notes, Hostname: f.Hostname, Country: f.Country, Auto: auto, Version: f.Version, TemplateID: f.TemplateID}
+	v := newView{IP: f.IP, Notes: f.Notes, Hostname: f.Hostname, Country: f.Country, Auto: auto, Version: f.Version, TemplateID: f.TemplateID, SkipDNS: f.SkipDNS}
 	v.Access, v.Setup, v.SSHUser = f.AccessMode, f.Setup, f.SSHUser
 	if v.Access == "" || v.Setup == "" {
 		access, setup := h.Provision.Defaults(ctx)
@@ -215,7 +216,7 @@ func (h *handler) newServer(c *echo.Context) error {
 func (h *handler) formOfView(v newView) provision.Form {
 	port, _ := strconv.Atoi(v.Port)
 	return provision.Form{IP: v.IP, SSHPort: port, Country: countryOf(v.Country), Hostname: v.Hostname, TemplateID: v.TemplateID, Version: v.Version, Params: map[string]string{},
-		AccessMode: v.Access, SSHUser: v.SSHUser, Setup: v.Setup}
+		AccessMode: v.Access, SSHUser: v.SSHUser, Setup: v.Setup, SkipDNS: v.SkipDNS}
 }
 
 func (h *handler) renderNewServer(c *echo.Context, status int, v newView) error {

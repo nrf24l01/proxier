@@ -210,7 +210,7 @@ func TestNewServerAccessAndSetup(t *testing.T) {
 	if rec.Code != 200 {
 		t.Fatalf("%d\n%s", rec.Code, rec.Body)
 	}
-	for _, want := range []string{`name="access"`, `value="password"`, `value="key"`, `name="ssh_user"`, `name="setup"`, `value="minimal"`} {
+	for _, want := range []string{`name="access"`, `value="password"`, `value="key"`, `name="ssh_user"`, `name="setup"`, `value="minimal"`, `name="skip_dns"`} {
 		mustContain(t, rec.Body.String(), want)
 	}
 

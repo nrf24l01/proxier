@@ -12,3 +12,6 @@ data/
 
 !internal/modules/servers/seed/files/.env
 /proxier
+
+# local image archives
+*.tar.gz

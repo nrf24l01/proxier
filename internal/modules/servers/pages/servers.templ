@@ -112,6 +112,10 @@ templ newServerPage(s ui.Shell, v newView) {
 							<p class="help">{ i18n.T(ctx, "servers.new.hostname.help") }</p>
 						}
 					</div>
+					<div class="field">
+						<label class="check"><input type="checkbox" name="skip_dns" value="1" checked?={ v.SkipDNS }/> <span>{ i18n.T(ctx, "servers.new.skip_dns") }</span></label>
+						<p class="help">{ i18n.T(ctx, "servers.new.skip_dns.help") }</p>
+					</div>
 					<h2 class="grp">{ i18n.T(ctx, "servers.new.template") }</h2>
 					<div class="field">
 						<label for="srv-tpl">{ i18n.T(ctx, "servers.new.template") }</label>

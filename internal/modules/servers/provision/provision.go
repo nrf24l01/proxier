@@ -408,6 +408,10 @@ func (s *Service) dnsStep(ctx context.Context, r *jobs.Run, d *data) error {
 		names = append(names, srv.ProxyHostname)
 	}
 	if srv.ManualDNS {
+		if d.Payload.SkipDNS {
+			r.Log().Info("The DNS check is skipped: %s is a record made by hand, and the member checks it", srv.ManagementHostname)
+			return nil
+		}
 		return s.manualDNSStep(ctx, r, srv, names)
 	}
 	drv := s.DNS()

@@ -54,6 +54,11 @@ var serverMessages = i18n.Messages{
 	"servers.new.refused":         {EN: "Nothing was created. Fix what is marked and try again.", RU: "Ничего не создано. Исправьте отмеченное и повторите."},
 	"servers.new.access":          {EN: "Access", RU: "Доступ"},
 	"servers.new.ip":              {EN: "IP address", RU: "IP-адрес"},
+	"servers.new.skip_dns":        {EN: "Skip the DNS record check", RU: "Не проверять DNS-запись"},
+	"servers.new.skip_dns.help": {
+		EN: "For a hostname outside your Cloudflare zones its record is made by hand: Proxier checks it before creating the server and waits for it during provisioning. Check this to skip both, for a proxied record or a name you will point later. You manage the record.",
+		RU: "Для имени вне ваших зон Cloudflare запись делается вручную: Proxier проверяет её перед созданием сервера и ждёт её при настройке. Отметьте, чтобы пропустить и проверку, и ожидание — для проксируемой записи или имени, которое вы направите позже. Запись остаётся за вами.",
+	},
 	"servers.new.access.how":      {EN: "How Proxier signs in", RU: "Как Proxier входит"},
 	"servers.new.access.password": {EN: "Root password", RU: "Пароль root"},
 	"servers.new.access.key":      {EN: "SSH key", RU: "SSH-ключ"},

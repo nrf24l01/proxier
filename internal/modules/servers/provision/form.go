@@ -61,6 +61,10 @@ type Form struct {
 	// CheckDNS asks the summary to check a record made by hand now (the
 	// Check button). Create always checks it.
 	CheckDNS bool
+	// SkipDNS skips the check of a record made by hand and provisioning's
+	// wait for it: the member manages the record (a proxied one, or one
+	// pointed somewhere else).
+	SkipDNS bool
 }
 
 // Msg is a refusal: an i18n key and its arguments.
@@ -343,7 +347,7 @@ func (s *Service) check(ctx context.Context, f Form, withPassword bool) (*checke
 			fe(errs, "dns", "servers.err.not_covered", "host", c.hostname)
 		}
 	}
-	if c.manualDNS && (withPassword || f.CheckDNS) && addr.Is4() && !addr.Is4In6() {
+	if c.manualDNS && !f.SkipDNS && (withPassword || f.CheckDNS) && addr.Is4() && !addr.Is4In6() {
 		s.checkManualDNS(ctx, c, errs)
 	}
 	return c, errs
@@ -484,6 +488,9 @@ func (s *Service) country(ctx context.Context, ip string) string {
 type jobPayload struct {
 	ServerID     int64 `json:"server_id"`
 	OverwriteDNS bool  `json:"overwrite_dns,omitempty"`
+	// SkipDNS skips the DNS step of a record made by hand: the member checks
+	// the record themselves.
+	SkipDNS bool `json:"skip_dns,omitempty"`
 	// ProxyTest holds the smoke test's timings per endpoint, for the activation.
 	ProxyTest map[string]proxyTiming `json:"proxy_test,omitempty"`
 }
@@ -544,7 +551,7 @@ func (s *Service) Create(ctx context.Context, f Form, actor string) (int64, erro
 			secrets[rootPasswordSecret] = f.RootPassword
 		}
 		job, err := s.Jobs.Enqueue(ctx, tx, jobs.Request{
-			Type: JobType, Payload: jobPayload{ServerID: id}, Secrets: secrets,
+			Type: JobType, Payload: jobPayload{ServerID: id, SkipDNS: f.SkipDNS}, Secrets: secrets,
 			ResourceKey: "server:" + strconv.FormatInt(id, 10), CreatedBy: actor,
 		})
 		if err != nil {
