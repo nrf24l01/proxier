@@ -126,7 +126,15 @@ The tailnet state is not in the database or its snapshots.
 
 ## Images and CI
 
-`.github/workflows/ci.yaml` validates GitHub pull requests and pushes to `main`. The `test` job checks generated templates, formatting, build, vet and tests. The `lint` job runs golangci-lint and govulncheck. Go dependencies and build outputs use setup-go's cache on GitHub-hosted runners. GitHub cancels older workflow runs when a pull request receives another push.
+`.github/workflows/pr.yaml` runs `test` and `lint` on `pull_request_target`. The workflow definition comes from the base branch and checks the PR's exact head commit. It runs on opened, updated and reopened PRs, and when a draft becomes ready for review. New pushes cancel older runs of that PR.
+
+The runner checks out PR files without retaining credentials. It treats those files as data and mounts them read-only into disposable Docker containers. Build, test and lint commands run only inside the containers, on a writable copy of the checkout. Containers receive no GitHub token, repository secrets, runner directories or Docker socket. They drop Linux capabilities, disable privilege escalation and limit CPU, memory and process counts. They can access the internet for dependencies. No PR caches or artifacts are saved or reused by publishing. GitHub-hosted runners are fresh for each job. The test job has a 90-minute limit and lint has a 45-minute limit.
+
+This workflow uses `allow-unsafe-pr-checkout` because checkout v7 otherwise blocks fork source under `pull_request_target`. Keep PR code inside the containers. Do not add host build steps, secrets, writable host mounts, shared caches or self-hosted runners to this workflow.
+
+The workflow must be present on the base branch before it can run automatically. An Actions event policy that blocks `pull_request_target` also blocks these runs. GitHub's default policy is scheduled for enforcement on December 2, 2026. For this repository, the active Actions policy "Allow isolated PR checks" allows the event only for `.github/workflows/pr.yaml`. Configure an equivalent policy when using these workflows in another repository. See [GitHub's guidance](https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target).
+
+`.github/workflows/ci.yaml` validates pushes to `main`. Its test and lint jobs use Go caches. Checkouts do not retain credentials. Test has a 90-minute limit. Lint and image publishing each have a 45-minute limit.
 
 - After both `test` and `lint` pass on `main`, the `image` job builds the same Dockerfile's `prod` target for `linux/amd64` and publishes `ghcr.io/tikhonp/proxier:<sha>`, `:main` and `:latest`. The build arguments are `APP_VERSION=main-<sha7>`, the commit timestamp and full commit SHA. PRs and release tags do not build or publish GitHub images.
 - Publishing uses the automatic `GITHUB_TOKEN` with `packages: write` scoped to the image job; no registry secret is needed. After the first publish, set the GHCR package's visibility to public if anonymous pulls are wanted. Use `ghcr.io/tikhonp/proxier:latest` in the compose file to pull from GitHub.
