@@ -1,15 +1,27 @@
 # Servers
 
-The servers module turns a freshly issued VPS into a working proxy server from a versioned **template**. Afterwards it keeps the server's DNS, stack and secrets, changes the server when asked, and checks whether it works from Russia.
+The servers module builds a proxy server from a versioned **template**. Afterwards it keeps the server's DNS, stack and secrets, changes the server when asked, and checks whether it works from Russia.
 
 ## Countries and names
 
 - A server's **country** is an ISO 3166-1 alpha-2 code (`NL`), chosen when the server is created and never changed. It is all the server stores of where it is: the country's name (English and Russian) and its flag (🇳🇱, the two regional-indicator letters) are derived from the code, never stored ([ADR 0015](../adr/0015-servers-have-a-country-not-a-location.md)). There is nothing to manage: no Locations page, nothing to add, rename or delete. Withdrawn codes (`UK`, `DD`, `SU`…) are not countries.
 - A new server gets the **server name** `<code in lower case>-<number>` (`nl-2`), where the number is one more than the highest number its name prefix has ever used. Numbers are **never reused**, not even after a failed provisioning or a retirement: a server is never deleted, so its row keeps its number taken. A name means one server for good. A server created when servers had locations keeps its name and its location's code as its prefix (`ams-1` in NL); new servers of that country count under the country's code.
 - The **management hostname** comes from the hostname pattern in Settings → Servers, a name in one of your Cloudflare zones, e.g. `{country}-{number}.hosts.example.com` → `nl-1.hosts.example.com`. `{country}` is the name prefix; `{location}`, its earlier spelling, still works in a saved pattern. The pattern has no default, because each install has its own zone. Until a member sets it, the new-server form refuses every server without a typed hostname, and Settings → Servers and the dashboard's first-run list ask for it.
-- A member can type a **hostname** into the new-server form instead, e.g. `vpn.example.com`. It replaces the pattern's name for that server. A name in none of your Cloudflare zones gets a **record made by hand**: the member creates its A record at their DNS provider, and Proxier checks it before it creates the server ([DNS](#dns)). The server name stays `<code>-<number>`. No two non-retired servers have the same hostname, typed or from the pattern.
+- A member can type a **hostname** into the new-server form instead, e.g. `vpn.example.com`. It replaces the pattern's name for that server. A name in none of your Cloudflare zones gets a **record made by hand**: the member creates its A record at their DNS provider, and Proxier checks it before creating the server unless the member selects Skip DNS check. See [DNS](#dns). The server name stays `<code>-<number>`. No two non-retired servers have the same hostname, typed or from the pattern.
 - The **proxy hostname** is the name in connection URIs and the TLS certificate. It is always the management hostname. The two are separate fields, so proxy hostnames on other domains would need no data migration ([DNS](#dns)).
 - When a member pastes an IP into the new-server form, Proxier looks up the IP's country and preselects it in the country picker. It is only a suggestion.
+
+## Access and setup
+
+Each server stores its access mode, SSH account and setup mode at creation. Later jobs use the same account and Proxier's key. These choices cannot change after creation. Retire the server and create a new one to change them.
+
+With root password access, the provisioning job creates the `proxier` account, installs Proxier's key and gives the account passwordless sudo. It erases the root password once key login and sudo work. See [ADR 0012](../adr/0012-secrets-encrypted-root-password-never-stored.md).
+
+With SSH key access, install Proxier's public key in the account's `authorized_keys` before creating the server. Copy the key from Settings → SSH. The account defaults to `root`. Any other account needs passwordless sudo. Proxier does not create an account or install keys in this mode.
+
+Full setup disables password and root login over SSH, resets the firewall, enables TCP BBR when the kernel supports it, and installs the prerequisites and Docker. Deploy only installs the prerequisites and Docker if missing. It leaves SSH configuration, firewall rules and TCP settings unchanged. Key access as `root` requires Deploy only because full setup would disable its next login.
+
+Settings → Servers has defaults for new servers. Access defaults to Root password and setup defaults to Full. Changing these defaults does not affect existing servers. See [provisioning](../processes/servers/server-provisioning.md).
 
 ## Templates
 
@@ -21,14 +33,14 @@ Lifecycle and validation: [template authoring](../processes/servers/template-aut
 
 ### Manifest
 
-The [seed template](../integrations/vless-xhttp.md) shows every part:
+The [seed template](../integrations/vless-xhttp.md) shows the manifest's fields. Preflight checks the server against `requires.os` and `requires.arch`. In `requires.os`, `ubuntu-22.04+` accepts Ubuntu 22.04 and later Ubuntu releases. An entry without `+` accepts only the listed release.
 
 ```yaml
 name: VLESS XHTTP behind nginx
 description: VLESS over XHTTP, hidden behind nginx with a Let's Encrypt certificate and a decoy site.
 
 requires:
-  os: [debian-12, debian-13, ubuntu-22.04, ubuntu-24.04]
+  os: [debian-12+, ubuntu-22.04+]
   arch: [amd64, arm64]
 dir: /opt/proxier/vless-xhttp        # where the stack lives on the server
 ports: [80/tcp, 443/tcp]             # opened in the firewall, besides SSH
@@ -100,7 +112,7 @@ proxy_test:                          # optional; overrides Settings → Servers 
 
 | Step | What it does |
 |---|---|
-| `base-bootstrap` | Works as the `proxier` deploy user that provisioning created (passwordless sudo, Proxier's and your personal SSH keys). Turns off password login and root login over SSH. Writes `.hushlogin`, installs the apt prerequisites `curl ca-certificates openssl ufw` (waiting for apt's lock, which a fresh VPS often holds), turns on TCP BBR when the kernel has it (a warning otherwise), and installs Docker (get.docker.com) if missing. Resets the firewall (ufw) to deny every incoming connection but the SSH port plus `ports` (rules the image came with go), and turns it on. Docker's published ports bypass ufw; the manifest's ports are opened in ufw anyway so the rule set says what is meant, and nothing else listens. Never locks Proxier out: each SSH change is verified with a fresh key login and rolled back if that fails. |
+| `base-bootstrap` | Uses the server's stored SSH account. Root commands use `sudo -n` unless that account is root. Both setup modes install `curl ca-certificates openssl ufw` and Docker if missing, and wait for apt's lock. Full setup also disables password and root login over SSH, writes `.hushlogin`, enables TCP BBR when supported, and resets and enables ufw with only the SSH port and manifest `ports` allowed. It verifies SSH changes with a new key login and rolls them back if verification fails. Deploy only leaves SSH configuration, firewall rules and TCP settings unchanged. Docker's published ports bypass ufw. |
 | `upload-files` | Renders every file and uploads each one to a temporary name before renaming it into place, so no file is half-written. Deletes files that an earlier deployment of this server put there and this version no longer has. Never touches anything else in `dir` (runtime data such as `certbot/`). |
 | `run` | Runs a command or a bundled script in `dir`, with a timeout (default 10 min). Exit code 0 is success. Output goes to the job log. |
 | `compose-up` | `docker compose up -d --remove-orphans`, with `pull: true` pulling images first. |
@@ -185,7 +197,7 @@ Actions:
 
 | Action | Allowed when | What happens |
 |---|---|---|
-| Retry | failed | Resumes provisioning from the failed step. Asks for the root password again if it failed before Proxier's key was installed. |
+| Retry | failed | Resumes provisioning from the failed step. Asks for the root password again if password access failed before Proxier's key was installed; a key-access server never asks. |
 | Activate anyway | failed, only the smoke test failed | Makes the server active without a passing proxy test, after a confirmation. Health then comes from the checks, usually `blocked` ([provisioning](../processes/servers/server-provisioning.md#steps-after-a-failure)). |
 | Redeploy | active | Re-renders the current version. Shows the diff, then applies it ([redeploy](../processes/servers/server-redeploy.md)). |
 | Upgrade | active, newer version exists | Renders the chosen version. Asks for any new parameters, shows the diff, then applies it. |
@@ -223,7 +235,7 @@ DNS is a driver; Cloudflare is the one there is ([Cloudflare integration](../int
 - After writing, Proxier waits until the zone's own nameservers serve the record, then until 1.1.1.1 and 8.8.8.8 both return the IP (timeout 10 min, longer while a resolver may still hold a "no such name" from before the record existed), before anything needs the name, for example the certificate. It asks the resolvers over DNS-over-HTTPS, and over plain UDP port 53 only when DoH cannot be reached, because the home router may intercept port 53. The nameservers only speak port 53; when they can't be asked, the wait pauses 10 s instead ([Cloudflare](../integrations/cloudflare.md#behaviour)).
 - An IP change brings the records to the new IP, after SSH and the proxy test have passed there ([IP change](../processes/servers/ip-change.md)).
 - Retirement deletes the records, if they still point to the server's IP.
-- A **record made by hand** (`manual_dns` on the server) is the member's, at their own DNS provider. Proxier never writes, changes or deletes it. To check it, Proxier finds the zone from the name's parents (`example.org` for `vpn.example.org`) and asks the zone's nameservers, which cache nothing; when they can't be asked, it asks 1.1.1.1 and 8.8.8.8. The record must point to the server's IP and nowhere else. The new-server form checks it on **Create** and on **Check the record**. Provisioning waits for it as for its own records. An IP change checks that the member pointed it at the new IP before it switches, and retirement leaves it and says to delete it ([provisioning](../processes/servers/server-provisioning.md)).
+- The member manages a record made by hand, marked by `manual_dns` on the server. Proxier never writes, changes or deletes it. By default, Create and Check the record require it to resolve only to the server's IP. Provisioning also waits for DNS. Skip DNS check skips both checks and the wait for that provisioning job, including retries. It does not skip certificate issuance, self-checks or the smoke test. IP changes still require the record to resolve only to the new IP. Retirement leaves the record and asks the member to delete it. See [provisioning](../processes/servers/server-provisioning.md).
 - **Accepted risk:** each server's certificate names its hostname, and every certificate is published in certificate-transparency logs. Anyone, including a censor, can list `*.hosts.example.com` on crt.sh. The fix in the [backlog](../overview.md#backlog) is wildcard certificates issued centrally through Cloudflare DNS-01 and uploaded to servers, optionally with proxy hostnames on unlinked cover domains. Management and proxy hostnames are separate fields, so it needs no data migration.
 
 ## Health and stats

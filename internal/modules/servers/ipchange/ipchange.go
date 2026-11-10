@@ -23,7 +23,6 @@ import (
 	"github.com/tikhonp/proxier/internal/modules/servers/endpoint"
 	"github.com/tikhonp/proxier/internal/modules/servers/provision"
 	"github.com/tikhonp/proxier/internal/modules/servers/proxy"
-	"github.com/tikhonp/proxier/internal/modules/servers/remote"
 	"github.com/tikhonp/proxier/internal/modules/servers/sealed"
 	"github.com/tikhonp/proxier/internal/modules/servers/store"
 	"github.com/tikhonp/proxier/internal/platform/db"
@@ -254,7 +253,7 @@ func (s *Service) connect(ctx context.Context, r *jobs.Run) error {
 	}
 	port := strconv.Itoa(srv.SSHPort)
 	c, err := s.SSH.Connect(ctx, sshx.Target{
-		Hop: sshx.Hop{Address: net.JoinHostPort(p.To, port), User: remote.DeployUser, Subject: serverKey(srv.ID)},
+		Hop: sshx.Hop{Address: net.JoinHostPort(p.To, port), User: srv.LoginUser(), Subject: serverKey(srv.ID)},
 		// Pin the new address only when it shows the old one's key.
 		FirstContact: sshx.PinOnFirstContact, SameKeyAs: net.JoinHostPort(p.From, port),
 	}, r.Log())

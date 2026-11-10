@@ -28,6 +28,30 @@ type Env struct {
 	Poll time.Duration
 	// Sleep waits d or until ctx ends; nil means a real wait.
 	Sleep func(ctx context.Context, d time.Duration) error
+	// User is the account Proxier logs in as, and the owner of the stack's
+	// files; "" is DeployUser.
+	User string
+	// NoSudo removes the sudo prefix when the login account is root.
+	NoSudo bool
+}
+
+// login is the account commands run as.
+func (e Env) login() string {
+	if e.User == "" {
+		return DeployUser
+	}
+	return e.User
+}
+
+// elevated is cmd with the `sudo -n` prefix dropped when the login user is
+// root.
+func (e Env) elevated(cmd string) string {
+	if e.NoSudo {
+		if rest, ok := strings.CutPrefix(cmd, "sudo -n "); ok {
+			return rest
+		}
+	}
+	return cmd
 }
 
 func (e Env) poll() time.Duration {
@@ -111,7 +135,7 @@ func (e Env) run(ctx context.Context, c Conn, what, cmd string, o RunOpts) (stri
 	if o.Stream {
 		ro.Log = e.Log
 	}
-	res, err := c.Run(ctx, cmd, ro)
+	res, err := c.Run(ctx, e.elevated(cmd), ro)
 	if err != nil {
 		if errors.Is(err, sshx.ErrTimeout) {
 			return "", fmt.Errorf("%s timed out", what)

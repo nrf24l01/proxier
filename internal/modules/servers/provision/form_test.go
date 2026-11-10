@@ -572,3 +572,49 @@ func TestConcurrentCreatesShareNoHostname(t *testing.T) {
 		t.Fatalf("%d created, %d refused", ok.Load(), used.Load())
 	}
 }
+
+func TestKeyAccessForm(t *testing.T) {
+	h := serverstest.NewHarness(t, serverstest.StubProxy())
+
+	// Key access needs no root password, and nothing is reserved by the check.
+	f := h.Form()
+	f.RootPassword, f.AccessMode, f.SSHUser, f.Setup = "", store.AccessKey, "root", store.SetupMinimal
+	if s := h.Mod.Provision.Summarize(bg, f, false); s.Errors["root_password"].Key != "" {
+		t.Errorf("key access asked for the root password: %+v", s.Errors)
+	}
+	f.SSHUser = "not a user"
+	_, err := h.Mod.Provision.Create(bg, f, "admin")
+	if fe := refused(t, err); fe["ssh_user"].Key != "servers.err.ssh_user_invalid" {
+		t.Fatalf("errors: %+v", fe)
+	}
+
+	// An empty account is root; an empty mode follows Settings → Servers.
+	if err := h.App.Settings.Set(bg, "admin", "servers", map[string]string{
+		"servers.default_access": "key", "servers.default_setup": "minimal",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	f = h.Form()
+	f.RootPassword, f.AccessMode, f.SSHUser, f.Setup = "", "", "", ""
+	if s := h.Mod.Provision.Summarize(bg, f, false); len(s.Errors) != 0 {
+		t.Fatalf("the defaults left errors: %+v", s.Errors)
+	}
+
+	// Full setup and key access as root cannot both work: hardening turns root
+	// login off, and Proxier has no other account there.
+	f = h.Form()
+	f.RootPassword, f.AccessMode, f.SSHUser, f.Setup = "", store.AccessKey, "root", store.SetupFull
+	_, err = h.Mod.Provision.Create(bg, f, "admin")
+	if fe := refused(t, err); fe["setup"].Key != "servers.err.root_key_full_setup" {
+		t.Fatalf("errors: %+v", fe)
+	}
+
+	// An unknown mode or setup is refused, not guessed.
+	f = h.Form()
+	f.RootPassword, f.AccessMode, f.Setup = "", "telepathy", "everything"
+	_, err = h.Mod.Provision.Create(bg, f, "admin")
+	fe := refused(t, err)
+	if fe["access"].Key != "servers.err.access_unknown" || fe["setup"].Key != "servers.err.setup_unknown" {
+		t.Fatalf("errors: %+v", fe)
+	}
+}

@@ -13,7 +13,7 @@ func Skeleton(name, slug, description string) map[string][]byte {
 description: %s
 
 requires:
-  os: [debian-12, debian-13, ubuntu-22.04, ubuntu-24.04]
+  os: [debian-12+, ubuntu-22.04+]
   arch: [amd64, arm64]
 dir: /opt/proxier/%s     # where the stack lives on the server
 ports: [80/tcp]          # opened in the firewall, besides SSH

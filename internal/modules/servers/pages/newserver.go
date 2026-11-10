@@ -55,22 +55,28 @@ func (p paramField) inputMode() string {
 
 type newView struct {
 	IP, Port, Notes string
-	Hostname        string            // as typed; "" takes the hostname pattern's name
-	Errs            map[string]string // translated, by form field
-	Country         string            // the picker's text: a country's label, or what was typed
-	Auto            string            // the country the IP suggested last, "" for none
-	Hint            string
-	Countries       []string // the picker's list: every country's label
-	TemplateID      int64
-	Version         int
-	Templates       []tplOption
-	Versions        []verOption
-	Params          []paramField
-	ParamsFor       string // "<template>:<version>" the fields were made for
-	Sum             provision.Summary
-	SumErrors       []string
-	CreateLabel     string
-	NoTemplates     bool
+	Hostname        string // as typed; "" takes the hostname pattern's name
+	// Access is how Proxier logs in, Setup what provisioning hardens; both are
+	// the server's choice and start from Settings → Servers.
+	Access      string
+	SSHUser     string
+	Setup       string
+	SkipDNS     bool
+	Errs        map[string]string // translated, by form field
+	Country     string            // the picker's text: a country's label, or what was typed
+	Auto        string            // the country the IP suggested last, "" for none
+	Hint        string
+	Countries   []string // the picker's list: every country's label
+	TemplateID  int64
+	Version     int
+	Templates   []tplOption
+	Versions    []verOption
+	Params      []paramField
+	ParamsFor   string // "<template>:<version>" the fields were made for
+	Sum         provision.Summary
+	SumErrors   []string
+	CreateLabel string
+	NoTemplates bool
 }
 
 // formOf reads the new-server form. The country is the code the picker's
@@ -79,9 +85,10 @@ func formOf(c *echo.Context) provision.Form {
 	atoi := func(k string) int64 { n, _ := strconv.ParseInt(strings.TrimSpace(c.FormValue(k)), 10, 64); return n }
 	f := provision.Form{
 		IP: c.FormValue("ip"), RootPassword: c.FormValue("root_password"), SSHPort: int(atoi("ssh_port")),
+		AccessMode: c.FormValue("access"), SSHUser: c.FormValue("ssh_user"), Setup: c.FormValue("setup"),
 		Country: countryOf(c.FormValue("country")), TemplateID: atoi("template"), Version: int(atoi("version")),
 		Notes: c.FormValue("notes"), Hostname: c.FormValue("hostname"), Params: map[string]string{},
-		CheckDNS: c.FormValue("check_dns") == "1",
+		CheckDNS: c.FormValue("check_dns") == "1", SkipDNS: c.FormValue("skip_dns") == "1",
 	}
 	if err := c.Request().ParseForm(); err == nil {
 		for k, vs := range c.Request().PostForm {
@@ -107,7 +114,20 @@ func countryOf(text string) string {
 // is shown by its label in the admin's language, anything else as typed.
 func (h *handler) newViewOf(ctx context.Context, f provision.Form, auto string) (newView, error) {
 	lang := string(i18n.From(ctx).Lang)
-	v := newView{IP: f.IP, Notes: f.Notes, Hostname: f.Hostname, Country: f.Country, Auto: auto, Version: f.Version, TemplateID: f.TemplateID}
+	v := newView{IP: f.IP, Notes: f.Notes, Hostname: f.Hostname, Country: f.Country, Auto: auto, Version: f.Version, TemplateID: f.TemplateID, SkipDNS: f.SkipDNS}
+	v.Access, v.Setup, v.SSHUser = f.AccessMode, f.Setup, f.SSHUser
+	if v.Access == "" || v.Setup == "" {
+		access, setup := h.Provision.Defaults(ctx)
+		if v.Access == "" {
+			v.Access = access
+		}
+		if v.Setup == "" {
+			v.Setup = setup
+		}
+	}
+	if v.SSHUser == "" {
+		v.SSHUser = "root"
+	}
 	if country.Valid(f.Country) {
 		v.Country = country.Label(f.Country, lang)
 	}
@@ -195,7 +215,8 @@ func (h *handler) newServer(c *echo.Context) error {
 // formOfView is the form a view stands for, for the summary of a first visit.
 func (h *handler) formOfView(v newView) provision.Form {
 	port, _ := strconv.Atoi(v.Port)
-	return provision.Form{IP: v.IP, SSHPort: port, Country: countryOf(v.Country), Hostname: v.Hostname, TemplateID: v.TemplateID, Version: v.Version, Params: map[string]string{}}
+	return provision.Form{IP: v.IP, SSHPort: port, Country: countryOf(v.Country), Hostname: v.Hostname, TemplateID: v.TemplateID, Version: v.Version, Params: map[string]string{},
+		AccessMode: v.Access, SSHUser: v.SSHUser, Setup: v.Setup, SkipDNS: v.SkipDNS}
 }
 
 func (h *handler) renderNewServer(c *echo.Context, status int, v newView) error {

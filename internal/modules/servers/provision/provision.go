@@ -109,11 +109,15 @@ func New(d Deps) *Service {
 
 func (s *Service) now() time.Time { return s.Now() }
 
-func (s *Service) env(log *jobs.Logger) remote.Env {
+func (s *Service) env(log *jobs.Logger, srv store.Server) remote.Env {
+	var e remote.Env
 	if s.RemoteEnv != nil {
-		return s.RemoteEnv(log)
+		e = s.RemoteEnv(log)
+	} else {
+		e = remote.Env{Log: log}
 	}
-	return remote.Env{Log: log}
+	e.User, e.NoSudo = srv.LoginUser(), !srv.NeedsSudo()
+	return e
 }
 
 // JobType returns the job type to register.
@@ -271,9 +275,9 @@ func (s *Service) target(srv store.Server, user, password string) sshx.Target {
 	}
 }
 
-// connect opens the deploy user's connection with Proxier's key.
+// connect opens the login user's connection with Proxier's key.
 func (s *Service) connect(ctx context.Context, r *jobs.Run, srv store.Server) (*sshx.Client, error) {
-	return s.SSH.Connect(ctx, s.target(srv, remote.DeployUser, ""), r.Log())
+	return s.SSH.Connect(ctx, s.target(srv, srv.LoginUser(), ""), r.Log())
 }
 
 // rootErr names a refused root login for what it is.
@@ -284,28 +288,57 @@ func rootErr(err error) error {
 	return err
 }
 
+// keyErr names a refused key login for what it is.
+func keyErr(user string, err error) error {
+	if errors.Is(err, sshx.ErrAuth) {
+		return jobs.Permanent(fmt.Errorf("authentication failed: the server refused Proxier's key for %s; put Proxier's public key (Settings → SSH) into that account's authorized_keys", user))
+	}
+	return err
+}
+
 // --- the steps
 
 func (s *Service) preflight(ctx context.Context, r *jobs.Run, d *data) error {
 	if len(d.Man.Endpoints) == 0 {
 		return jobs.Permanent(errors.New("the template declares no endpoint"))
 	}
-	pw, ok, _ := r.Secret(rootPasswordSecret)
-	if !ok || pw == "" {
-		return jobs.Permanent(errors.New("the root password is needed; use Retry and enter it"))
+	env := s.env(r.Log(), d.Server)
+	var c *sshx.Client
+	var err error
+	if d.Server.KeyAccess() {
+		r.Log().Info("Connecting to %s:%d as %s with Proxier's key", d.Server.IP, d.Server.SSHPort, d.Server.LoginUser())
+		c, err = s.connect(ctx, r, d.Server)
+		if err != nil {
+			return keyErr(d.Server.LoginUser(), err)
+		}
+		defer func() { _ = c.Close() }()
+		if err := remote.VerifyAccess(ctx, env, c); err != nil {
+			return jobs.Permanent(fmt.Errorf("key login as %s works, but root commands do not: %w", d.Server.LoginUser(), err))
+		}
+	} else {
+		pw, ok, _ := r.Secret(rootPasswordSecret)
+		if !ok || pw == "" {
+			return jobs.Permanent(errors.New("the root password is needed; use Retry and enter it"))
+		}
+		r.Log().Info("Connecting to %s:%d as root", d.Server.IP, d.Server.SSHPort)
+		c, err = s.SSH.Connect(ctx, s.target(d.Server, "root", pw), r.Log())
+		if err != nil {
+			return rootErr(err)
+		}
+		defer func() { _ = c.Close() }()
 	}
-	r.Log().Info("Connecting to %s:%d as root", d.Server.IP, d.Server.SSHPort)
-	c, err := s.SSH.Connect(ctx, s.target(d.Server, "root", pw), r.Log())
-	if err != nil {
-		return rootErr(err)
-	}
-	defer func() { _ = c.Close() }()
-	_, err = remote.Preflight(ctx, s.env(r.Log()), c, d.Man.Requires, d.Man.Ports)
+	_, err = remote.Preflight(ctx, env, c, d.Man.Requires, d.Man.Ports)
 	return err
 }
 
 func (s *Service) installAccess(ctx context.Context, r *jobs.Run, d *data) error {
-	env := s.env(r.Log())
+	env := s.env(r.Log(), d.Server)
+	if d.Server.KeyAccess() {
+		// Key access is the admin's: the account already trusts Proxier's key.
+		// Nothing is created here; preflight has proved the key and root.
+		r.Log().Info("Access for %s is the account's own: Proxier's key is already installed", d.Server.LoginUser())
+		return nil
+	}
 	// A key login may already work: this is a resume after the password was
 	// erased, or after a crash between the key login and the erasure.
 	switch c, err := s.connect(ctx, r, d.Server); {
@@ -357,10 +390,15 @@ func (s *Service) baseBootstrap(ctx context.Context, r *jobs.Run, d *data) error
 		return err
 	}
 	defer func() { _ = c.Close() }()
+	env := s.env(r.Log(), d.Server)
+	if d.Server.MinimalSetup() {
+		r.Log().Info("Server setup is deploy-only: no SSH hardening, firewall or TCP BBR")
+		return remote.MinimalBootstrap(ctx, env, c)
+	}
 	reconnect := func(ctx context.Context) (remote.Conn, error) {
 		return s.connect(ctx, r, d.Server)
 	}
-	return remote.BaseBootstrap(ctx, s.env(r.Log()), c, reconnect, d.Server.SSHPort, d.Man.Ports)
+	return remote.BaseBootstrap(ctx, env, c, reconnect, d.Server.SSHPort, d.Man.Ports)
 }
 
 func (s *Service) dnsStep(ctx context.Context, r *jobs.Run, d *data) error {
@@ -370,6 +408,10 @@ func (s *Service) dnsStep(ctx context.Context, r *jobs.Run, d *data) error {
 		names = append(names, srv.ProxyHostname)
 	}
 	if srv.ManualDNS {
+		if d.Payload.SkipDNS {
+			r.Log().Info("The DNS check is skipped: %s is a record made by hand, and the member checks it", srv.ManagementHostname)
+			return nil
+		}
 		return s.manualDNSStep(ctx, r, srv, names)
 	}
 	drv := s.DNS()
@@ -488,7 +530,7 @@ func (s *Service) uploadFiles(ctx context.Context, r *jobs.Run, d *data) error {
 		return err
 	}
 	defer func() { _ = c.Close() }()
-	if _, err := remote.UploadFiles(ctx, s.env(r.Log()), c, d.Man.Dir, files, previous); err != nil {
+	if _, err := remote.UploadFiles(ctx, s.env(r.Log(), srv), c, d.Man.Dir, files, previous); err != nil {
 		return err
 	}
 	return s.DB.Write(ctx, func(tx *sqlx.Tx) error {
@@ -553,7 +595,7 @@ func (s *Service) install(ctx context.Context, r *jobs.Run, d *data) error {
 	defer func() { _ = c.Close() }()
 	for i, st := range steps {
 		r.Log().Info("Template step %d of %d: %s", i+1, len(steps), st.Kind)
-		if err := remote.RunStep(ctx, s.env(r.Log()), c, d.Man.Dir, st); err != nil {
+		if err := remote.RunStep(ctx, s.env(r.Log(), d.Server), c, d.Man.Dir, st); err != nil {
 			return err
 		}
 	}
@@ -588,7 +630,7 @@ func (s *Service) selfCheck(ctx context.Context, r *jobs.Run, d *data) error {
 		return err
 	}
 	defer func() { _ = c.Close() }()
-	return remote.SelfCheckReport(ctx, s.env(r.Log()), c, d.Man.Dir, rendered.Checks, remote.DefaultThresholds)
+	return remote.SelfCheckReport(ctx, s.env(r.Log(), d.Server), c, d.Man.Dir, rendered.Checks, remote.DefaultThresholds)
 }
 
 // proxyOptions are the options of a proxy test from the settings and the

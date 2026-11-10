@@ -34,7 +34,7 @@ func safeRel(p string) bool {
 }
 
 // UploadFiles is the upload-files step: it creates dir and the directories
-// the files sit in (owned by the deploy user), uploads each file under a
+// the files sit in, owned by the login account. It uploads each file under a
 // temporary name and renames it into place, then removes the files of the
 // server's previous deployment (previous: paths relative to dir) that these
 // no longer include. It touches nothing else in dir (runtime data such as
@@ -59,7 +59,7 @@ func UploadFiles(ctx context.Context, env Env, c Conn, dir string, files []File,
 		list = append(list, d)
 	}
 	sort.Strings(list) // parents sort before their children
-	if _, err := env.run(ctx, c, "create directories", CmdPrepareDirs(list), RunOpts{}); err != nil {
+	if _, err := env.run(ctx, c, "create directories", CmdPrepareDirs(env.login(), list), RunOpts{}); err != nil {
 		return nil, err
 	}
 	for _, f := range files {

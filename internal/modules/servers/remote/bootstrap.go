@@ -11,7 +11,7 @@ import (
 	"github.com/tikhonp/proxier/internal/modules/servers/manifest"
 )
 
-// Reconnect opens a new connection as the deploy user with Proxier's key.
+// Reconnect opens a new connection as the stored SSH account with Proxier's key.
 type Reconnect func(ctx context.Context) (Conn, error)
 
 // BaseBootstrap is the template's base-bootstrap step: SSH hardening verified
@@ -25,8 +25,7 @@ func BaseBootstrap(ctx context.Context, env Env, c Conn, reconnect Reconnect, ss
 	if _, err := env.run(ctx, c, "silence the login banner", CmdHushlogin(), RunOpts{}); err != nil {
 		return err
 	}
-	env.info("Installing prerequisites (curl, ca-certificates, openssl, ufw)")
-	if _, err := env.run(ctx, c, "install prerequisites", CmdApt(), RunOpts{Timeout: 10 * time.Minute, Stream: true}); err != nil {
+	if err := prerequisites(ctx, env, c); err != nil {
 		return err
 	}
 	if err := ensureBBR(ctx, env, c); err != nil {
@@ -41,6 +40,22 @@ func BaseBootstrap(ctx context.Context, env Env, c Conn, reconnect Reconnect, ss
 	}
 	env.info("Firewall: allowing %v", allow)
 	_, err := env.run(ctx, c, "configure the firewall", CmdFirewall(allow), RunOpts{Stream: true})
+	return err
+}
+
+// MinimalBootstrap installs prerequisites and Docker if missing. It skips
+// SSH hardening, firewall configuration and TCP BBR configuration.
+func MinimalBootstrap(ctx context.Context, env Env, c Conn) error {
+	if err := prerequisites(ctx, env, c); err != nil {
+		return err
+	}
+	return ensureDocker(ctx, env, c)
+}
+
+// prerequisites installs what the template steps and the stack need.
+func prerequisites(ctx context.Context, env Env, c Conn) error {
+	env.info("Installing prerequisites (curl, ca-certificates, openssl, ufw)")
+	_, err := env.run(ctx, c, "install prerequisites", CmdApt(), RunOpts{Timeout: 10 * time.Minute, Stream: true})
 	return err
 }
 

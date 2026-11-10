@@ -4,6 +4,8 @@ import (
 	"context"
 	"io/fs"
 	"maps"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/tikhonp/proxier/internal/modules/servers/migrations"
@@ -55,7 +57,7 @@ func TestServersMigrationsRoundTrip(t *testing.T) {
 	if err := db.MigrateUp(ctx, d, dbtest.Discard, srcs...); err != nil {
 		t.Fatal(err)
 	}
-	for range 7 {
+	for range 9 {
 		if err := db.MigrateDown(ctx, d, dbtest.Discard, source{}); err != nil {
 			t.Fatalf("down: %v", err)
 		}
@@ -214,4 +216,95 @@ func TestPreviousIPConstraints(t *testing.T) {
 	if err := d.R.Get(&n, `SELECT count(*) FROM servers_previous_ip_results`); err != nil || n != 0 {
 		t.Fatalf("results left: %d %v", n, err)
 	}
+}
+
+// An install that still has the pristine seed gets a new default version that
+// supports Ubuntu 26.04; a template of the member's own stays untouched.
+func TestSeedSupportsUbuntu26(t *testing.T) {
+	ctx := context.Background()
+	d := dbtest.OpenEmpty(t)
+	if err := db.MigrateUp(ctx, d, dbtest.Discard, dbtest.Platform, upTo{8}); err != nil {
+		t.Fatal(err)
+	}
+	const oldManifest = "name: Seed\nrequires:\n  os: [debian-12, debian-13, ubuntu-22.04, ubuntu-24.04]\n  arch: [amd64]\n"
+	for _, tpl := range []struct {
+		id         int64
+		slug, name string
+	}{
+		{1, "vless-xhttp", "Seed"},
+		{2, "mine", "Mine"},
+	} {
+		mustExec(t, d, `INSERT INTO servers_templates (id, slug, name, default_version, created_at) VALUES (?, ?, ?, 1, ?)`,
+			tpl.id, tpl.slug, tpl.name, now)
+		mustExec(t, d, `INSERT INTO servers_template_versions (id, template_id, number, notes, warnings, source, published_at, published_by)
+			VALUES (?, ?, 1, '', '[]', '{}', ?, 'system')`, tpl.id, tpl.id, now)
+		mustExec(t, d, `INSERT INTO servers_template_files (version_id, path, content) VALUES (?, 'manifest.yaml', ?), (?, 'compose.yaml', ?)`,
+			tpl.id, []byte(oldManifest), tpl.id, []byte("services: {}\n"))
+	}
+
+	if err := db.MigrateUp(ctx, d, dbtest.Discard, source{}); err != nil {
+		t.Fatal(err)
+	}
+
+	var def int
+	if err := d.R.GetContext(ctx, &def, `SELECT default_version FROM servers_templates WHERE slug = 'vless-xhttp'`); err != nil || def != 2 {
+		t.Fatalf("default version %d, %v", def, err)
+	}
+	var manifest string
+	if err := d.R.GetContext(ctx, &manifest, `
+		SELECT f.content FROM servers_template_files f
+		JOIN servers_template_versions v ON v.id = f.version_id
+		WHERE v.template_id = 1 AND v.number = 2 AND f.path = 'manifest.yaml'`); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(manifest, "os: [debian-12+, ubuntu-22.04+]") || strings.Contains(manifest, "ubuntu-24.04") {
+		t.Fatalf("manifest:\n%s", manifest)
+	}
+	var compose string
+	if err := d.R.GetContext(ctx, &compose, `
+		SELECT f.content FROM servers_template_files f
+		JOIN servers_template_versions v ON v.id = f.version_id
+		WHERE v.template_id = 1 AND v.number = 2 AND f.path = 'compose.yaml'`); err != nil || compose != "services: {}\n" {
+		t.Fatalf("compose %q, %v", compose, err)
+	}
+
+	var mine int
+	if err := d.R.GetContext(ctx, &mine, `
+		SELECT count(*) FROM servers_template_versions WHERE template_id = 2`); err != nil || mine != 1 {
+		t.Fatalf("the member's template got %d versions, %v", mine, err)
+	}
+	if err := d.R.GetContext(ctx, &def, `SELECT default_version FROM servers_templates WHERE id = 2`); err != nil || def != 1 {
+		t.Fatalf("the member's default version %d, %v", def, err)
+	}
+
+	t.Run("rollback and reapply preserves the published files", func(t *testing.T) {
+		type file struct {
+			VersionID int64 `db:"version_id"`
+			Path      string
+			Content   string
+		}
+		const query = `SELECT f.version_id, f.path, CAST(f.content AS TEXT) AS content
+			FROM servers_template_files f
+			JOIN servers_template_versions v ON v.id = f.version_id
+			WHERE v.template_id = 1 AND v.number = 2 ORDER BY f.path`
+		var before, after []file
+		if err := d.R.SelectContext(ctx, &before, query); err != nil {
+			t.Fatal(err)
+		}
+		if err := db.MigrateDown(ctx, d, dbtest.Discard, source{}); err != nil {
+			t.Fatalf("down: %v", err)
+		}
+		if err := d.R.SelectContext(ctx, &after, query); err != nil || !slices.Equal(before, after) {
+			t.Fatalf("rollback changed the published files: %v, %v", after, err)
+		}
+		if err := db.MigrateUp(ctx, d, dbtest.Discard, source{}); err != nil {
+			t.Fatalf("up again: %v", err)
+		}
+		if err := d.R.SelectContext(ctx, &after, query); err != nil || !slices.Equal(before, after) {
+			t.Fatalf("reapplying changed the published files: %v, %v", after, err)
+		}
+		if err := d.R.GetContext(ctx, &def, `SELECT default_version FROM servers_templates WHERE id = 1`); err != nil || def != 2 {
+			t.Fatalf("default version after reapplying %d, %v", def, err)
+		}
+	})
 }

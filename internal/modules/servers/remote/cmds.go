@@ -44,7 +44,7 @@ const (
 	OpStats          Op = "proxier-stats"
 )
 
-// DeployUser is the account Proxier works as after the first login.
+// DeployUser is the SSH account that password-access provisioning creates.
 const DeployUser = "proxier"
 
 // SudoersLine is what /etc/sudoers.d/proxier holds.
@@ -179,9 +179,11 @@ func CmdFirewall(ports []string) string {
 
 // --- files
 
-// CmdPrepareDirs creates directories owned by the deploy user.
-func CmdPrepareDirs(dirs []string) string {
-	words := append([]string{"install", "-d", "-o", DeployUser, "-g", DeployUser, "-m", "755", "--"}, dirs...)
+// CmdPrepareDirs creates directories owned by user, the account Proxier logs
+// in as. The group is left alone, so an account whose group differs from its
+// name still works.
+func CmdPrepareDirs(user string, dirs []string) string {
+	words := append([]string{"install", "-d", "-o", user, "-m", "755", "--"}, dirs...)
 	return plain(true, words...)
 }
 
@@ -389,7 +391,7 @@ func Parse(cmd string) (Call, bool) {
 		return set(OpPrepareDirs, words[indexOf(words, "--")+1:]...)
 	case is("rm", "-f", "--"):
 		return set(OpRemove, words[3:]...)
-	case c.Sudo && is("rm", "-rf", "--") && len(words) == 4:
+	case is("rm", "-rf", "--") && len(words) == 4:
 		return set(OpRemoveDir, words[3])
 	case is("curl", "-sk") && words[len(words)-2] == "--":
 		url := words[len(words)-1]

@@ -208,7 +208,7 @@ func (s *Service) rotateUploadStep(ctx context.Context, r *jobs.Run) error {
 		return err
 	}
 	defer func() { _ = conn.Close() }()
-	if _, err := remote.UploadFiles(ctx, s.env(r.Log()), conn, c.Man.Dir, c.Upload, c.Remove); err != nil {
+	if _, err := remote.UploadFiles(ctx, s.env(r.Log(), c.Srv), conn, c.Man.Dir, c.Upload, c.Remove); err != nil {
 		return err
 	}
 	return s.storeFiles(ctx, dep, c, c.filesChanged)
@@ -413,7 +413,7 @@ func (s *Service) restoreUploadFiles(ctx context.Context, r *jobs.Run, rc *resto
 	}
 	defer func() { _ = conn.Close() }()
 	r.Log().Info("Uploading the %d files of the current deployment again", len(files))
-	if _, err := remote.UploadFiles(ctx, s.env(r.Log()), conn, c.Man.Dir, files, extra); err != nil {
+	if _, err := remote.UploadFiles(ctx, s.env(r.Log(), c.Srv), conn, c.Man.Dir, files, extra); err != nil {
 		return err
 	}
 	return s.DB.Write(ctx, func(tx *sqlx.Tx) error {

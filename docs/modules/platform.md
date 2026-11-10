@@ -41,13 +41,13 @@ Settings are grouped by module. Each module declares its own section, fields, de
 ## Secrets
 
 - One **master key** from the environment encrypts every secret with AES-256-GCM: generated values, link and config tokens, deployed files that contain secrets, setting secrets, Proxier's SSH private key ([ADR 0012](../adr/0012-secrets-encrypted-root-password-never-stored.md)).
-- The **root password** of a new VPS exists only inside its provisioning job, encrypted, and is erased as soon as Proxier's key login works. It is never logged, never shown again, and never written into an event.
+- The **root password** of a new VPS exists only inside its provisioning job, encrypted, and is erased as soon as Proxier's key login works. It is never logged, never shown again, and never written into an event. Proxier does not collect or store a root password for a server created with key access.
 - Lookups by secret use an HMAC of the value under a key derived from the master key, so a token is never stored in plain text or compared in plain text.
 - **Redaction**: every job registers the secrets it handles, and log lines are scrubbed before they are stored. Values the UI must show (a link URL, a connection URI) appear on the object's own page, where a member who may see it opens them deliberately.
 
 ## SSH
 
-- Proxier has **one ed25519 key pair**, generated on first start. It is installed on every server at provisioning, and installed by hand on jump hosts and routers.
+- Proxier has **one ed25519 key pair**, generated on first start. Password access installs its public key during provisioning. Key access requires the member to install it in the chosen SSH account first. Jump hosts and routers also need the public key installed by hand.
 - Your **personal public keys** (Settings → SSH) are added to every new server alongside Proxier's, so you can always log in yourself. They are one settings field: one `authorized_keys` line per line, each checked when saved (a bad line is named by its number).
 - Proxier pins one host-key type per address and offers only that type on later connections. Servers pin on the first successful handshake. Routers and jump hosts normally require the member to confirm a fingerprint first.
 

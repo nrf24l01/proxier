@@ -26,7 +26,11 @@ client --TLS:443--> nginx --/<xhttp-path>/...--> xray (VLESS over XHTTP, h2c via
 | `.env` | Renders `CONTAINER_POSTFIX`, `SERVER_DOMAIN` and `VLESS_XHTTP_PATH` from server and generated values. |
 | `issue-cert.sh` | Issues the TLS certificate. It exits early when a certificate exists and adds an email only when the parameter is set. |
 
-Proxier installs Docker, SSH keys and the firewall through base bootstrap. It creates DNS records for the server hostname, waits for resolution, renders the stack and runs the template's steps. The template takes an optional `letsencrypt_email` parameter and generates `client_uuid`, `xhttp_path` and `container_postfix`. Connection details appear on the server page and in subscription outputs.
+Provisioning uses a root password or an account that already accepts Proxier's key. Password access creates the `proxier` account and installs keys. Full setup also hardens SSH, configures the firewall and enables TCP BBR when supported. Deploy only installs prerequisites and Docker if missing. Root commands run directly for root SSH access and through `sudo -n` for other accounts.
+
+The hostname comes from the configured pattern or the new-server form. Proxier manages records in configured Cloudflare zones. The member manages other records and can skip their provisioning DNS checks. Certificate issuance and connection tests still run.
+
+Proxier renders the stack and runs the template's steps. The template takes an optional `letsencrypt_email` parameter and generates `client_uuid`, `xhttp_path` and `container_postfix`. Connection details appear on the server page and in subscription outputs.
 
 ## Connection URI
 

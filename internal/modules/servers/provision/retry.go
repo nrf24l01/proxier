@@ -12,11 +12,10 @@ import (
 // ErrNotAllowed is returned for an action the server's state does not allow.
 var ErrNotAllowed = errors.New("provision: not allowed in this state")
 
-// NeedsPassword reports whether Retry of a server that failed at step needs
-// the root password again: before Proxier's key works there is nothing else
-// to log in with.
-func NeedsPassword(failedStep string) bool {
-	return failedStep == StepPreflight || failedStep == StepInstallAccess
+// NeedsPassword reports whether Retry of srv needs the root password again:
+// password access before Proxier's key works has nothing else to log in with.
+func NeedsPassword(srv store.Server) bool {
+	return !srv.KeyAccess() && (srv.FailedStep == StepPreflight || srv.FailedStep == StepInstallAccess)
 }
 
 // Retry resumes provisioning of a failed server at the step that failed, as a
@@ -34,7 +33,7 @@ func (s *Service) Retry(ctx context.Context, serverID int64, rootPassword string
 		return 0, ErrNotAllowed
 	}
 	opts := jobs.RetryOptions{}
-	if NeedsPassword(srv.FailedStep) {
+	if NeedsPassword(srv) {
 		if rootPassword == "" {
 			return 0, FieldErrors{"root_password": {Key: "servers.err.password_required"}}
 		}

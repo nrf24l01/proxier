@@ -112,3 +112,37 @@ func TestHandMadeRecordGoneBeforeTheDNSStep(t *testing.T) {
 		t.Fatalf("server %s at %s: %s", srv.State, srv.FailedStep, srv.FailedError)
 	}
 }
+
+// Skip the check of a record made by hand: the member manages the name, and
+// provisioning does not wait for it.
+func TestHandMadeRecordCheckSkipped(t *testing.T) {
+	h := serverstest.NewHarness(t, serverstest.StubProxy())
+	h.SetRecord("vpn.example.org", "198.51.100.1")
+
+	f := h.Form()
+	f.Hostname = "vpn.example.org"
+	f.SkipDNS = true
+	s := h.Mod.Provision.Summarize(bg, f, false)
+	if len(s.Errors) != 0 || !s.ManualDNS || s.DNSFound != "" {
+		t.Fatalf("summary: %+v", s)
+	}
+	// The Check button is skipped too.
+	check := f
+	check.CheckDNS = true
+	if s := h.Mod.Provision.Summarize(bg, check, false); s.Errors["dns"].Key != "" {
+		t.Fatalf("checked summary: %+v", s.Errors)
+	}
+
+	id := h.Create(f)
+	h.Drain()
+	srv := h.Server(id)
+	if srv.State != "active" || !srv.ManualDNS {
+		t.Fatalf("server %s at %s: %s", srv.State, srv.FailedStep, srv.FailedError)
+	}
+	if log := h.Log(h.Job(id).ID); !strings.Contains(log, "The DNS check is skipped") {
+		t.Errorf("log:\n%s", log)
+	}
+	if recs, err := store.DNSRecords(bg, h.App.DB.R, id); err != nil || len(recs) != 0 {
+		t.Fatalf("records %+v %v", recs, err)
+	}
+}

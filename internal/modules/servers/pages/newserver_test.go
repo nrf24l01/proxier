@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"golang.org/x/net/html"
+
 	"github.com/tikhonp/proxier/internal/modules/servers"
 	"github.com/tikhonp/proxier/internal/modules/servers/serverstest"
 	"github.com/tikhonp/proxier/internal/modules/servers/store"
@@ -201,4 +203,134 @@ func TestNewServerHostnameByHand(t *testing.T) {
 	base := "/servers/" + sid(srvs[0].ID)
 	mustContain(t, page(t, h, base+"/ip"), "Point vpn.example.org at the new IP at your DNS provider", "Checks that vpn.example.org points to the new IP")
 	mustContain(t, page(t, h, base+"/retire"), "The record of vpn.example.org was made by hand at another DNS provider")
+}
+
+func TestNewServerAccessAndSetup(t *testing.T) {
+	h := serverstest.NewHarness(t, serverstest.StubProxy())
+
+	rec := h.Login.Get("/servers/new")
+	if rec.Code != 200 {
+		t.Fatalf("%d\n%s", rec.Code, rec.Body)
+	}
+	for _, want := range []string{`name="access"`, `value="password"`, `value="key"`, `name="ssh_user"`, `name="setup"`, `value="minimal"`} {
+		mustContain(t, rec.Body.String(), want)
+	}
+
+	mustNotContain(t, rec.Body.String(), `name="skip_dns"`)
+
+	// Key access needs no root password in the live summary.
+	f := h.Form()
+	rec = h.Login.Post("/servers/new/summary", url.Values{
+		"ip": {f.IP}, "ssh_port": {strconv.Itoa(f.SSHPort)}, "country": {h.Country},
+		"access": {"key"}, "ssh_user": {"root"}, "setup": {"minimal"},
+		"template": {sid(h.TemplateID)}, "version": {"1"}, "params_for": {sid(h.TemplateID) + ":1"},
+	})
+	if rec.Code != 200 {
+		t.Fatalf("%d\n%s", rec.Code, rec.Body)
+	}
+	mustNotContain(t, rec.Body.String(), "Enter the root password")
+
+	// A bad account is refused on Create and nothing is created.
+	rec = h.Login.Post("/servers", url.Values{
+		"ip": {f.IP}, "ssh_port": {strconv.Itoa(f.SSHPort)}, "country": {h.Country},
+		"access": {"key"}, "ssh_user": {"not a user"}, "setup": {"minimal"},
+		"template": {sid(h.TemplateID)}, "version": {"1"}, "param.letsencrypt_email": {"me@example.com"},
+	})
+	if rec.Code != 422 {
+		t.Fatalf("%d\n%s", rec.Code, rec.Body)
+	}
+	mustContain(t, rec.Body.String(), "Use an account name")
+	if srvs, _ := store.ListServers(bg, h.App.DB.R); len(srvs) != 0 {
+		t.Fatalf("created anyway: %+v", srvs)
+	}
+}
+
+// fieldAttrs finds a rendered control or disclosure by one identifying attribute.
+func fieldAttrs(t *testing.T, body, tag, key, value string) map[string]string {
+	t.Helper()
+	z := html.NewTokenizer(strings.NewReader(body))
+	for {
+		switch z.Next() {
+		case html.ErrorToken:
+			t.Fatalf("missing %s with %s=%q", tag, key, value)
+		case html.StartTagToken, html.SelfClosingTagToken:
+			tok := z.Token()
+			if tok.Data != tag {
+				continue
+			}
+			attrs := map[string]string{}
+			for _, a := range tok.Attr {
+				attrs[a.Key] = a.Val
+			}
+			if attrs[key] == value {
+				return attrs
+			}
+		}
+	}
+}
+
+func TestNewServerShowsRelevantOptions(t *testing.T) {
+	h := serverstest.NewHarness(t, serverstest.StubProxy())
+	body := page(t, h, "/servers/new")
+	if _, open := fieldAttrs(t, body, "details", "class", "srv-options")["open"]; open {
+		t.Fatal("default setup options should be collapsed")
+	}
+	if _, disabled := fieldAttrs(t, body, "input", "name", "ssh_user")["disabled"]; !disabled {
+		t.Fatal("password access must not submit an SSH account")
+	}
+	if _, disabled := fieldAttrs(t, body, "input", "name", "root_password")["disabled"]; disabled {
+		t.Fatal("password access needs its password field")
+	}
+
+	if err := h.App.Settings.Set(bg, "admin", "servers", map[string]string{
+		"servers.default_access": "key", "servers.default_setup": "minimal",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	body = page(t, h, "/servers/new")
+	if _, open := fieldAttrs(t, body, "details", "class", "srv-options")["open"]; !open {
+		t.Fatal("deploy-only default must be visible")
+	}
+	if _, disabled := fieldAttrs(t, body, "input", "name", "root_password")["disabled"]; !disabled {
+		t.Fatal("key access must not submit a root password")
+	}
+	if _, disabled := fieldAttrs(t, body, "input", "name", "ssh_user")["disabled"]; disabled {
+		t.Fatal("key access needs its SSH account field")
+	}
+
+	// A setup error must remain visible even when Full normally collapses.
+	f := h.Form()
+	rec := h.Login.Post("/servers", url.Values{
+		"ip": {f.IP}, "country": {h.Country}, "access": {"key"}, "ssh_user": {"root"},
+		"setup": {"full"}, "template": {sid(h.TemplateID)}, "version": {"1"},
+		"param.letsencrypt_email": {"me@example.com"},
+	})
+	if rec.Code != 422 {
+		t.Fatalf("%d: %s", rec.Code, rec.Body)
+	}
+	if _, open := fieldAttrs(t, rec.Body.String(), "details", "class", "srv-options")["open"]; !open {
+		t.Fatal("setup validation error is hidden")
+	}
+
+	form := url.Values{
+		"ip": {f.IP}, "country": {h.Country}, "access": {"key"}, "setup": {"minimal"},
+		"hostname": {"vpn.example.org"}, "skip_dns": {"1"},
+		"template": {sid(h.TemplateID)}, "version": {"1"},
+	}
+	rec = h.Login.Post("/servers/new/summary", form)
+	if rec.Code != 200 {
+		t.Fatalf("%d: %s", rec.Code, rec.Body)
+	}
+	if _, checked := fieldAttrs(t, rec.Body.String(), "input", "name", "skip_dns")["checked"]; !checked {
+		t.Fatal("live summary lost the selected DNS bypass")
+	}
+	if _, disabled := fieldAttrs(t, rec.Body.String(), "button", "data-action", "srv.check_dns")["disabled"]; !disabled {
+		t.Fatal("record check should be disabled while verification is skipped")
+	}
+	form.Set("hostname", "vpn.proxier.test")
+	rec = h.Login.Post("/servers/new/summary", form)
+	if rec.Code != 200 {
+		t.Fatalf("%d: %s", rec.Code, rec.Body)
+	}
+	mustNotContain(t, rec.Body.String(), `name="skip_dns"`)
 }

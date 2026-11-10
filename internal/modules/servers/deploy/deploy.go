@@ -148,7 +148,7 @@ func (s *Service) deployConnect(ctx context.Context, r *jobs.Run) error {
 		return err
 	}
 	defer func() { _ = c.Close() }()
-	return remote.VerifyAccess(ctx, s.env(r.Log()), c)
+	return remote.VerifyAccess(ctx, s.env(r.Log(), srv), c)
 }
 
 func (s *Service) deployPlan(ctx context.Context, r *jobs.Run) error {
@@ -253,7 +253,7 @@ func (s *Service) deployUpload(ctx context.Context, r *jobs.Run) error {
 		return err
 	}
 	defer func() { _ = conn.Close() }()
-	if _, err := remote.UploadFiles(ctx, s.env(r.Log()), conn, c.Man.Dir, c.Upload, c.Remove); err != nil {
+	if _, err := remote.UploadFiles(ctx, s.env(r.Log(), c.Srv), conn, c.Man.Dir, c.Upload, c.Remove); err != nil {
 		return err
 	}
 	changed := c.filesChanged
@@ -284,7 +284,7 @@ func (s *Service) runSteps(ctx context.Context, r *jobs.Run, c *computed) error 
 	defer func() { _ = conn.Close() }()
 	for i, st := range steps {
 		r.Log().Info("Template step %d of %d: %s", i+1, len(steps), st.Kind)
-		if err := remote.RunStep(ctx, s.env(r.Log()), conn, c.Man.Dir, st); err != nil {
+		if err := remote.RunStep(ctx, s.env(r.Log(), c.Srv), conn, c.Man.Dir, st); err != nil {
 			return err
 		}
 	}
@@ -332,7 +332,7 @@ func (s *Service) selfCheck(ctx context.Context, r *jobs.Run, c *computed, attem
 	defer func() { _ = conn.Close() }()
 	gap := s.CheckGap
 	for attempt := 1; ; attempt++ {
-		err = remote.SelfCheckReport(ctx, s.env(r.Log()), conn, c.Man.Dir, c.Rendered.Checks, remote.DefaultThresholds)
+		err = remote.SelfCheckReport(ctx, s.env(r.Log(), c.Srv), conn, c.Man.Dir, c.Rendered.Checks, remote.DefaultThresholds)
 		if err == nil || attempt >= attempts || ctx.Err() != nil {
 			return err
 		}

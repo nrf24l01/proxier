@@ -17,8 +17,8 @@ type Facts struct {
 
 // Preflight reads the operating system, the architecture and the listening
 // TCP ports, and checks them against the template: the supported systems and
-// architectures, and that the template's TCP ports are free. It runs as root
-// before anything is changed.
+// architectures, and that the template's TCP ports are free. It uses the
+// initial SSH account before provisioning changes the server.
 func Preflight(ctx context.Context, env Env, c Conn, req manifest.Requires, ports []manifest.Port) (Facts, error) {
 	var f Facts
 	out, err := env.run(ctx, c, "read /etc/os-release", CmdOSRelease(), RunOpts{})
@@ -103,12 +103,17 @@ func InstallAccess(ctx context.Context, env Env, root Conn, keys []string) error
 	return err
 }
 
-// VerifyAccess checks, on a connection opened as the deploy user with
-// Proxier's key, that sudo works without a password.
+// VerifyAccess checks, on a connection opened as the login user with
+// Proxier's key, that root commands work: sudo needs no password, or the user
+// is root and needs no elevation.
 func VerifyAccess(ctx context.Context, env Env, c Conn) error {
+	if env.NoSudo {
+		env.info("Key login as %s works; it is root, so no sudo is needed", env.login())
+		return nil
+	}
 	if _, err := env.run(ctx, c, "sudo -n true", CmdSudoCheck(), RunOpts{}); err != nil {
 		return err
 	}
-	env.info("Key login as %s works and sudo needs no password", DeployUser)
+	env.info("Key login as %s works and sudo needs no password", env.login())
 	return nil
 }

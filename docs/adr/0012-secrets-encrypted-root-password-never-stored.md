@@ -4,6 +4,8 @@ Proxier encrypts database secrets with AES-256-GCM under a master key from the e
 
 A new VPS's root password stays encrypted in its provisioning job until login with Proxier's SSH key works. Proxier then erases it. Later database snapshots and logs cannot recover that password.
 
+Key access uses an account that already accepts Proxier's public key. Proxier does not collect or store a root password in this mode.
+
 ## Consequences
 
 - Losing the master key loses every secret. Keep a copy outside Proxier's machine, in a password manager. Backups are useless without it, which is also what makes them safe to copy around.

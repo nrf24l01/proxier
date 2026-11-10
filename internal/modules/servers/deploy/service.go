@@ -115,11 +115,15 @@ func (s *Service) seams() Seams {
 	return Seams{ProxyTest: proxy.Test, Attempts: 3, Gap: 20 * time.Second}
 }
 
-func (s *Service) env(log *jobs.Logger) remote.Env {
+func (s *Service) env(log *jobs.Logger, srv store.Server) remote.Env {
+	var e remote.Env
 	if f := s.seams().RemoteEnv; f != nil {
-		return f(log)
+		e = f(log)
+	} else {
+		e = remote.Env{Log: log}
 	}
-	return remote.Env{Log: log}
+	e.User, e.NoSudo = srv.LoginUser(), !srv.NeedsSudo()
+	return e
 }
 
 // base is what every job's payload says about its server; the callbacks read
@@ -332,7 +336,7 @@ func (s *Service) stopped(ctx context.Context, tx *sqlx.Tx, j jobs.Info, b base,
 func (s *Service) target(srv store.Server) sshx.Target {
 	return sshx.Target{
 		Hop: sshx.Hop{
-			Address: net.JoinHostPort(srv.IP, strconv.Itoa(srv.SSHPort)), User: remote.DeployUser,
+			Address: net.JoinHostPort(srv.IP, strconv.Itoa(srv.SSHPort)), User: srv.LoginUser(),
 			Subject: serverKey(srv.ID),
 		},
 		FirstContact: sshx.PinOnFirstContact,
