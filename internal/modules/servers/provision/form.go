@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net/netip"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,6 +23,7 @@ import (
 	"github.com/tikhonp/proxier/internal/modules/servers/endpoint"
 	"github.com/tikhonp/proxier/internal/modules/servers/finding"
 	"github.com/tikhonp/proxier/internal/modules/servers/manifest"
+	"github.com/tikhonp/proxier/internal/modules/servers/remote"
 	"github.com/tikhonp/proxier/internal/modules/servers/render"
 	"github.com/tikhonp/proxier/internal/modules/servers/sealed"
 	"github.com/tikhonp/proxier/internal/modules/servers/store"
@@ -36,6 +38,16 @@ import (
 type Form struct {
 	IP, RootPassword string
 	SSHPort          int // 0 = 22
+	// AccessMode is how Proxier logs in: store.AccessPassword (root's password
+	// creates the proxier user) or store.AccessKey (Proxier's key is already
+	// in SSHUser's authorized_keys). "" takes the Settings → Servers default.
+	AccessMode string
+	// SSHUser is the account whose authorized_keys holds Proxier's key in key
+	// access; "" takes root.
+	SSHUser string
+	// Setup is store.SetupFull (hardening included) or store.SetupMinimal
+	// (prerequisites and Docker only); "" takes the Settings → Servers default.
+	Setup string
 	// Country is the ISO code the picker gave, or the text typed in it when
 	// that names no country (refused as such).
 	Country    string
@@ -130,6 +142,26 @@ func fe(errs FieldErrors, field, key string, args ...any) {
 	errs[field] = m
 }
 
+// sshUserRE is a portable account name: lower-case, no shell metacharacters,
+// because the account ends up in sshd's and install's command lines.
+var sshUserRE = regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,31}$`)
+
+// ValidSSHUser reports whether user can be the account Proxier logs in as.
+func ValidSSHUser(user string) bool { return sshUserRE.MatchString(user) }
+
+// Defaults is what Settings → Servers starts a new server's form with.
+func (s *Service) Defaults(ctx context.Context) (access, setup string) {
+	access, err := s.Settings.Get(ctx, conf.DefaultAccessKey)
+	if err != nil || access != store.AccessKey {
+		access = store.AccessPassword
+	}
+	setup, err = s.Settings.Get(ctx, conf.DefaultSetupKey)
+	if err != nil || setup != store.SetupMinimal {
+		setup = store.SetupFull
+	}
+	return access, setup
+}
+
 // check validates the form as far as the database and settings go, all at once.
 // withPassword is false for the live summary, which never sees the password.
 func (s *Service) check(ctx context.Context, f Form, withPassword bool) (*checked, FieldErrors) {
@@ -160,7 +192,45 @@ func (s *Service) check(ctx context.Context, f Form, withPassword bool) (*checke
 	if c.form.SSHPort < 1 || c.form.SSHPort > 65535 {
 		fe(errs, "ssh_port", "servers.err.ssh_port")
 	}
-	if withPassword && f.RootPassword == "" {
+
+	// how Proxier gets in, and what provisioning does besides the stack
+	defAccess, defSetup := s.Defaults(ctx)
+	c.form.AccessMode = strings.TrimSpace(f.AccessMode)
+	if c.form.AccessMode == "" {
+		c.form.AccessMode = defAccess
+	}
+	switch c.form.AccessMode {
+	case store.AccessPassword, store.AccessKey:
+	default:
+		fe(errs, "access", "servers.err.access_unknown")
+	}
+	c.form.Setup = strings.TrimSpace(f.Setup)
+	if c.form.Setup == "" {
+		c.form.Setup = defSetup
+	}
+	switch c.form.Setup {
+	case store.SetupFull, store.SetupMinimal:
+	default:
+		fe(errs, "setup", "servers.err.setup_unknown")
+	}
+	c.form.SSHUser = strings.TrimSpace(f.SSHUser)
+	if c.form.AccessMode == store.AccessKey {
+		if c.form.SSHUser == "" {
+			c.form.SSHUser = "root"
+		}
+		if !ValidSSHUser(c.form.SSHUser) {
+			fe(errs, "ssh_user", "servers.err.ssh_user_invalid")
+		}
+		// Full setup turns root login off, and Proxier has no other account to
+		// log in as on a key-access server.
+		if c.form.SSHUser == "root" && c.form.Setup == store.SetupFull {
+			fe(errs, "setup", "servers.err.root_key_full_setup")
+		}
+	} else {
+		// The proxier user provisioning creates; the form's field is ignored.
+		c.form.SSHUser = remote.DeployUser
+	}
+	if c.form.AccessMode == store.AccessPassword && withPassword && f.RootPassword == "" {
 		fe(errs, "root_password", "servers.err.password_required")
 	}
 	if utf8.RuneCountInString(f.Notes) > 10000 {
@@ -459,6 +529,7 @@ func (s *Service) Create(ctx context.Context, f Form, actor string) (int64, erro
 		}
 		id, err = store.InsertServer(ctx, tx, store.NewServer{
 			Country: c.form.Country, Number: number, Name: fmt.Sprintf("%s-%d", c.prefix, number), IP: c.form.IP, SSHPort: c.form.SSHPort,
+			AccessMode: c.form.AccessMode, SSHUser: c.form.SSHUser, Setup: c.form.Setup,
 			ManagementHostname: host, ProxyHostname: host, TemplateID: c.tpl.ID, TemplateVersion: c.version,
 			Params: marshalStrings(c.public), Notes: f.Notes, ManualDNS: c.manualDNS,
 		}, db.At(s.Now()), func(id int64) []byte { return sealed.SealParams(s.Vault, id, c.secret) })
@@ -468,8 +539,12 @@ func (s *Service) Create(ctx context.Context, f Form, actor string) (int64, erro
 		if err != nil {
 			return err
 		}
+		secrets := map[string]string{}
+		if c.form.AccessMode == store.AccessPassword {
+			secrets[rootPasswordSecret] = f.RootPassword
+		}
 		job, err := s.Jobs.Enqueue(ctx, tx, jobs.Request{
-			Type: JobType, Payload: jobPayload{ServerID: id}, Secrets: map[string]string{rootPasswordSecret: f.RootPassword},
+			Type: JobType, Payload: jobPayload{ServerID: id}, Secrets: secrets,
 			ResourceKey: "server:" + strconv.FormatInt(id, 10), CreatedBy: actor,
 		})
 		if err != nil {
@@ -479,7 +554,7 @@ func (s *Service) Create(ctx context.Context, f Form, actor string) (int64, erro
 			return err
 		}
 		_, err = s.Events.Record(ctx, tx, events.Event{Type: "server.created", Subject: store.ServerSubject(id), Actor: actor,
-			Payload: map[string]any{"ip": c.form.IP, "country": c.form.Country, "hostname": host, "manual_dns": c.manualDNS, "template_version": c.version}})
+			Payload: map[string]any{"ip": c.form.IP, "country": c.form.Country, "hostname": host, "manual_dns": c.manualDNS, "template_version": c.version, "access": c.form.AccessMode, "setup": c.form.Setup}})
 		return err
 	})
 	if err != nil {

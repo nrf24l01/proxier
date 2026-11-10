@@ -128,7 +128,7 @@ func (s *Service) restart(ctx context.Context, r *jobs.Run) error {
 		return err
 	}
 	defer func() { _ = conn.Close() }()
-	return remote.RestartStack(ctx, s.env(r.Log()), conn, c.Man.Dir)
+	return remote.RestartStack(ctx, s.env(r.Log(), c.Srv), conn, c.Man.Dir)
 }
 
 func (s *Service) opSelfCheck(ctx context.Context, r *jobs.Run) error {
@@ -209,7 +209,7 @@ func (s *Service) imagesBefore(ctx context.Context, r *jobs.Run) error {
 		return err
 	}
 	defer func() { _ = conn.Close() }()
-	if p.Before, err = remote.ComposeImages(ctx, s.env(r.Log()), conn, c.Man.Dir); err != nil {
+	if p.Before, err = remote.ComposeImages(ctx, s.env(r.Log(), c.Srv), conn, c.Man.Dir); err != nil {
 		return err
 	}
 	for _, im := range p.Before {
@@ -228,7 +228,7 @@ func (s *Service) pull(ctx context.Context, r *jobs.Run) error {
 		return err
 	}
 	defer func() { _ = conn.Close() }()
-	return remote.PullImages(ctx, s.env(r.Log()), conn, c.Man.Dir)
+	return remote.PullImages(ctx, s.env(r.Log(), c.Srv), conn, c.Man.Dir)
 }
 
 func (s *Service) up(ctx context.Context, r *jobs.Run) error {
@@ -241,7 +241,7 @@ func (s *Service) up(ctx context.Context, r *jobs.Run) error {
 		return err
 	}
 	defer func() { _ = conn.Close() }()
-	return remote.StartStack(ctx, s.env(r.Log()), conn, c.Man.Dir)
+	return remote.StartStack(ctx, s.env(r.Log(), c.Srv), conn, c.Man.Dir)
 }
 
 func (s *Service) imagesAfter(ctx context.Context, r *jobs.Run) error {
@@ -254,7 +254,7 @@ func (s *Service) imagesAfter(ctx context.Context, r *jobs.Run) error {
 		return err
 	}
 	defer func() { _ = conn.Close() }()
-	after, err := remote.ComposeImages(ctx, s.env(r.Log()), conn, c.Man.Dir)
+	after, err := remote.ComposeImages(ctx, s.env(r.Log(), c.Srv), conn, c.Man.Dir)
 	if err != nil {
 		return err
 	}
@@ -282,7 +282,7 @@ func (s *Service) reboot(ctx context.Context, r *jobs.Run) error {
 		return err
 	}
 	defer func() { _ = conn.Close() }()
-	env := s.env(r.Log())
+	env := s.env(r.Log(), c.Srv)
 	if p.BootID, err = remote.BootID(ctx, env, conn); err != nil {
 		return err
 	}
@@ -306,7 +306,7 @@ func (s *Service) waitSSH(ctx context.Context, r *jobs.Run) error {
 	if poll <= 0 {
 		poll = 10 * time.Second
 	}
-	env := s.env(r.Log())
+	env := s.env(r.Log(), c.Srv)
 	deadline := time.Now().Add(timeout)
 	r.Log().Info("Waiting for %s to come back (up to %s)", c.Srv.Name, timeout)
 	last := ""
@@ -377,7 +377,7 @@ func (s *Service) containerLogs(ctx context.Context, r *jobs.Run) error {
 		return err
 	}
 	defer func() { _ = conn.Close() }()
-	env := s.env(r.Log())
+	env := s.env(r.Log(), srv)
 	services, err := remote.ComposeServices(ctx, env, conn, man.Dir)
 	if err != nil {
 		return err

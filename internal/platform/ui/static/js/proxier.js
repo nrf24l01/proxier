@@ -709,6 +709,25 @@
   document.addEventListener('drop', function (e) { if (dragged) { e.preventDefault(); dropped(); } });
   document.addEventListener('dragend', dropped);
 
+  // fields that depend on a choice: [data-depends="access"][data-when="key"]
+  // shows while the radio or select named access has that value. Hidden fields
+  // are disabled, so the browser posts only the chosen way in.
+  function syncDepends() {
+    $$('[data-depends]').forEach(function (el) {
+      var name = el.getAttribute('data-depends');
+      var want = el.getAttribute('data-when');
+      var all = $$('[name="' + name + '"]');
+      var chosen = all.filter(function (i) {
+        return i.tagName === 'SELECT' ? i.value === want : i.checked && i.value === want;
+      })[0];
+      var on = all.length === 0 || !!chosen;
+      el.classList.toggle('hidden', !on);
+      $$('input, select, textarea', el).forEach(function (f) { f.disabled = !on; });
+    });
+  }
+  document.addEventListener('change', syncDepends);
+  document.addEventListener('DOMContentLoaded', syncDepends);
+
   // dialog: esc closes natively; a click on the backdrop closes too
   document.addEventListener('mousedown', function (e) {
     if (e.target.tagName === 'DIALOG' && e.target.open) {

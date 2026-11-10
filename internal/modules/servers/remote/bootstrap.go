@@ -25,8 +25,7 @@ func BaseBootstrap(ctx context.Context, env Env, c Conn, reconnect Reconnect, ss
 	if _, err := env.run(ctx, c, "silence the login banner", CmdHushlogin(), RunOpts{}); err != nil {
 		return err
 	}
-	env.info("Installing prerequisites (curl, ca-certificates, openssl, ufw)")
-	if _, err := env.run(ctx, c, "install prerequisites", CmdApt(), RunOpts{Timeout: 10 * time.Minute, Stream: true}); err != nil {
+	if err := prerequisites(ctx, env, c); err != nil {
 		return err
 	}
 	if err := ensureBBR(ctx, env, c); err != nil {
@@ -41,6 +40,23 @@ func BaseBootstrap(ctx context.Context, env Env, c Conn, reconnect Reconnect, ss
 	}
 	env.info("Firewall: allowing %v", allow)
 	_, err := env.run(ctx, c, "configure the firewall", CmdFirewall(allow), RunOpts{Stream: true})
+	return err
+}
+
+// MinimalBootstrap is the template's base-bootstrap step without hardening: it
+// installs the prerequisites the stack's steps rely on and Docker if missing,
+// and touches nothing else (no SSH hardening, no firewall, no BBR).
+func MinimalBootstrap(ctx context.Context, env Env, c Conn) error {
+	if err := prerequisites(ctx, env, c); err != nil {
+		return err
+	}
+	return ensureDocker(ctx, env, c)
+}
+
+// prerequisites installs what the template steps and the stack need.
+func prerequisites(ctx context.Context, env Env, c Conn) error {
+	env.info("Installing prerequisites (curl, ca-certificates, openssl, ufw)")
+	_, err := env.run(ctx, c, "install prerequisites", CmdApt(), RunOpts{Timeout: 10 * time.Minute, Stream: true})
 	return err
 }
 

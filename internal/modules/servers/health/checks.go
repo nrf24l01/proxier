@@ -24,18 +24,22 @@ import (
 func (s *Service) target(srv store.Server) sshx.Target {
 	return sshx.Target{
 		Hop: sshx.Hop{
-			Address: net.JoinHostPort(srv.IP, strconv.Itoa(srv.SSHPort)), User: remote.DeployUser,
+			Address: net.JoinHostPort(srv.IP, strconv.Itoa(srv.SSHPort)), User: srv.LoginUser(),
 			Subject: serverKey(srv.ID),
 		},
 		FirstContact: sshx.PinOnFirstContact,
 	}
 }
 
-func (s *Service) env(log *jobs.Logger) remote.Env {
+func (s *Service) env(log *jobs.Logger, srv store.Server) remote.Env {
+	var e remote.Env
 	if f := s.seams().RemoteEnv; f != nil {
-		return f(log)
+		e = f(log)
+	} else {
+		e = remote.Env{Log: log}
 	}
-	return remote.Env{Log: log}
+	e.User, e.NoSudo = srv.LoginUser(), !srv.NeedsSudo()
+	return e
 }
 
 // homeOnline says whether results stored now are conclusive.
@@ -73,7 +77,7 @@ func (s *Service) selfcheckStep(ctx context.Context, r *jobs.Run) error {
 	if err != nil {
 		return err
 	}
-	env := s.env(r.Log())
+	env := s.env(r.Log(), srv)
 
 	res := store.CheckResult{ServerID: srv.ID, Kind: "self", Vantage: "home"}
 	detail := map[string]any{}

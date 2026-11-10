@@ -41,7 +41,7 @@ Settings are grouped by module. Each module declares its own section, fields, de
 ## Secrets
 
 - One **master key** from the environment encrypts every secret with AES-256-GCM: generated values, link and config tokens, deployed files that contain secrets, setting secrets, Proxier's SSH private key ([ADR 0012](../adr/0012-secrets-encrypted-root-password-never-stored.md)).
-- The **root password** of a new VPS exists only inside its provisioning job, encrypted, and is erased as soon as Proxier's key login works. It is never logged, never shown again, and never written into an event.
+- The **root password** of a new VPS exists only inside its provisioning job, encrypted, and is erased as soon as Proxier's key login works. It is never logged, never shown again, and never written into an event. A server created with key access has no root password anywhere.
 - Lookups by secret use an HMAC of the value under a key derived from the master key, so a token is never stored in plain text or compared in plain text.
 - **Redaction**: every job registers the secrets it handles, and log lines are scrubbed before they are stored. Values the UI must show (a link URL, a connection URI) appear on the object's own page, where a member who may see it opens them deliberately.
 

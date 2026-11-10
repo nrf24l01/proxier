@@ -42,7 +42,7 @@ func TestEveryCommandParsesBack(t *testing.T) {
 		{remote.CmdDockerCheck(), remote.OpDockerCheck, true, nil},
 		{remote.CmdDockerInstall(), remote.OpDockerInstall, true, nil},
 		{remote.CmdFirewall([]string{"22/tcp", "443/tcp"}), remote.OpFirewall, true, []string{"22/tcp", "443/tcp"}},
-		{remote.CmdPrepareDirs([]string{dir, dir + "/nginx"}), remote.OpPrepareDirs, true, []string{dir, dir + "/nginx"}},
+		{remote.CmdPrepareDirs("proxier", []string{dir, dir + "/nginx"}), remote.OpPrepareDirs, true, []string{dir, dir + "/nginx"}},
 		{remote.CmdRemove([]string{dir + "/a.txt", dir + "/it's"}), remote.OpRemove, true, []string{dir + "/a.txt", dir + "/it's"}},
 		{remote.CmdRemoveDir(dir), remote.OpRemoveDir, true, []string{dir}},
 		{remote.CmdRun(dir, "./issue-cert.sh --now"), remote.OpRun, true, []string{dir, "./issue-cert.sh --now"}},

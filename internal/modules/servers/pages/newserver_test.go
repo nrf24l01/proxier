@@ -202,3 +202,41 @@ func TestNewServerHostnameByHand(t *testing.T) {
 	mustContain(t, page(t, h, base+"/ip"), "Point vpn.example.org at the new IP at your DNS provider", "Checks that vpn.example.org points to the new IP")
 	mustContain(t, page(t, h, base+"/retire"), "The record of vpn.example.org was made by hand at another DNS provider")
 }
+
+func TestNewServerAccessAndSetup(t *testing.T) {
+	h := serverstest.NewHarness(t, serverstest.StubProxy())
+
+	rec := h.Login.Get("/servers/new")
+	if rec.Code != 200 {
+		t.Fatalf("%d\n%s", rec.Code, rec.Body)
+	}
+	for _, want := range []string{`name="access"`, `value="password"`, `value="key"`, `name="ssh_user"`, `name="setup"`, `value="minimal"`} {
+		mustContain(t, rec.Body.String(), want)
+	}
+
+	// Key access needs no root password in the live summary.
+	f := h.Form()
+	rec = h.Login.Post("/servers/new/summary", url.Values{
+		"ip": {f.IP}, "ssh_port": {strconv.Itoa(f.SSHPort)}, "country": {h.Country},
+		"access": {"key"}, "ssh_user": {"root"}, "setup": {"minimal"},
+		"template": {sid(h.TemplateID)}, "version": {"1"}, "params_for": {sid(h.TemplateID) + ":1"},
+	})
+	if rec.Code != 200 {
+		t.Fatalf("%d\n%s", rec.Code, rec.Body)
+	}
+	mustNotContain(t, rec.Body.String(), "Enter the root password")
+
+	// A bad account is refused on Create and nothing is created.
+	rec = h.Login.Post("/servers", url.Values{
+		"ip": {f.IP}, "ssh_port": {strconv.Itoa(f.SSHPort)}, "country": {h.Country},
+		"access": {"key"}, "ssh_user": {"not a user"}, "setup": {"minimal"},
+		"template": {sid(h.TemplateID)}, "version": {"1"}, "param.letsencrypt_email": {"me@example.com"},
+	})
+	if rec.Code != 422 {
+		t.Fatalf("%d\n%s", rec.Code, rec.Body)
+	}
+	mustContain(t, rec.Body.String(), "Use an account name")
+	if srvs, _ := store.ListServers(bg, h.App.DB.R); len(srvs) != 0 {
+		t.Fatalf("created anyway: %+v", srvs)
+	}
+}

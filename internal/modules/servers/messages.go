@@ -18,6 +18,20 @@ var messages = i18n.Messages{
 		RU: "Например, {country}-{number}.hosts.example.com. {country} (код страны сервера строчными, nl) и {number} подставляются для каждого сервера. Домен должен быть в зоне, разрешённой в Интеграции → Cloudflare.",
 	},
 	"settings.field.servers.ip_country_url": {EN: "IP → country lookup", RU: "Страна по IP"},
+	"settings.field.servers.default_access": {EN: "New servers' access", RU: "Доступ новых серверов"},
+	"settings.field.servers.default_access.help": {
+		EN: "What the new-server form starts with. A server keeps the choice it was created with.",
+		RU: "С чего начинается форма нового сервера. Сервер сохраняет выбор, сделанный при создании.",
+	},
+	"settings.field.servers.default_setup": {EN: "New servers' setup", RU: "Настройка новых серверов"},
+	"settings.field.servers.default_setup.help": {
+		EN: "Full hardens SSH, resets the firewall and turns on TCP BBR; deploy only installs Docker and its prerequisites.",
+		RU: "Полная закрывает SSH, сбрасывает файрвол и включает TCP BBR; «только развёртывание» ставит Docker и зависимости.",
+	},
+	"settings.option.servers.default_access.password": {EN: "Root password", RU: "Пароль root"},
+	"settings.option.servers.default_access.key":      {EN: "SSH key", RU: "SSH-ключ"},
+	"settings.option.servers.default_setup.full":      {EN: "Full", RU: "Полная"},
+	"settings.option.servers.default_setup.minimal":   {EN: "Deploy only", RU: "Только развёртывание"},
 	"settings.field.servers.ip_country_url.help": {
 		EN: "An https address with {ip}; it must answer a two-letter country code. Only the new server's address is sent, and the answer only preselects the country. Empty turns it off.",
 		RU: "Адрес https с {ip}; в ответ должен прийти двухбуквенный код страны. Отправляется только адрес нового сервера, ответ лишь предлагает страну. Пусто — выключено.",

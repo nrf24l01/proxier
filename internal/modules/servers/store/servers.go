@@ -25,6 +25,9 @@ type Server struct {
 	Name               string        `db:"name"`
 	IP                 string        `db:"ip"`
 	SSHPort            int           `db:"ssh_port"`
+	AccessMode         string        `db:"access_mode"` // AccessPassword or AccessKey
+	SSHUser            string        `db:"ssh_user"`    // the account Proxier logs in as
+	Setup              string        `db:"setup"`       // SetupFull or SetupMinimal
 	ManagementHostname string        `db:"management_hostname"`
 	ProxyHostname      string        `db:"proxy_hostname"`
 	State              string        `db:"state"`
@@ -65,7 +68,51 @@ func (s Server) Prefix() string {
 // stays so if the job fails, because the stack may already be gone.
 func (s Server) Retiring() bool { return s.RetireJobID.Valid && s.State != "retired" }
 
-const serverSelect = `SELECT s.id, s.country, s.number, s.name, s.ip, s.ssh_port, s.management_hostname, s.proxy_hostname,
+// How Proxier logs in to a server.
+const (
+	// AccessPassword: the root password at provisioning creates the proxier
+	// user, installs Proxier's key and passwordless sudo. Every later
+	// connection uses the key.
+	AccessPassword = "password"
+	// AccessKey: the account's authorized_keys already holds Proxier's key.
+	// Nothing is created on the machine for access; the account must be root
+	// or have passwordless sudo.
+	AccessKey = "key"
+)
+
+// What provisioning does to the machine besides the stack.
+const (
+	// SetupFull hardens SSH, resets the firewall, turns on TCP BBR and
+	// installs the prerequisites and Docker.
+	SetupFull = "full"
+	// SetupMinimal installs the prerequisites and Docker only: no SSH
+	// hardening, no firewall, no BBR.
+	SetupMinimal = "minimal"
+)
+
+// KeyAccess is whether Proxier logs in with its own key to an account that
+// already trusts it, rather than creating the proxier user from root's
+// password.
+func (s Server) KeyAccess() bool { return s.AccessMode == AccessKey }
+
+// MinimalSetup is whether provisioning skips the hardening of the base setup.
+func (s Server) MinimalSetup() bool { return s.Setup == SetupMinimal }
+
+// LoginUser is the account Proxier connects as; "" (a row from before access
+// was stored) is the proxier user provisioning created.
+func (s Server) LoginUser() string {
+	if s.SSHUser == "" {
+		return "proxier"
+	}
+	return s.SSHUser
+}
+
+// NeedsSudo is whether root commands go through `sudo -n`: false for root,
+// who needs no elevation.
+func (s Server) NeedsSudo() bool { return s.LoginUser() != "root" }
+
+const serverSelect = `SELECT s.id, s.country, s.number, s.name, s.ip, s.ssh_port, s.access_mode, s.ssh_user, s.setup,
+	s.management_hostname, s.proxy_hostname,
 	s.state, s.template_id, s.template_version, s.params, s.params_secret, s.notes, s.provision_job_id, s.retire_job_id,
 	COALESCE(s.failed_step, '') AS failed_step, COALESCE(s.failed_error, '') AS failed_error,
 	COALESCE(s.health, '') AS health, s.health_since, s.health_reason, s.created_at, s.activated_at, s.retired_at,
@@ -91,10 +138,16 @@ func ListServers(ctx context.Context, q sqlx.QueryerContext) ([]Server, error) {
 
 // NewServer is what Create writes.
 type NewServer struct {
-	Country                           string
-	Number                            int
-	Name, IP                          string
-	SSHPort                           int
+	Country  string
+	Number   int
+	Name, IP string
+	SSHPort  int
+	// AccessMode is AccessPassword ("" takes it) or AccessKey; SSHUser is the
+	// account Proxier logs in as in key mode ("" takes root); Setup is
+	// SetupFull ("" takes it) or SetupMinimal.
+	AccessMode                        string
+	SSHUser                           string
+	Setup                             string
 	ManagementHostname, ProxyHostname string
 	TemplateID                        int64
 	TemplateVersion                   int
@@ -108,11 +161,22 @@ type NewServer struct {
 // need the id for their AAD, so the caller passes a function that seals once
 // the id is known; it may return nil for none.
 func InsertServer(ctx context.Context, tx sqlx.ExtContext, n NewServer, at db.Time, sealParams func(id int64) []byte) (int64, error) {
+	access, setup, user := n.AccessMode, n.Setup, n.SSHUser
+	if access == "" {
+		access = AccessPassword
+	}
+	if setup == "" {
+		setup = SetupFull
+	}
+	if user == "" {
+		user = "proxier"
+	}
 	res, err := tx.ExecContext(ctx, `
-		INSERT INTO servers_servers (country, number, name, ip, ssh_port, management_hostname, proxy_hostname, state,
-			template_id, template_version, params, notes, manual_dns, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 'provisioning', ?, ?, ?, ?, ?, ?)`,
-		n.Country, n.Number, n.Name, n.IP, n.SSHPort, n.ManagementHostname, n.ProxyHostname,
+		INSERT INTO servers_servers (country, number, name, ip, ssh_port, access_mode, ssh_user, setup,
+			management_hostname, proxy_hostname, state, template_id, template_version, params, notes, manual_dns, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'provisioning', ?, ?, ?, ?, ?, ?)`,
+		n.Country, n.Number, n.Name, n.IP, n.SSHPort, access, user, setup,
+		n.ManagementHostname, n.ProxyHostname,
 		n.TemplateID, n.TemplateVersion, n.Params, n.Notes, n.ManualDNS, at)
 	if unique(err, "servers_servers.ip") {
 		return 0, ErrIPInUse

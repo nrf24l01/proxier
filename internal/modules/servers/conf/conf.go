@@ -17,9 +17,13 @@ import (
 const (
 	HostnamePatternKey = "servers.hostname_pattern"
 	IPCountryURLKey    = "servers.ip_country_url"
-	ProxyTestURLKey    = "servers.proxy_test_url"
-	ProxyTestTimeout   = "servers.proxy_test_timeout"
-	ProxyTestStall     = "servers.proxy_test_stall"
+	// DefaultAccessKey and DefaultSetupKey are what the new-server form starts
+	// with; each server stores its own choice.
+	DefaultAccessKey = "servers.default_access"
+	DefaultSetupKey  = "servers.default_setup"
+	ProxyTestURLKey  = "servers.proxy_test_url"
+	ProxyTestTimeout = "servers.proxy_test_timeout"
+	ProxyTestStall   = "servers.proxy_test_stall"
 
 	SelfcheckEvery        = "servers.selfcheck_every"
 	ExternalEvery         = "servers.external_every"
@@ -83,6 +87,10 @@ var Section = settings.Section{
 				_, err := render.Hostname(v, "xx", 1)
 				return err
 			}},
+		// DefaultAccessKey and DefaultSetupKey are what the new-server form starts
+		// with; each server stores its own choice.
+		{Key: DefaultAccessKey, Kind: settings.Enum, Default: "password", Options: []string{"password", "key"}},
+		{Key: DefaultSetupKey, Kind: settings.Enum, Default: "full", Options: []string{"full", "minimal"}},
 		// Empty turns the lookup off. The answer only preselects a country.
 		{Key: IPCountryURLKey, Kind: settings.String, Default: "https://ipinfo.io/{ip}/country", MaxLen: 300,
 			Validate: func(v string) error {

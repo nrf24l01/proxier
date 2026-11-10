@@ -98,11 +98,15 @@ func New(d Deps) *Service {
 
 func (s *Service) now() time.Time { return s.Now() }
 
-func (s *Service) env(log *jobs.Logger) remote.Env {
+func (s *Service) env(log *jobs.Logger, srv store.Server) remote.Env {
+	var e remote.Env
 	if s.RemoteEnv != nil {
-		return s.RemoteEnv(log)
+		e = s.RemoteEnv(log)
+	} else {
+		e = remote.Env{Log: log}
 	}
-	return remote.Env{Log: log}
+	e.User, e.NoSudo = srv.LoginUser(), !srv.NeedsSudo()
+	return e
 }
 
 func serverKey(id int64) string { return "server:" + strconv.FormatInt(id, 10) }
@@ -382,7 +386,7 @@ func (s *Service) removeStack(ctx context.Context, r *jobs.Run, p *payload) erro
 	cctx, cancel := context.WithTimeout(ctx, s.ConnectTimeout)
 	c, err := s.SSH.Connect(cctx, sshx.Target{
 		Hop: sshx.Hop{
-			Address: srv.IP + ":" + strconv.Itoa(srv.SSHPort), User: remote.DeployUser, Subject: serverKey(srv.ID),
+			Address: srv.IP + ":" + strconv.Itoa(srv.SSHPort), User: srv.LoginUser(), Subject: serverKey(srv.ID),
 		},
 		FirstContact: sshx.PinOnFirstContact,
 	}, r.Log())
@@ -394,7 +398,7 @@ func (s *Service) removeStack(ctx context.Context, r *jobs.Run, p *payload) erro
 		return skip(err.Error())
 	}
 	defer func() { _ = c.Close() }()
-	env := s.env(r.Log())
+	env := s.env(r.Log(), srv)
 	for i, st := range setup.Uninstall {
 		r.Log().Info("Uninstall step %d of %d: %s", i+1, len(setup.Uninstall), st.Kind)
 		if err := remote.RunStep(ctx, env, c, setup.Dir, st); err != nil {

@@ -125,7 +125,7 @@ func runCheck(ctx context.Context, env Env, c Conn, dir string, ch manifest.Chec
 		if !strings.HasPrefix(file, "/") {
 			file = path.Join(dir, file)
 		}
-		res, err := c.Run(ctx, CmdCertExpiry(file), sshx.RunOptions{})
+		res, err := c.Run(ctx, env.elevated(CmdCertExpiry(file)), sshx.RunOptions{})
 		if err != nil {
 			return r, err
 		}

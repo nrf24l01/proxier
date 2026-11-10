@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/tikhonp/proxier/internal/modules/servers/deploy"
 	"github.com/tikhonp/proxier/internal/modules/servers/endpoint"
 	"github.com/tikhonp/proxier/internal/modules/servers/provision"
 	"github.com/tikhonp/proxier/internal/modules/servers/proxy/proxytest"
@@ -767,5 +768,111 @@ func TestMissingEndpointsFailsBeforeConnecting(t *testing.T) {
 	failed(t, h, id, "preflight", "the template declares no endpoint")
 	if len(h.VPS.Commands()) != 0 {
 		t.Fatal("invalid template reached the server")
+	}
+}
+
+// authorizeProxier puts Proxier's public key into user's authorized_keys, as
+// an admin who chose key access would.
+func authorizeProxier(t *testing.T, h *serverstest.Harness, user string) {
+	t.Helper()
+	line, _, err := h.App.SSH.PublicKey(bg)
+	if err != nil {
+		t.Fatalf("Proxier's public key: %v", err)
+	}
+	key, _, _, _, err := ssh.ParseAuthorizedKey([]byte(line))
+	if err != nil {
+		t.Fatalf("parse Proxier's public key: %v", err)
+	}
+	h.VPS.AuthorizeKey(user, key)
+}
+
+func TestKeyAccessDeployOnly(t *testing.T) {
+	h := serverstest.NewHarness(t)
+	authorizeProxier(t, h, "root")
+
+	f := h.Form()
+	f.RootPassword = ""
+	f.AccessMode, f.SSHUser, f.Setup = store.AccessKey, "root", store.SetupMinimal
+	id := h.Create(f)
+	h.Drain()
+
+	srv := active(t, h, id)
+	if !srv.KeyAccess() || srv.LoginUser() != "root" || !srv.MinimalSetup() {
+		t.Fatalf("server: access %q, user %q, setup %q", srv.AccessMode, srv.SSHUser, srv.Setup)
+	}
+	// Key access creates nothing on the machine for access.
+	if exists, _ := h.VPS.HasUser(remote.DeployUser); exists {
+		t.Error("the proxier user was created")
+	}
+	if h.VPS.Hardened() || h.VPS.SSHDDropin() != "" {
+		t.Error("sshd was hardened")
+	}
+	if allowed, on := h.VPS.Firewall(); on || len(allowed) > 0 {
+		t.Errorf("firewall %v on=%v", allowed, on)
+	}
+	if h.VPS.BBR() {
+		t.Error("TCP BBR was turned on")
+	}
+	// The stack is deployed all the same.
+	if !h.VPS.Docker {
+		t.Error("Docker was not installed")
+	}
+	if b, ok := h.VPS.File("/opt/proxier/vless-xhttp/compose.yaml"); !ok || !strings.Contains(string(b), "services:") {
+		t.Error("the stack is not on the server")
+	}
+
+	// A redeploy reaches the same account, without a root password.
+	job, err := h.Mod.Deploy.Apply(bg, id, deploy.Target{Force: true}, "", "admin")
+	if err != nil {
+		t.Fatalf("redeploy: %v", err)
+	}
+	h.Drain()
+	if j, err := h.App.Jobs.Job(bg, job); err != nil || j.State != jobs.Succeeded {
+		t.Fatalf("redeploy job %v %v\n%s", j.State, err, h.Log(job))
+	}
+	for _, cmd := range h.VPS.Commands() {
+		if strings.HasPrefix(cmd, remote.DeployUser+":") {
+			t.Fatalf("a redeploy logged in as %s: %s", remote.DeployUser, cmd)
+		}
+	}
+}
+
+func TestKeyAccessWithoutTheKey(t *testing.T) {
+	h := serverstest.NewHarness(t)
+	f := h.Form()
+	f.RootPassword = ""
+	f.AccessMode, f.SSHUser, f.Setup = store.AccessKey, "root", store.SetupMinimal
+	id := h.Create(f)
+	h.Drain()
+
+	failed(t, h, id, "preflight", "refused Proxier's key for root")
+	if provision.NeedsPassword(h.Server(id)) {
+		t.Error("retry would ask for a root password on a key-access server")
+	}
+}
+
+func TestKeyAccessFullSetupAsSudoUser(t *testing.T) {
+	h := serverstest.NewHarness(t)
+	authorizeProxier(t, h, "deploy")
+	h.VPS.AddUser("deploy")
+	h.VPS.SetSudoers("deploy ALL=(ALL) NOPASSWD:ALL\n")
+
+	f := h.Form()
+	f.RootPassword = ""
+	f.AccessMode, f.SSHUser, f.Setup = store.AccessKey, "deploy", store.SetupFull
+	id := h.Create(f)
+	h.Drain()
+
+	active(t, h, id)
+	if !h.VPS.Hardened() {
+		t.Error("sshd was not hardened")
+	}
+	if allowed, on := h.VPS.Firewall(); !on || strings.Join(allowed, " ") != fmt.Sprintf("%d/tcp 80/tcp 443/tcp", f.SSHPort) {
+		t.Errorf("firewall %v on=%v", allowed, on)
+	}
+	for _, cmd := range h.VPS.Commands() {
+		if strings.HasPrefix(cmd, "root:") || strings.HasPrefix(cmd, remote.DeployUser+":") {
+			t.Fatalf("full setup switched account: %s", cmd)
+		}
 	}
 }

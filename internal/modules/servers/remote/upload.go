@@ -59,7 +59,7 @@ func UploadFiles(ctx context.Context, env Env, c Conn, dir string, files []File,
 		list = append(list, d)
 	}
 	sort.Strings(list) // parents sort before their children
-	if _, err := env.run(ctx, c, "create directories", CmdPrepareDirs(list), RunOpts{}); err != nil {
+	if _, err := env.run(ctx, c, "create directories", CmdPrepareDirs(env.login(), list), RunOpts{}); err != nil {
 		return nil, err
 	}
 	for _, f := range files {

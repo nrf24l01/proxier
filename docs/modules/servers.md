@@ -11,6 +11,14 @@ The servers module turns a freshly issued VPS into a working proxy server from a
 - The **proxy hostname** is the name in connection URIs and the TLS certificate. It is always the management hostname. The two are separate fields, so proxy hostnames on other domains would need no data migration ([DNS](#dns)).
 - When a member pastes an IP into the new-server form, Proxier looks up the IP's country and preselects it in the country picker. It is only a suggestion.
 
+## Access and setup
+
+- **Access** is how Proxier reaches a server, chosen when it is created and kept for its life ([provisioning](../processes/servers/server-provisioning.md)).
+  - **Root password**: the password is used once, in the provisioning job, to create the `proxier` user, install Proxier's key and passwordless sudo; it is erased as soon as the key login works ([ADR 0012](../adr/0012-secrets-encrypted-root-password-never-stored.md)). Every later connection is `proxier` with Proxier's key.
+  - **SSH key**: the member has already put Proxier's public key (Settings → SSH) into an account's `authorized_keys`, `root` by default. Proxier creates nothing for access; a non-root account needs passwordless sudo. The account is stored on the server and every later job uses it.
+- **Setup** is what provisioning does to the machine besides the stack. **Full** hardens SSH, resets the firewall, turns on TCP BBR and installs the prerequisites and Docker. **Deploy only** installs the prerequisites and Docker if missing and leaves SSH, the firewall and the kernel alone. Full setup and key access as `root` cannot go together: hardening turns root login off, so use deploy only or another account.
+- Both choices start from Settings → Servers, and neither can be changed after creation: retire the server and build a new one.
+
 ## Templates
 
 A **template** is a named definition of a server's stack. Templates are stored in Proxier, edited in the UI, versioned, and validated when published ([ADR 0003](../adr/0003-proxier-rendered-stack-templates.md)). Proxier generates the secrets, renders every file and runs every step itself. It always knows the server's real configuration, so it can redeploy, upgrade and rotate later.
@@ -185,7 +193,7 @@ Actions:
 
 | Action | Allowed when | What happens |
 |---|---|---|
-| Retry | failed | Resumes provisioning from the failed step. Asks for the root password again if it failed before Proxier's key was installed. |
+| Retry | failed | Resumes provisioning from the failed step. Asks for the root password again if password access failed before Proxier's key was installed; a key-access server never asks. |
 | Activate anyway | failed, only the smoke test failed | Makes the server active without a passing proxy test, after a confirmation. Health then comes from the checks, usually `blocked` ([provisioning](../processes/servers/server-provisioning.md#steps-after-a-failure)). |
 | Redeploy | active | Re-renders the current version. Shows the diff, then applies it ([redeploy](../processes/servers/server-redeploy.md)). |
 | Upgrade | active, newer version exists | Renders the chosen version. Asks for any new parameters, shows the diff, then applies it. |

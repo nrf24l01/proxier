@@ -445,7 +445,7 @@ func (h *handler) retryForm(c *echo.Context) error {
 
 func (h *handler) renderRetry(c *echo.Context, status int, s store.Server, errs map[string]string) error {
 	ctx := c.Request().Context()
-	v := retryView{S: s, NeedsPassword: provision.NeedsPassword(s.FailedStep), Errs: errs,
+	v := retryView{S: s, NeedsPassword: provision.NeedsPassword(s), Errs: errs,
 		Conflict: s.FailedStep == provision.StepDNS && strings.Contains(s.FailedError, "already points to")}
 	return web.Render(c, status, retryPage(h.shell(c, i18n.T(ctx, "servers.retry.title", i18n.Args{"name": s.Name}), "/servers"), v))
 }
