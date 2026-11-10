@@ -3,13 +3,16 @@ name: CI
 on:
   push:
     branches: [main]
+  # Keep PR checks available until pr.yaml has landed on the base branch.
+  # Remove this trigger in a follow-up after that merge.
+  pull_request:
 
 permissions:
   contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -24,6 +27,7 @@ jobs:
         timeout-minutes: 10
         with:
           go-version-file: go.mod
+          cache: ${{ github.event_name == 'push' }}
 
       - name: Download modules
         timeout-minutes: 10
@@ -63,6 +67,7 @@ jobs:
         timeout-minutes: 10
         with:
           go-version-file: go.mod
+          cache: ${{ github.event_name == 'push' }}
 
       - name: Download modules
         timeout-minutes: 10
@@ -74,6 +79,7 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.15.0
+          skip-cache: ${{ github.event_name != 'push' }}
 
       - name: govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
