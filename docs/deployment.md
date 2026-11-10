@@ -114,7 +114,7 @@ The tailnet state is not in the database or its snapshots.
 1. Generate the master key (`openssl rand -base64 32`) and store a copy outside the machine, in a password manager. Without it, nobody can recover the database's secrets.
 2. Start the containers. Migrations run on startup. Proxier generates its SSH key pair (ed25519), the default routing list "Main" and the seed template.
 3. `docker compose exec proxier /bin/proxier manage create-admin` creates the first member interactively. It's the only way to create one.
-4. Sign in. In Settings, add the Cloudflare API token and zones, the Telegram bot (token and detected chat), your personal SSH public keys (installed on every new server), and the check-host nodes. Set the hostname pattern (Settings → Servers) to a name in one of your zones, e.g. `{country}-{number}.hosts.example.com`. It has no default, and the new-server form refuses every server until it is set. Then set the time zone and languages.
+4. Sign in. In Settings, add the Cloudflare API token and zones, the Telegram bot (token and detected chat), your personal SSH public keys (installed on every new server), and the check-host nodes. Set the hostname pattern (Settings → Servers) to a name in one of your zones, e.g. `{country}-{number}.hosts.example.com`. It has no default, and until it is set the new-server form refuses every server that has no typed hostname. Then set the time zone and languages.
 5. Copy Proxier's public SSH key (Settings → SSH) to the jump hosts and routers you want to sync.
 
 ## Backups

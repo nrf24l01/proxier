@@ -151,17 +151,26 @@ func Hostname(pattern, prefix string, number int) (string, error) {
 		return "", errors.New("the pattern must contain {country} and {number}")
 	}
 	h := strings.NewReplacer("{country}", prefix, "{location}", prefix, "{number}", strconv.Itoa(number)).Replace(pattern)
+	if err := ValidHostname(h); err != nil {
+		return "", err
+	}
+	return h, nil
+}
+
+// ValidHostname says why h is not a fully qualified DNS name in lower case,
+// with no trailing dot, or nil when it is one.
+func ValidHostname(h string) error {
 	if len(h) > 253 {
-		return "", errors.New("the hostname is longer than 253 characters")
+		return errors.New("the hostname is longer than 253 characters")
 	}
 	labels := strings.Split(h, ".")
 	if len(labels) < 2 {
-		return "", fmt.Errorf("%q is not a fully qualified name", h)
+		return fmt.Errorf("%q is not a fully qualified name", h)
 	}
 	for _, l := range labels {
 		if !hostLabel.MatchString(l) {
-			return "", fmt.Errorf("%q is not a valid hostname", h)
+			return fmt.Errorf("%q is not a valid hostname", h)
 		}
 	}
-	return h, nil
+	return nil
 }

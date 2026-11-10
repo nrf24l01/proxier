@@ -428,3 +428,148 @@ func TestIPKeptAsPreviousIsRefused(t *testing.T) {
 		t.Fatalf("ip error: %+v", fe)
 	}
 }
+
+// A hostname typed in the form replaces the pattern's for both management and
+// proxy, all the way to the DNS record and the endpoints.
+func TestCustomHostname(t *testing.T) {
+	h := serverstest.NewHarness(t, serverstest.StubProxy())
+	f := h.Form()
+	f.Hostname = " VPN.Proxier.test. "
+	s := h.Mod.Provision.Summarize(bg, f, false)
+	if len(s.Errors) != 0 || s.Name != "nl-1" || s.ManagementHostname != "vpn.proxier.test" || s.ProxyHostname != s.ManagementHostname {
+		t.Fatalf("summary: %+v", s)
+	}
+	if want := "A vpn.proxier.test → 127.0.0.1, DNS only, TTL 60"; s.DNSRecord != want {
+		t.Errorf("DNS record %q, want %q", s.DNSRecord, want)
+	}
+
+	id := h.Create(f)
+	h.Drain()
+	srv := h.Server(id)
+	if srv.State != "active" || srv.Name != "nl-1" || srv.ManagementHostname != "vpn.proxier.test" || srv.ProxyHostname != "vpn.proxier.test" {
+		t.Fatalf("server: %+v", srv)
+	}
+	var names []string
+	for _, r := range h.CF.Records("proxier.test") {
+		names = append(names, r.Name)
+	}
+	if len(names) != 1 || names[0] != "vpn.proxier.test" {
+		t.Errorf("DNS records %v", names)
+	}
+	if ev := h.Events("server.created"); len(ev) != 1 || ev[0].Payload["hostname"] != "vpn.proxier.test" {
+		t.Errorf("server.created %+v", ev)
+	}
+
+	// The next server without one takes the pattern's name again.
+	f = h.Form()
+	f.IP = "127.0.0.2"
+	if s := h.Mod.Provision.Summarize(bg, f, false); s.ManagementHostname != "nl-2.hosts.proxier.test" {
+		t.Errorf("without a hostname: %+v", s)
+	}
+}
+
+func TestCustomHostnameRefusals(t *testing.T) {
+	h := serverstest.NewHarness(t)
+	h.StopJobs()
+	taken := h.Create(h.Form()) // nl-1.hosts.proxier.test
+	for _, c := range []struct {
+		name, host, field, key string
+	}{
+		{"one label", "vpn", "hostname", "servers.err.hostname_invalid"},
+		{"a space", "my vpn.proxier.test", "hostname", "servers.err.hostname_invalid"},
+		{"a leading hyphen", "-vpn.proxier.test", "hostname", "servers.err.hostname_invalid"},
+		{"a wildcard", "*.proxier.test", "hostname", "servers.err.hostname_invalid"},
+		{"a URL", "https://vpn.proxier.test/", "hostname", "servers.err.hostname_invalid"},
+		{"another zone", "vpn.example.org", "dns", "servers.err.not_covered"},
+		{"another server's", "NL-1.hosts.proxier.test", "hostname", "servers.err.hostname_used"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			f := h.Form()
+			f.IP, f.Hostname = "127.0.0.2", c.host
+			_, err := h.Mod.Provision.Create(bg, f, "admin")
+			fe := refused(t, err)
+			if fe[c.field].Key != c.key {
+				t.Fatalf("errors: %+v, want %s on %s", fe, c.key, c.field)
+			}
+			if c.key == "servers.err.hostname_used" && fe["hostname"].Args["name"] != "nl-1" {
+				t.Errorf("names %v", fe["hostname"].Args)
+			}
+			// the live summary says it too
+			if s := h.Mod.Provision.Summarize(bg, f, false); s.Errors[c.field].Key != c.key {
+				t.Errorf("summary errors: %+v", s.Errors)
+			}
+		})
+	}
+	var n int
+	if err := h.App.DB.R.Get(&n, `SELECT count(*) FROM servers_servers`); err != nil || n != 1 {
+		t.Fatalf("%d servers after the refused forms (%v)", n, err)
+	}
+
+	// A pattern name a custom hostname already holds is refused the same way.
+	f := h.Form()
+	f.IP, f.Hostname = "127.0.0.3", "nl-3.hosts.proxier.test"
+	h.Create(f) // nl-2, holding the name nl-3 would get
+	f = h.Form()
+	f.IP = "127.0.0.4"
+	_, err := h.Mod.Provision.Create(bg, f, "admin")
+	if fe := refused(t, err); fe["hostname"].Key != "servers.err.hostname_used" || fe["hostname"].Args["name"] != "nl-2" {
+		t.Fatalf("errors: %+v", fe)
+	}
+
+	// A retired server gives its hostname back.
+	if _, err := h.App.DB.W.Exec(`UPDATE servers_servers SET state = 'retired', health = NULL WHERE id = ?`, taken); err != nil {
+		t.Fatal(err)
+	}
+	f = h.Form()
+	f.IP, f.Hostname = "127.0.0.5", "nl-1.hosts.proxier.test"
+	if _, err := h.Mod.Provision.Create(bg, f, "admin"); err != nil {
+		t.Fatalf("a retired server still holds its hostname: %v", err)
+	}
+}
+
+// A hostname typed in the form needs no hostname pattern.
+func TestCustomHostnameWithoutPattern(t *testing.T) {
+	h := serverstest.NewHarness(t)
+	h.StopJobs()
+	if err := h.App.Settings.Set(bg, "admin", "servers", map[string]string{"servers.hostname_pattern": ""}); err != nil {
+		t.Fatal(err)
+	}
+	f := h.Form()
+	f.Hostname = "vpn.proxier.test"
+	if s := h.Mod.Provision.Summarize(bg, f, false); len(s.Errors) != 0 || s.Name != "nl-1" {
+		t.Fatalf("summary: %+v", s)
+	}
+	if got := h.Server(h.Create(f)).ManagementHostname; got != "vpn.proxier.test" {
+		t.Errorf("hostname %q", got)
+	}
+}
+
+func TestConcurrentCreatesShareNoHostname(t *testing.T) {
+	h := serverstest.NewHarness(t)
+	h.StopJobs()
+	const n = 5
+	var wg sync.WaitGroup
+	var ok, used atomic.Int32
+	for i := range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			f := h.Form()
+			f.IP, f.Hostname = fmt.Sprintf("127.0.0.%d", 10+i), "vpn.proxier.test"
+			_, err := h.Mod.Provision.Create(bg, f, "admin")
+			var fe provision.FieldErrors
+			switch {
+			case err == nil:
+				ok.Add(1)
+			case errors.As(err, &fe) && fe["hostname"].Key == "servers.err.hostname_used":
+				used.Add(1)
+			default:
+				t.Errorf("create %d: %v", i, err)
+			}
+		}()
+	}
+	wg.Wait()
+	if ok.Load() != 1 || used.Load() != n-1 {
+		t.Fatalf("%d created, %d refused", ok.Load(), used.Load())
+	}
+}

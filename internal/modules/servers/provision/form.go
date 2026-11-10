@@ -43,6 +43,9 @@ type Form struct {
 	Version    int // 0 = the template's default version
 	Params     map[string]string
 	Notes      string
+	// Hostname is the server's management and proxy hostname; "" takes the
+	// name the hostname pattern gives.
+	Hostname string
 }
 
 // Msg is a refusal: an i18n key and its arguments.
@@ -193,24 +196,45 @@ func (s *Service) check(ctx context.Context, f Form, withPassword bool) (*checke
 	}
 
 	// the name, the hostname and Cloudflare
-	pattern, perr := s.Settings.Get(ctx, conf.HostnamePatternKey)
-	if perr == nil && pattern == "" {
-		// Without a pattern no country gives a name, so this shows before one
-		// is picked.
-		fe(errs, "hostname", "servers.err.no_hostname_pattern")
-	}
-	if c.prefix != "" && perr == nil && pattern != "" {
-		n, err := store.NextNumber(ctx, s.DB.R, c.prefix)
-		if err == nil {
-			c.number = n
-			if h, herr := render.Hostname(pattern, c.prefix, n); herr != nil {
-				fe(errs, "hostname", "servers.err.hostname_pattern")
-			} else {
-				c.hostname = h
+	c.form.Hostname = NormalizeHostname(f.Hostname)
+	if c.form.Hostname != "" {
+		if render.ValidHostname(c.form.Hostname) != nil {
+			fe(errs, "hostname", "servers.err.hostname_invalid")
+		} else {
+			c.hostname = c.form.Hostname
+		}
+		if c.prefix != "" {
+			if n, err := store.NextNumber(ctx, s.DB.R, c.prefix); err == nil {
+				c.number = n
+			}
+		}
+	} else {
+		pattern, perr := s.Settings.Get(ctx, conf.HostnamePatternKey)
+		if perr == nil && pattern == "" {
+			// Without a pattern no country gives a name, so this shows before
+			// one is picked.
+			fe(errs, "hostname", "servers.err.no_hostname_pattern")
+		}
+		if c.prefix != "" && perr == nil && pattern != "" {
+			n, err := store.NextNumber(ctx, s.DB.R, c.prefix)
+			if err == nil {
+				c.number = n
+				if h, herr := render.Hostname(pattern, c.prefix, n); herr != nil {
+					fe(errs, "hostname", "servers.err.hostname_pattern")
+				} else {
+					c.hostname = h
+				}
 			}
 		}
 	}
 	if c.hostname != "" {
+		// A pattern name held by the server of that very name is a create that
+		// committed meanwhile: Create takes the next number in its
+		// transaction, and checks again there.
+		name, ok, err := store.HolderOfHostname(ctx, s.DB.R, c.hostname)
+		if err == nil && ok && (c.form.Hostname != "" || name != fmt.Sprintf("%s-%d", c.prefix, c.number)) {
+			fe(errs, "hostname", "servers.err.hostname_used", "host", c.hostname, "name", name)
+		}
 		s.checkRouting(ctx, c.hostname, errs)
 	}
 	if token, err := s.Settings.Get(ctx, cloudflare.TokenKey); err == nil && token == "" {
@@ -226,6 +250,12 @@ func (s *Service) check(ctx context.Context, f Form, withPassword bool) (*checke
 		}
 	}
 	return c, errs
+}
+
+// NormalizeHostname is the hostname as typed in the form, trimmed and in
+// lower case, without the root's trailing dot.
+func NormalizeHostname(h string) string {
+	return strings.TrimSuffix(strings.ToLower(strings.TrimSpace(h)), ".")
 }
 
 // checkRouting refuses a hostname a routing list covers: the router would send
@@ -365,13 +395,22 @@ func (s *Service) Create(ctx context.Context, f Form, actor string) (int64, erro
 		if err != nil {
 			return err
 		}
-		pattern, err := s.Settings.Get(ctx, conf.HostnamePatternKey)
-		if err != nil {
-			return err
+		host := c.form.Hostname
+		if host == "" {
+			pattern, err := s.Settings.Get(ctx, conf.HostnamePatternKey)
+			if err != nil {
+				return err
+			}
+			if host, err = render.Hostname(pattern, c.prefix, number); err != nil {
+				return err
+			}
 		}
-		host, err := render.Hostname(pattern, c.prefix, number)
-		if err != nil {
+		// Checked again here: two creates at once must not share a hostname.
+		switch name, ok, err := store.HolderOfHostname(ctx, tx, host); {
+		case err != nil:
 			return err
+		case ok:
+			return FieldErrors{"hostname": {Key: "servers.err.hostname_used", Args: i18n.Args{"host": host, "name": name}}}
 		}
 		id, err = store.InsertServer(ctx, tx, store.NewServer{
 			Country: c.form.Country, Number: number, Name: fmt.Sprintf("%s-%d", c.prefix, number), IP: c.form.IP, SSHPort: c.form.SSHPort,
@@ -395,7 +434,7 @@ func (s *Service) Create(ctx context.Context, f Form, actor string) (int64, erro
 			return err
 		}
 		_, err = s.Events.Record(ctx, tx, events.Event{Type: "server.created", Subject: store.ServerSubject(id), Actor: actor,
-			Payload: map[string]any{"ip": c.form.IP, "country": c.form.Country, "template_version": c.version}})
+			Payload: map[string]any{"ip": c.form.IP, "country": c.form.Country, "hostname": host, "template_version": c.version}})
 		return err
 	})
 	if err != nil {

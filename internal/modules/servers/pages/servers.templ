@@ -69,6 +69,18 @@ templ newServerPage(s ui.Shell, v newView) {
 							<option value={ label }></option>
 						}
 					</datalist>
+					<div class="field">
+						<label for="srv-host">
+							{ i18n.T(ctx, "servers.new.hostname") }
+							<span class="sm subtle">· { i18n.T(ctx, "servers.new.optional") }</span>
+						</label>
+						<input id="srv-host" class="pc-inp" name="hostname" value={ v.Hostname } placeholder="vpn.example.com" autocomplete="off" spellcheck="false" autocapitalize="none" aria-invalid?={ v.Errs["hostname"] != "" }/>
+						if v.Errs["hostname"] != "" {
+							<p class="err" role="alert">{ v.Errs["hostname"] }</p>
+						} else {
+							<p class="help">{ i18n.T(ctx, "servers.new.hostname.help") }</p>
+						}
+					</div>
 					<h2 class="grp">{ i18n.T(ctx, "servers.new.template") }</h2>
 					<div class="field">
 						<label for="srv-tpl">{ i18n.T(ctx, "servers.new.template") }</label>

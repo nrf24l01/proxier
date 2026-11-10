@@ -76,6 +76,19 @@ func HolderOfIP(ctx context.Context, q sqlx.QueryerContext, ip string) (IPHolder
 	return h, err == nil, err
 }
 
+// HolderOfHostname returns the name of the non-retired server that has host
+// as its management or proxy hostname. Two servers never share one: both
+// would want the same DNS record.
+func HolderOfHostname(ctx context.Context, q sqlx.QueryerContext, host string) (string, bool, error) {
+	var name string
+	err := sqlx.GetContext(ctx, q, &name, `SELECT name FROM servers_servers
+		WHERE (management_hostname = ? OR proxy_hostname = ?) AND state <> 'retired' LIMIT 1`, host, host)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	return name, err == nil, err
+}
+
 // SetServerIP moves a server to ip and starts its checks over from at: the
 // health state is unknown, no candidate counts.
 func SetServerIP(ctx context.Context, tx sqlx.ExtContext, id int64, ip string, at db.Time) error {

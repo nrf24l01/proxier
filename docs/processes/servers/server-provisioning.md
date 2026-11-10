@@ -10,6 +10,7 @@ Provisioning turns a freshly issued VPS (an IP and a root password) into an **ac
    - **IP address** (IPv4) and **SSH port** (default 22, under "advanced").
    - **Root password**, never shown again.
    - **Country**, a searchable picker: typing filters the list of every country by name (in the member's language) or code, and the field takes "🇳🇱 Netherlands · NL"; a code (`nl`) or a name in English or Russian typed in full counts too. It is preselected from the IP's country. The country's lower-case code is the first half of the server name ([ADR 0015](../../adr/0015-servers-have-a-country-not-a-location.md)).
+   - **Hostname**, optional: the management and proxy hostname, e.g. `vpn.example.com`. Left empty, the server gets the name the hostname pattern gives (`nl-2.hosts.example.com`). Proxier trims it, writes it in lower case and drops a trailing dot.
    - **Template** and **version** (default version preselected), then the version's **parameters** as form fields with labels, help and defaults.
    - **Notes**.
 2. While the member types, the form shows what will be created: the server name (`nl-2`), the management and proxy hostnames, the DNS record, and the endpoints with their display names. A picker the member hasn't chosen in (empty with nothing suggested yet, or showing what the IP suggested last) follows the IP's country as the summary updates; anything else in it (a half-typed name, an emptied field, a country they picked) is theirs, and the summary never replaces it. Until a country is picked the summary shows no name, and text that names no country is refused only on **Create**.
@@ -17,12 +18,14 @@ Provisioning turns a freshly issued VPS (an IP and a root password) into an **ac
    - no non-retired server has this IP, as its IP or as a previous IP it keeps ([IP change](./ip-change.md));
    - the country is a country (an ISO code in use today), and the template version exists and the template isn't archived;
    - parameters pass validation;
-   - the hostname pattern in Settings → Servers is set;
+   - the hostname pattern in Settings → Servers is set, unless the member typed a hostname;
+   - a typed hostname is a full DNS name: two labels or more, letters, digits and hyphens, no wildcard;
+   - no non-retired server has the hostname, as its management or proxy hostname. Create checks it again in its transaction, so two servers created at once never share one;
    - Cloudflare is configured and a configured zone covers the hostname;
    - no routing list covers the hostname (when the routing module is enabled): a list holding `example.com`, or the hostname itself, would send Proxier's checks of the server into the router's tunnel. Any name listed in any list counts, even one the list doesn't install. The live summary says it too: "nl-3.hosts.example.com is covered by example.com (my-sites) in Main: Proxier's checks would go into the tunnel. Take it out of the list first."
 
    Failures are shown on the form and nothing is created.
-4. The server is created in **provisioning** with its name reserved, the root password goes encrypted into the job payload, and the job is queued. The browser goes to the server page, which shows the steps and the live log. → `server.created{ip, country, template_version}`
+4. The server is created in **provisioning** with its name reserved, the root password goes encrypted into the job payload, and the job is queued. The browser goes to the server page, which shows the steps and the live log. → `server.created{ip, country, hostname, template_version}`
 
 ## Steps: the job
 
@@ -88,7 +91,14 @@ The job makes one attempt and never retries by itself: a retry may need input, s
 - Typing "Neth" in the picker, emptying it, or picking Finland while the IP suggests another country → the field is left as it is; the summary shows no name for "Neth" and no complaint while it is typed.
 - "Atlantis", a withdrawn code (`UK`) or nothing in the picker → refused on **Create** ("Pick a country from the list." / "Pick a country."), the text kept, nothing created. `nl` or "Нидерланды" typed in full → the Netherlands.
 - "Main" holds a custom service with suffix `example.com`; the new server would be `nl-3.hosts.example.com` → refused on the form, naming the list and the service, nothing created.
-- A new install has no hostname pattern → the form's summary says so before a country is picked, and **Create** refuses it. Nothing is created. Settings → Servers and the dashboard's first-run list ask for the pattern.
+- Hostname `VPN.example.com.` typed → the summary shows `nl-2` with `vpn.example.com`. The job makes the A record for `vpn.example.com`, the certificate and the connection URIs name it, and `server.created` records it. The next server without a typed hostname gets the pattern's name again.
+- Hostname `vpn`, `my vpn.example.com`, `-vpn.example.com`, `*.example.com` or `https://vpn.example.com/` → refused, "Enter a full DNS name such as vpn.example.com.", nothing created.
+- Hostname `vpn.example.org` where no configured zone covers `example.org` → refused, "vpn.example.org is in none of the zones Proxier may use. Allow its zone under Integrations → Cloudflare."
+- Hostname `nl-1.hosts.example.com` while `nl-1` is active → refused, "nl-1 already has nl-1.hosts.example.com." Once `nl-1` is retired, the name is free.
+- `de-1` was given the hostname `nl-3.hosts.example.com`; the next server in the Netherlands would get that name from the pattern → refused, naming `de-1`. Typing another hostname gets it through.
+- Two servers created at once with the same typed hostname → one is created, the other refused.
+- A typed hostname covered by a routing list → refused, naming the list and the service, as for a pattern name.
+- A new install has no hostname pattern → the form's summary says so before a country is picked, and **Create** refuses it unless the member typed a hostname. Nothing is created. Settings → Servers and the dashboard's first-run list ask for the pattern.
 - An install that built servers while the pattern had a default, and never saved one → a migration saves the pattern rebuilt from the newest server's management hostname: `nl-2.hosts.example.com` gives `{country}-{number}.hosts.example.com`. A pattern saved in Settings stays.
 - Wrong root password → fails at preflight with "authentication failed". The password stays encrypted for retry. **Retry** asks for it again.
 - IP unreachable (timeout) → fails at preflight. The DNS is untouched.

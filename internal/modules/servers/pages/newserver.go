@@ -55,6 +55,7 @@ func (p paramField) inputMode() string {
 
 type newView struct {
 	IP, Port, Notes string
+	Hostname        string            // as typed; "" takes the hostname pattern's name
 	Errs            map[string]string // translated, by form field
 	Country         string            // the picker's text: a country's label, or what was typed
 	Auto            string            // the country the IP suggested last, "" for none
@@ -79,7 +80,7 @@ func formOf(c *echo.Context) provision.Form {
 	f := provision.Form{
 		IP: c.FormValue("ip"), RootPassword: c.FormValue("root_password"), SSHPort: int(atoi("ssh_port")),
 		Country: countryOf(c.FormValue("country")), TemplateID: atoi("template"), Version: int(atoi("version")),
-		Notes: c.FormValue("notes"), Params: map[string]string{},
+		Notes: c.FormValue("notes"), Hostname: c.FormValue("hostname"), Params: map[string]string{},
 	}
 	if err := c.Request().ParseForm(); err == nil {
 		for k, vs := range c.Request().PostForm {
@@ -105,7 +106,7 @@ func countryOf(text string) string {
 // is shown by its label in the admin's language, anything else as typed.
 func (h *handler) newViewOf(ctx context.Context, f provision.Form, auto string) (newView, error) {
 	lang := string(i18n.From(ctx).Lang)
-	v := newView{IP: f.IP, Notes: f.Notes, Country: f.Country, Auto: auto, Version: f.Version, TemplateID: f.TemplateID}
+	v := newView{IP: f.IP, Notes: f.Notes, Hostname: f.Hostname, Country: f.Country, Auto: auto, Version: f.Version, TemplateID: f.TemplateID}
 	if country.Valid(f.Country) {
 		v.Country = country.Label(f.Country, lang)
 	}
@@ -193,7 +194,7 @@ func (h *handler) newServer(c *echo.Context) error {
 // formOfView is the form a view stands for, for the summary of a first visit.
 func (h *handler) formOfView(v newView) provision.Form {
 	port, _ := strconv.Atoi(v.Port)
-	return provision.Form{IP: v.IP, SSHPort: port, Country: countryOf(v.Country), TemplateID: v.TemplateID, Version: v.Version, Params: map[string]string{}}
+	return provision.Form{IP: v.IP, SSHPort: port, Country: countryOf(v.Country), Hostname: v.Hostname, TemplateID: v.TemplateID, Version: v.Version, Params: map[string]string{}}
 }
 
 func (h *handler) renderNewServer(c *echo.Context, status int, v newView) error {

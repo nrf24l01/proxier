@@ -116,3 +116,45 @@ func TestNewServerTemplateVersionRefresh(t *testing.T) {
 		t.Fatalf("provisioned version %d, want 6", srvs[0].TemplateVersion)
 	}
 }
+
+// The hostname typed in the form is the one checked, shown and kept.
+func TestNewServerCustomHostname(t *testing.T) {
+	h := serverstest.NewHarness(t, serverstest.StubProxy())
+	g := &routedGuard{}
+	h.Mod.SetRouting(g)
+	f := h.Form()
+	form := url.Values{
+		"ip": {f.IP}, "ssh_port": {strconv.Itoa(f.SSHPort)}, "root_password": {f.RootPassword}, "country": {h.Country},
+		"template": {sid(h.TemplateID)}, "version": {"1"}, "hostname": {"vpn.proxier.test"},
+	}
+	const want = "vpn.proxier.test is covered by proxier.test (my-sites) in Main"
+	rec := h.Login.Post("/servers/new/summary", url.Values{
+		"ip": {"203.0.113.24"}, "country": {h.Country}, "hostname": {"vpn.proxier.test"},
+		"template": {sid(h.TemplateID)}, "version": {"1"}, "params_for": {sid(h.TemplateID) + ":1"},
+	})
+	mustContain(t, rec.Body.String(), want)
+
+	rec = h.Login.Post("/servers", form)
+	if rec.Code != 422 {
+		t.Fatalf("%d\n%s", rec.Code, rec.Body)
+	}
+	mustContain(t, rec.Body.String(), want)
+	mustContain(t, rec.Body.String(), `name="hostname" value="vpn.proxier.test"`)
+
+	form.Set("hostname", "vpn")
+	h.Mod.SetRouting(nil)
+	rec = h.Login.Post("/servers", form)
+	if rec.Code != 422 {
+		t.Fatalf("%d\n%s", rec.Code, rec.Body)
+	}
+	mustContain(t, rec.Body.String(), "Enter a full DNS name such as vpn.example.com.")
+
+	form.Set("hostname", "vpn.proxier.test")
+	if rec = h.Login.Post("/servers", form); rec.Code != 303 {
+		t.Fatalf("%d\n%s", rec.Code, rec.Body)
+	}
+	h.Drain()
+	if srvs, _ := store.ListServers(bg, h.App.DB.R); len(srvs) != 1 || srvs[0].ManagementHostname != "vpn.proxier.test" {
+		t.Fatalf("servers: %+v", srvs)
+	}
+}
