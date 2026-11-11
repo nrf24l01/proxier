@@ -27,6 +27,9 @@ type addressView struct {
 	IP, Host  string
 	Errs      map[string]string
 	Saved     bool
+	// RedeployErr is why the redeploy after a saved change did not start; the
+	// page shows servers.addr.not_redeployed with it.
+	RedeployErr string
 }
 
 func (h *handler) addressView(ctx context.Context, s store.Server) (addressView, error) {
@@ -71,7 +74,7 @@ func (h *handler) addressesPost(c *echo.Context) error {
 		}
 		return err
 	}
-	return h.redeployAddresses(c, s.ID)
+	return h.redeployAddresses(c, s)
 }
 
 func (h *handler) addressDelete(c *echo.Context) error {
@@ -96,15 +99,26 @@ func (h *handler) addressDelete(c *echo.Context) error {
 		}
 		return err
 	}
-	return h.redeployAddresses(c, s.ID)
+	return h.redeployAddresses(c, s)
 }
 
 // redeployAddresses applies the addresses to the stack. A template that
 // ignores addresses changes nothing, and that is fine.
-func (h *handler) redeployAddresses(c *echo.Context, id int64) error {
+//
+// The change is already stored when this runs, so a failed redeploy is no
+// error page: the member sees the addresses page with the reason and
+// redeploys from the server page.
+func (h *handler) redeployAddresses(c *echo.Context, s store.Server) error {
 	ctx := c.Request().Context()
+	id := s.ID
 	if _, err := h.Deploy.Apply(ctx, id, deploy.Target{Force: true}, "", web.Actor(ctx)); err != nil && !errors.Is(err, deploy.ErrNothingToChange) {
-		return err
+		h.Log.Warn("redeploy after an address change did not start", "server", id, "error", err)
+		v, verr := h.addressView(ctx, s)
+		if verr != nil {
+			return verr
+		}
+		v.RedeployErr = err.Error()
+		return h.renderAddresses(c, http.StatusOK, v)
 	}
 	return web.Redirect(c, serverHref(id)+"/addresses?saved=1")
 }

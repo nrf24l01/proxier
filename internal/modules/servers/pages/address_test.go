@@ -46,7 +46,7 @@ func TestServerAddressesPageAddsAndRemoves(t *testing.T) {
 		want string
 	}{
 		{"the primary IP", url.Values{"ip": {"127.0.0.1"}, "hostname": {"second.example.org"}}, "Each additional address needs its own IP"},
-		{"a taken hostname", url.Values{"ip": {"127.0.0.3"}, "hostname": {"alt.example.org"}}, "already belongs"},
+		{"a taken hostname", url.Values{"ip": {"127.0.0.3"}, "hostname": {"alt.example.org"}}, "needs its own hostname"},
 		{"not a hostname", url.Values{"ip": {"127.0.0.4"}, "hostname": {"not a host"}}, "full DNS name"},
 	} {
 		rec = h.Login.Post("/servers/"+sid(id)+"/addresses", c.vals)

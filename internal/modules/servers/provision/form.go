@@ -35,7 +35,12 @@ import (
 )
 
 // FormAddress is one additional address row of the new-server form.
-type FormAddress struct{ IP, Hostname string }
+type FormAddress struct {
+	IP, Hostname string
+	// row is the row's place in the form, for the error of the check that
+	// runs again in the writing transaction.
+	row int
+}
 
 // Form is what the new-server form posts.
 type Form struct {
@@ -213,6 +218,11 @@ func (s *Service) check(ctx context.Context, f Form, withPassword bool) (*checke
 		default:
 			fe(errs, "ip", "servers.err.ip_used", "name", other.Name)
 		}
+	}
+	// The same IP is no separate SSH address: left empty, SSH follows the
+	// primary IP through an IP change instead of staying on the old one.
+	if c.form.SSHIP == c.form.IP {
+		c.form.SSHIP = ""
 	}
 	if c.form.SSHPort < 1 || c.form.SSHPort > 65535 {
 		fe(errs, "ssh_port", "servers.err.ssh_port")
@@ -394,72 +404,29 @@ func (s *Service) checkManualDNS(ctx context.Context, c *checked, errs FieldErro
 // refusal. Proxier does not manage their DNS, so no record is looked up.
 func (s *Service) checkAddresses(ctx context.Context, rows []FormAddress, primaryIP, primaryHost string, errs FieldErrors) []FormAddress {
 	out := make([]FormAddress, 0, len(rows))
-	seenIP := map[string]bool{}
-	if _, err := netip.ParseAddr(primaryIP); err == nil {
-		seenIP[primaryIP] = true
-	}
-	seenHost := map[string]bool{}
-	if primaryHost != "" {
-		seenHost[primaryHost] = true
-	}
+	used := NewAddressSet(primaryIP, primaryHost)
 	for i, row := range rows {
 		ip, host := strings.TrimSpace(row.IP), NormalizeHostname(row.Hostname)
-		keyIP, keyHost := fmt.Sprintf("addr_ip_%d", i), fmt.Sprintf("addr_host_%d", i)
 		if ip == "" && host == "" {
 			continue
 		}
-		ok := true
-		switch addr, err := netip.ParseAddr(ip); {
-		case ip == "":
-			fe(errs, keyIP, "servers.err.ip_required")
-			ok = false
-		case err != nil || !addr.Is4() || addr.Is4In6():
-			fe(errs, keyIP, "servers.err.ip_v4")
-			ok = false
-		default:
-			ip = addr.String()
-			switch name, taken, herr := store.HolderOfIP(ctx, s.DB.R, ip); {
-			case seenIP[ip]:
-				fe(errs, keyIP, "servers.err.addr_ip_dup", "ip", ip)
-				ok = false
-			case herr != nil:
-				fe(errs, keyIP, "servers.err.addr_check", "error", herr.Error())
-				ok = false
-			case taken:
-				fe(errs, keyIP, "servers.err.addr_ip_used", "name", name)
-				ok = false
-			default:
-				seenIP[ip] = true
-			}
-		}
-		switch {
-		case host == "":
-			fe(errs, keyHost, "servers.err.hostname_required")
-			ok = false
-		case render.ValidHostname(host) != nil:
-			fe(errs, keyHost, "servers.err.hostname_invalid")
-			ok = false
-		default:
-			name, taken, herr := store.HolderOfHostname(ctx, s.DB.R, host)
-			switch {
-			case seenHost[host]:
-				fe(errs, keyHost, "servers.err.addr_host_dup", "host", host)
-				ok = false
-			case herr != nil:
-				fe(errs, keyHost, "servers.err.addr_check", "error", herr.Error())
-				ok = false
-			case taken:
-				fe(errs, keyHost, "servers.err.addr_host_used", "name", name)
-				ok = false
-			default:
-				seenHost[host] = true
-			}
-		}
-		if ok {
-			out = append(out, FormAddress{IP: ip, Hostname: host})
+		nip, nhost, rowErrs := CheckAddress(ctx, s.DB.R, 0, used, ip, host)
+		rowFieldErrors(errs, i, rowErrs)
+		if len(rowErrs) == 0 {
+			out = append(out, FormAddress{IP: nip, Hostname: nhost, row: i})
 		}
 	}
 	return out
+}
+
+// rowFieldErrors copies a row's refusals under the form's per-row field names.
+func rowFieldErrors(errs FieldErrors, row int, rowErrs FieldErrors) {
+	if m, bad := rowErrs["ip"]; bad {
+		errs[fmt.Sprintf("addr_ip_%d", row)] = m
+	}
+	if m, bad := rowErrs["hostname"]; bad {
+		errs[fmt.Sprintf("addr_host_%d", row)] = m
+	}
 }
 
 // NormalizeHostname is the hostname as typed in the form, trimmed and in
@@ -658,7 +625,15 @@ func (s *Service) Create(ctx context.Context, f Form, actor string) (int64, erro
 		if err != nil {
 			return err
 		}
+		// Checked again here, where no other create can slip in between the
+		// check and the insert; the form's check only gives early field errors.
+		used := NewAddressSet(c.form.IP, host)
 		for _, a := range c.form.Addresses {
+			if _, _, rowErrs := CheckAddress(ctx, tx, id, used, a.IP, a.Hostname); len(rowErrs) > 0 {
+				out := FieldErrors{}
+				rowFieldErrors(out, a.row, rowErrs)
+				return out
+			}
 			if _, err := store.InsertAddress(ctx, tx, id, a.IP, a.Hostname, db.At(s.Now())); err != nil {
 				return err
 			}

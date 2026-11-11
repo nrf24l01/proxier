@@ -14,16 +14,13 @@ import (
 )
 
 func TestSeparateSSHIP(t *testing.T) {
-	for _, management := range []string{"100.64.0.10", "fd7a:115c:a1e0::10", "192.168.1.10", "203.0.113.10", "primary"} {
+	for _, management := range []string{"100.64.0.10", "fd7a:115c:a1e0::10", "192.168.1.10", "203.0.113.10"} {
 		t.Run(management, func(t *testing.T) {
 			h := serverstest.NewHarness(t, serverstest.StubProxy())
 			h.PublishVersion(func(files map[string][]byte) {
 				files["site/index.html"] = []byte(`service={{ .Server.IP }} ssh={{ .Server.SSHIP }} primary={{ (index .Addresses 0).IP }}`)
 			}, true)
 			f := h.Form()
-			if management == "primary" {
-				management = f.IP
-			}
 			f.SSHIP = " " + management + " "
 			// All SSH to the public IP must fail: every lifecycle connection
 			// needs to use the separately configured management address.

@@ -16,6 +16,7 @@ import (
 	"github.com/tikhonp/proxier/internal/modules/servers/endpoint"
 	"github.com/tikhonp/proxier/internal/modules/servers/gen"
 	"github.com/tikhonp/proxier/internal/modules/servers/manifest"
+	"github.com/tikhonp/proxier/internal/modules/servers/provision"
 	"github.com/tikhonp/proxier/internal/modules/servers/remote"
 	"github.com/tikhonp/proxier/internal/modules/servers/render"
 	"github.com/tikhonp/proxier/internal/modules/servers/sealed"
@@ -192,15 +193,6 @@ func (c *computed) renderContext() render.Context {
 	}
 }
 
-// renderAddresses is the primary address followed by the additional ones.
-func renderAddresses(srv store.Server, extra []store.Address) []render.Address {
-	out := []render.Address{{IP: srv.IP, Hostname: srv.ProxyHostname, Number: 1, Primary: true}}
-	for _, a := range extra {
-		out = append(out, render.Address{IP: a.IP, Hostname: a.Hostname, Number: a.Position})
-	}
-	return out
-}
-
 // parseVersion loads a version's manifest.
 func (s *Service) parseVersion(ctx context.Context, templateID int64, n int) (*manifest.Manifest, map[string][]byte, error) {
 	v, err := s.Templates.Version(ctx, templateID, n)
@@ -237,7 +229,7 @@ func (s *Service) compute(ctx context.Context, srv store.Server, t Target, genOv
 	if err != nil {
 		return nil, err
 	}
-	c.Addrs = renderAddresses(srv, extra)
+	c.Addrs = provision.RenderAddresses(srv, extra)
 
 	var tplFiles map[string][]byte
 	if c.Man, tplFiles, err = s.parseVersion(ctx, srv.TemplateID, t.Version); err != nil {

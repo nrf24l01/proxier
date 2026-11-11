@@ -158,16 +158,6 @@ type data struct {
 	Addrs   []render.Address
 }
 
-// renderAddresses is the primary address followed by the additional ones, in
-// the order templates and endpoints see them.
-func renderAddresses(srv store.Server, extra []store.Address) []render.Address {
-	out := []render.Address{{IP: srv.IP, Hostname: srv.ProxyHostname, Number: 1, Primary: true}}
-	for _, a := range extra {
-		out = append(out, render.Address{IP: a.IP, Hostname: a.Hostname, Number: a.Position})
-	}
-	return out
-}
-
 // step wraps a step function: it loads the server, ends the step's context
 // when the admin cancels, and turns what a cancel breaks into ErrCancelled.
 func (s *Service) step(fn func(ctx context.Context, r *jobs.Run, d *data) error) func(context.Context, *jobs.Run) error {
@@ -212,7 +202,7 @@ func (s *Service) load(ctx context.Context, r *jobs.Run) (*data, error) {
 	if err != nil {
 		return nil, err
 	}
-	d.Addrs = renderAddresses(srv, extra)
+	d.Addrs = RenderAddresses(srv, extra)
 	tpl, err := store.GetTemplate(ctx, s.DB.R, srv.TemplateID)
 	if err != nil {
 		return nil, err
@@ -820,7 +810,7 @@ func (s *Service) PreviewContext(ctx context.Context, serverID int64, reveal boo
 	if err != nil {
 		return nil, err
 	}
-	addrs := renderAddresses(srv, extra)
+	addrs := RenderAddresses(srv, extra)
 	public := store.ParseParams(srv.Params)
 	return func(m *manifest.Manifest, slug string) (render.Context, error) {
 		all, _, err := gen.Ensure(m.Generated, have)

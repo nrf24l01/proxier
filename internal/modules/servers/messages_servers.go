@@ -221,6 +221,7 @@ var serverMessages = i18n.Messages{
 	"servers.addr.add":            {EN: "Add address", RU: "Добавить адрес"},
 	"servers.addr.help":           {EN: "A full DNS name. Its record is yours; the server's endpoints can bind to this address by number.", RU: "Полное DNS-имя. Его запись — ваша; endpoints сервера могут привязаться к этому адресу по номеру."},
 	"servers.addr.saved":          {EN: "Saved. The server is being redeployed; the addresses take effect when it is done.", RU: "Сохранено. Сервер разворачивается заново; адреса заработают после завершения."},
+	"servers.addr.not_redeployed": {EN: "The address change was saved, but the redeploy did not start: {error}. Redeploy the server from its page to apply it.", RU: "Изменение адресов сохранено, но развёртывание не началось: {error}. Разверните сервер заново на его странице, чтобы применить изменение."},
 	"servers.addr.redeploy":       {EN: "Saving redeploys the server.", RU: "Сохранение развернёт сервер заново."},
 	"servers.kv.addresses":        {EN: "Additional addresses", RU: "Дополнительные адреса"},
 	"servers.kv.country":          {EN: "Country", RU: "Страна"},
