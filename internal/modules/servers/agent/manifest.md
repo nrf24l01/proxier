@@ -114,7 +114,7 @@ Files, step arguments, endpoint fields and check arguments are Go templates. Mis
 | `.Address` | inside an endpoint with `address:`: that address's `{IP, Hostname, Number, Primary}`; nil in files |
 | `.Params.<key>` | parameters |
 | `.Gen.<key>` | generated values |
-| `.Clients` | the client identities the stack must accept: a list of `{ID, Name}`. It holds one entry: the endpoint credential, named `shared`. |
+| `.Clients` | the client identities the stack must accept: a list of `{ID, Name}`. It holds one entry per distinct endpoint credential: the first is named `shared`, the others `shared-<endpoint key>`. A template with one credential sees one entry. |
 | `.Template.Slug`, `.Template.Version` | `vless-xhttp`, `3` |
 
 Functions: `json`, `quote`, `default`, `lower`, `upper`, `trim`, `urlquery`, `b64enc`, `sha256`, `join`, `indent`.

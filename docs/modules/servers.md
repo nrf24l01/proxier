@@ -155,7 +155,7 @@ Files, step arguments, endpoint fields and check arguments are Go templates. Mis
 | `.Address` | inside an endpoint with `address:`: that address's `{IP, Hostname, Number, Primary}`; nil in files |
 | `.Params.<key>` | parameters |
 | `.Gen.<key>` | generated values |
-| `.Clients` | the client identities the stack must accept: a list of `{ID, Name}`. It holds one entry: the endpoint credential, named `shared`. |
+| `.Clients` | the client identities the stack must accept: a list of `{ID, Name}`. It holds one entry per distinct endpoint credential: the first is named `shared`, the others `shared-<endpoint key>`. A template with one credential sees one entry. |
 | `.Template.Slug`, `.Template.Version` | `vless-xhttp`, `3` |
 
 Functions: `json`, `quote`, `default`, `lower`, `upper`, `trim`, `urlquery`, `b64enc`, `sha256`, `join`, `indent`.
@@ -266,7 +266,7 @@ Summarised here, defined in the process docs:
 |---|---|---|
 | `EndpointCatalog` | subscriptions | Active servers with their endpoints (display name, type, host, port, credential, params), health state and "since". Changes arrive as events (`server.activated`, `server.redeployed`, `server.credentials_rotated`, `server.health_changed`, `server.retired`). |
 | `Rotator` | subscriptions (cut-off) | `RotationRequest(serverID, actor)`: the `servers.rotate` job (resource key `server:<id>`) for the caller to enqueue in its own transaction; nothing is enqueued. `ErrNotActive` for a server that isn't active, is retiring or is gone; `ErrNothingToRotate` when its version marks no generated value `rotate: true`. Every way the job ends records `server.credentials_rotated` or `server.redeploy_failed{kind: rotate}` with actor `job:<id>`. |
-| `ServerHostnames` | routing | `Servers(ctx)`: every server whose state isn't `retired` (a retiring one included: its DNS still points at it), by id, with its name, IP and management and proxy hostnames (no empty or duplicate ones). Routing refuses to route the hostnames and names the server; services hold no IPs, so it doesn't use them. |
+| `ServerHostnames` | routing | `Servers(ctx)`: every server whose state isn't `retired` (a retiring one included: its DNS still points at it), by id, with its name, IP and management, proxy and additional-address hostnames (no empty or duplicate ones; a name that leads to the server through any address must not be routed through it). Routing refuses to route the hostnames and names the server; services hold no IPs, so it doesn't use them. |
 | `ProxyDialer` | routing (discovery) | A dial function (`servers.DialFunc`) and its closer that send traffic through a chosen active server's endpoint (an in-process xray client). Discovery's SOCKS listener relays through it. |
 
 It consumes one port from routing: `RoutingGuard` (`Covering(ctx, hostnames)`, set by `SetRouting`), which the new-server form asks before creating anything; a hostname a routing list covers is a form error naming the list and the service. Without the routing module it is nil and nothing is checked.

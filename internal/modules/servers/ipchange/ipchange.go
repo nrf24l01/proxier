@@ -288,8 +288,8 @@ func (s *Service) connect(ctx context.Context, r *jobs.Run) error {
 	return nil
 }
 
-// proxyTest runs the proxy test from home through every endpoint at the new
-// IP, as clients will once DNS leads there, with provisioning's pace.
+// proxyTest runs the proxy test from home through every primary-address
+// endpoint at the new IP, as clients will once DNS leads there, with provisioning's pace.
 func (s *Service) proxyTest(ctx context.Context, r *jobs.Run) error {
 	p, srv, err := s.load(ctx, r)
 	if err != nil {
@@ -303,6 +303,10 @@ func (s *Service) proxyTest(ctx context.Context, r *jobs.Run) error {
 	if err != nil {
 		return err
 	}
+	addrs, err := store.ServerAddresses(ctx, s.DB.R, srv.ID)
+	if err != nil {
+		return err
+	}
 	tplURL, err := s.ProxyTestURL(ctx, srv.ID)
 	if err != nil {
 		return err
@@ -313,6 +317,13 @@ func (s *Service) proxyTest(ctx context.Context, r *jobs.Run) error {
 	}
 	sm := s.seams()
 	for _, e := range eps {
+		// An endpoint on an additional address stays at that address, which
+		// the change does not touch: testing it says nothing about the new IP
+		// (and aimed at the new IP it would fail for the wrong reason).
+		if onAdditionalAddress(addrs, e.Host) {
+			r.Log().Info("Skipped %s: it is on an additional address, which this change leaves as it is", e.Key)
+			continue
+		}
 		opts := proxy.Options{URL: url, Timeout: timeout, Stall: stall, Resolve: map[string]string{
 			net.JoinHostPort(e.Host, strconv.Itoa(e.Port)): net.JoinHostPort(p.To, strconv.Itoa(e.Port)),
 		}}
@@ -362,6 +373,18 @@ func (s *Service) seams() Seams {
 		sm.Gap = 20 * time.Second
 	}
 	return sm
+}
+
+// onAdditionalAddress tells whether an endpoint's host is the hostname of one
+// of the server's additional addresses. Endpoints store no address number; an
+// address-bound endpoint takes that address's hostname as its host.
+func onAdditionalAddress(addrs []store.Address, host string) bool {
+	for _, a := range addrs {
+		if a.Hostname == host {
+			return true
+		}
+	}
+	return false
 }
 
 // hostnames are the names whose records lead to the server.

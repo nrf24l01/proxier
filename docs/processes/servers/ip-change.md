@@ -26,6 +26,7 @@ The dialog lists these steps.
 3. **Change IP** checks the form and queues the job. Nothing is written yet. Refused, with nothing queued:
    - not an IPv4 address;
    - the server's own IP ("nl-1 has this IP already.");
+   - an additional address of this server ("nl-1 has this IP as an additional address. Remove that address first.");
    - another non-retired server's IP, or one it keeps as a previous IP.
 4. The browser goes to the server page, which shows the job's steps and log.
 
@@ -35,7 +36,7 @@ The job holds `server:<id>`, so no other job changes the server meanwhile. Until
 
 1. **Reach the new IP.** Connect with Proxier's key as the server's stored SSH account, at the new IP and the server's SSH port. When that address has no pinned host key yet, its key must be the one pinned for the server's current address, which proves it is the same machine. Only then does Proxier pin the key for the new address ([ADR 0007](../../adr/0007-agentless-ssh-with-pinned-host-keys.md)). Another key fails the job ("it is another machine") and pins nothing. No answer fails it too, asking whether the IP is set up on the VPS.
    With an explicit **SSH connection IP**, this step instead verifies access at that unchanged management address using its pinned key. SSH need not be reachable on the new public IP; the next step checks the service there. The management address's pin is preserved even if it is also the old service IP.
-2. **Proxy test.** The proxy test from home through every endpoint, aimed at the new IP: the hostname stays in TLS and HTTP, as a client's will once DNS leads there. Up to 3 attempts, 20 s apart, like the smoke test. A failure stops the job ("failed from home too … nothing was changed"), unless the member chose to switch anyway; then it logs a warning and goes on.
+2. **Proxy test.** The proxy test from home through every endpoint on the primary address, aimed at the new IP (an endpoint on an additional address stays at that address, which the change does not touch, so it is skipped and logged): the hostname stays in TLS and HTTP, as a client's will once DNS leads there. Up to 3 attempts, 20 s apart, like the smoke test. A failure stops the job ("failed from home too … nothing was changed"), unless the member chose to switch anyway; then it logs a warning and goes on.
 3. **Repoint DNS.** For a record made by hand, Proxier only checks it: the zone's nameservers (or 1.1.1.1 and 8.8.8.8 when they can't be asked) must answer the new IP and nothing else. Otherwise the job stops with nothing changed and names the record to set. For the rest: bring each record Proxier made for the server (the management hostname's, and the proxy hostname's once they differ) to the new IP, keeping its comment, DNS-only and TTL 60. A record at the name that Proxier did not make stops the job, with nothing changed. Then, in one transaction:
    - store the record's new content and the server's new IP, and the time of the change;
    - when the new IP was a previous IP, drop it from the list, since the server switched back;
@@ -52,7 +53,7 @@ A failed or cancelled job → `server.ip_change_failed{to, step, error, cancelle
 ## Steps: previous IPs
 
 1. Every 30 minutes (Settings → Servers, **Previous IPs tested every**), a round queues a test of each active, unpaused, not retiring server that keeps a previous IP. An IP change queues one too (above).
-2. The test runs the proxy test from home through every endpoint of the server, aimed at each previous IP in turn. A previous IP **works** when every endpoint passes, and **fails** otherwise, with the first failing endpoint's class and error. Like the proxy test, it stores nothing while another job is changing the server.
+2. The test runs the proxy test from home through every endpoint on the primary address, aimed at each previous IP in turn (a previous IP was the primary address, so endpoints on additional addresses are left out). A previous IP **works** when every one of them passes, and **fails** otherwise, with the first failing endpoint's class and error. Like the proxy test, it stores nothing while another job is changing the server.
 3. While home is not `online`, results are stored marked inconclusive and change nothing.
 4. A previous IP starts as **untested**, and its first conclusive result applies at once. After that its state changes only when as many results in a row agree as a server's health needs (**Flap confirmations**, 2 by default). Each change → `server.previous_ip_changed{ip, from, to, error}`. Only `fails` → `works` notifies: "🟢 nl-1: previous IP 203.0.113.10 works again".
 5. The Health tab lists the previous IPs: the IP and until when it was the server's, its state and since when, the latest result, and a 24 h strip. Per IP:
@@ -90,4 +91,9 @@ A failed or cancelled job → `server.ip_change_failed{to, step, error, cancelle
 - A healthy server's IP changes → `unknown`, and an evaluation with only the results from before the change stays `unknown`; the new IP's first passing round → `healthy` (`TestResultsFromBeforeAnIPChangeDoNotCount`).
 - An IP a server keeps as a previous IP on the new-server form → refused, naming the server (`TestIPKeptAsPreviousIsRefused`).
 - Retire a server with a previous IP → the previous IP is gone and free for a new server (`TestRetireDropsPreviousIPs`).
+- The new IP is one of the server's own additional addresses → refused (`servers.ip.err.additional`), nothing queued (`TestChangeToAnAdditionalAddressIsRefused`).
+- An endpoint on an additional address that the stack rejects → the proxy test skips it with a log line and the change succeeds; a failing primary endpoint still stops it (`TestChangeSkipsEndpointsOnAdditionalAddresses`, `TestChangeWithAdditionalAddressStillTestsThePrimary`).
+- A previous IP test leaves out endpoints on additional addresses (`TestPreviousIPTestSkipsEndpointsOnAdditionalAddresses`).
+- A server with an explicit SSH connection IP → the change needs SSH only there. The new IP may refuse SSH and is not pinned. The management address stays pinned even when it is the old service IP and **Keep** is unchecked (`TestChangeKeepsSSHThroughTheSSHIP`).
+- The explicit SSH connection IP does not answer → fails at **Reach the new IP**, naming the management address; nothing changed (`TestChangeWithSSHIPDownChangesNothing`).
 - The dialog, a refusal, the change, the previous IP on the Overview and Health tab with **Switch back** and **Forget** (`TestChangeIPPages`).

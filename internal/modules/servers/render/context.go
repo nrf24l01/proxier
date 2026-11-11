@@ -114,13 +114,10 @@ func SampleContext(m *manifest.Manifest, slug string, genValues map[string]strin
 			Location:           Location{Code: "xx", Name: "Sample", Country: "XX"},
 			ManagementHostname: "xx-1.hosts.example.invalid", ProxyHostname: "xx-1.hosts.example.invalid",
 		},
-		Addresses: []Address{
-			{IP: "192.0.2.10", Hostname: "xx-1.hosts.example.invalid", Number: 1, Primary: true},
-			{IP: "192.0.2.11", Hostname: "xx-1-alt.hosts.example.invalid", Number: 2},
-		},
-		Params:   params,
-		Gen:      all,
-		Template: Template{Slug: slug},
+		Addresses: sampleAddresses(m),
+		Params:    params,
+		Gen:       all,
+		Template:  Template{Slug: slug},
 	}
 	if !hasCredential(m) {
 		id := sampleUUID
@@ -132,6 +129,33 @@ func SampleContext(m *manifest.Manifest, slug string, genValues map[string]strin
 		c.Clients = []Client{{ID: id, Name: SharedClient}}
 	}
 	return c
+}
+
+// maxSampleAddresses keeps the sample IPs inside 192.0.2.0/24 and a typo like
+// `address: 99999` from building a huge list; an endpoint beyond it is left
+// out of the sample render, as it is for a server without that address.
+const maxSampleAddresses = 200
+
+// sampleAddresses has one address for each the manifest's endpoints bind to,
+// and at least two, so every endpoint's fields are rendered during
+// validation, not only on the first redeploy of a server that has the address.
+func sampleAddresses(m *manifest.Manifest) []Address {
+	n := 2
+	for _, e := range m.Endpoints {
+		n = max(n, min(e.Address, maxSampleAddresses))
+	}
+	out := make([]Address, 0, n)
+	for i := 1; i <= n; i++ {
+		a := Address{IP: fmt.Sprintf("192.0.2.%d", 9+i), Hostname: "xx-1.hosts.example.invalid", Number: i, Primary: i == 1}
+		switch {
+		case i == 2:
+			a.Hostname = "xx-1-alt.hosts.example.invalid"
+		case i > 2:
+			a.Hostname = fmt.Sprintf("xx-1-alt%d.hosts.example.invalid", i)
+		}
+		out = append(out, a)
+	}
+	return out
 }
 
 func hasCredential(m *manifest.Manifest) bool {
