@@ -79,7 +79,7 @@ func TestChangeWithAdditionalAddressStillTestsThePrimary(t *testing.T) {
 }
 
 // newSSHIPFixture is an active server with an explicit SSH IP; when that is
-// not the service IP, the service IP never answers SSH.
+// not the IP, the IP never answers SSH.
 func newSSHIPFixture(t *testing.T, management string) *fixture {
 	t.Helper()
 	h := serverstest.NewHarness(t, serverstest.StubProxy())
@@ -93,12 +93,19 @@ func newSSHIPFixture(t *testing.T, management string) *fixture {
 	if s := h.Server(id); s.State != "active" {
 		t.Fatalf("not active: %s", s.FailedError)
 	}
+	// The form stores an SSH IP equal to the IP as empty. A server gets there
+	// only through an IP change onto its SSH connection IP, so set it here.
+	if management == form.IP {
+		if _, err := h.App.DB.W.Exec(`UPDATE servers_servers SET ssh_ip = ? WHERE id = ?`, management, id); err != nil {
+			t.Fatal(err)
+		}
+	}
 	return &fixture{Harness: h, ID: id}
 }
 
-// With an explicit SSH IP the change needs SSH at that address only: the new
-// service IP may refuse SSH, and the management address stays pinned even
-// when it is the old service IP and the old IP is not kept.
+// With an explicit SSH connection IP the change needs SSH there only: the new
+// IP may refuse SSH, and the SSH connection IP stays pinned even when it is
+// the old IP and the old IP is not kept.
 func TestChangeKeepsSSHThroughTheSSHIP(t *testing.T) {
 	for _, mgmt := range []string{"100.64.0.10", "127.0.0.1"} {
 		t.Run(mgmt, func(t *testing.T) {
@@ -113,21 +120,21 @@ func TestChangeKeepsSSHThroughTheSSHIP(t *testing.T) {
 				t.Fatalf("ip %s, ssh ip %s, cloudflare %s", s.IP, s.SSHIP, f.record())
 			}
 			if !f.pinned(mgmt) {
-				t.Fatal("the management address's host key was forgotten")
+				t.Fatal("the SSH connection IP's host key was forgotten")
 			}
 			if f.pinned(newIP) {
-				t.Fatal("the new service IP was pinned without SSH to it")
+				t.Fatal("the new IP was pinned without SSH to it")
 			}
 		})
 	}
 }
 
-// Without the management address answering, nothing changes.
+// Without the SSH connection IP answering, nothing changes.
 func TestChangeWithSSHIPDownChangesNothing(t *testing.T) {
 	f := newSSHIPFixture(t, "100.64.0.10")
 	f.Unreachable("100.64.0.10", true)
 	j := f.change(ipchange.Form{IP: newIP, Keep: true})
-	if j.State != jobs.Failed || j.ErrorStep != ipchange.StepConnect || !strings.Contains(j.Error, "management address") {
+	if j.State != jobs.Failed || j.ErrorStep != ipchange.StepConnect || !strings.Contains(j.Error, "SSH connection IP") {
 		t.Fatalf("job %s at %s: %s", j.State, j.ErrorStep, j.Error)
 	}
 	f.untouched()

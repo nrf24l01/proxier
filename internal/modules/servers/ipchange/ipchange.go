@@ -250,7 +250,7 @@ func (s *Service) load(ctx context.Context, r *jobs.Run) (payload, store.Server,
 	return p, srv, nil
 }
 
-// connect proves SSH access before moving the service IP. A separate SSH IP
+// connect proves SSH access before moving the IP. A separate SSH connection IP
 // stays unchanged; otherwise the new IP must present the old IP's host key.
 func (s *Service) connect(ctx context.Context, r *jobs.Run) error {
 	p, srv, err := s.load(ctx, r)
@@ -264,10 +264,10 @@ func (s *Service) connect(ctx context.Context, r *jobs.Run) error {
 			FirstContact: sshx.PinOnFirstContact,
 		}, r.Log())
 		if err != nil {
-			return fmt.Errorf("no SSH to %s at its management address %s: %w", srv.Name, srv.ConnectIP(), err)
+			return fmt.Errorf("no SSH to %s at its SSH connection IP %s: %w", srv.Name, srv.ConnectIP(), err)
 		}
 		_ = c.Close()
-		r.Log().Info("SSH access through %s is unchanged; the new service IP %s is checked by the proxy test", srv.ConnectIP(), p.To)
+		r.Log().Info("SSH access through %s is unchanged; the new IP %s is checked by the proxy test", srv.ConnectIP(), p.To)
 		return nil
 	}
 	c, err := s.SSH.Connect(ctx, sshx.Target{
@@ -493,7 +493,7 @@ func (s *Service) dnsStep(ctx context.Context, r *jobs.Run) error {
 // another server built there later is a first contact, not a changed key.
 func (s *Service) forgetPin(ctx context.Context, srv store.Server, ip, actor string) {
 	if srv.SSHIP != "" && ip == srv.SSHIP {
-		return // still the management address, even after its service role ends
+		return // still the SSH connection IP, though no longer the server's IP
 	}
 	addr := net.JoinHostPort(ip, strconv.Itoa(srv.SSHPort))
 	h, err := s.SSH.KnownHost(ctx, addr)
