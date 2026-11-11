@@ -131,12 +131,12 @@ templ newServerPage(s ui.Shell, v newView) {
 							<p class="help">{ i18n.T(ctx, "servers.new.hostname.help") }</p>
 						}
 					</div>
-<h2 class="grp">{ i18n.T(ctx, "servers.new.addresses") }</h2>
+					<h2 class="grp">{ i18n.T(ctx, "servers.new.addresses") }</h2>
 					<div class="field">
 						<div id="addr-rows">
 							for i, a := range v.Addresses {
 								<div data-addr-entry>
-									<div class="inline addr-row" data-addr-row>
+									<div class="inline" data-addr-row>
 										<input class="pc-inp" name="add_ip" value={ a.IP } placeholder="203.0.113.25" autocomplete="off" spellcheck="false" inputmode="decimal" aria-label={ i18n.T(ctx, "servers.new.addr.ip") } aria-invalid?={ v.Errs["addr_ip_" + strconv.Itoa(i)] != "" }/>
 										<input class="pc-inp" name="add_host" value={ a.Hostname } placeholder="alt.example.com" autocomplete="off" spellcheck="false" autocapitalize="none" aria-label={ i18n.T(ctx, "servers.new.addr.hostname") } aria-invalid?={ v.Errs["addr_host_" + strconv.Itoa(i)] != "" }/>
 										<button type="button" class="pc-btn pc-sm pc-ghost" data-addr-remove>{ i18n.T(ctx, "servers.new.addr.remove") }</button>
@@ -153,7 +153,6 @@ templ newServerPage(s ui.Shell, v newView) {
 						<button type="button" class="pc-btn pc-sm" data-addr-add>{ i18n.T(ctx, "servers.new.addr.add") }</button>
 						<p class="help">{ i18n.T(ctx, "servers.new.addresses.help") }</p>
 					</div>
-
 					<h2 class="grp">{ i18n.T(ctx, "servers.new.template") }</h2>
 					<div class="field">
 						<label for="srv-tpl">{ i18n.T(ctx, "servers.new.template") }</label>
@@ -312,8 +311,10 @@ templ summaryBody(v newView) {
 				<span class="bold">{ v.Sum.Name }</span>
 				<div class="sm subtle">{ i18n.T(ctx, "servers.new.sum.name.note") }</div>
 			</dd>
-			<dt>{ i18n.T(ctx, "servers.new.ssh_ip") }</dt>
-			<dd>{ v.Sum.SSHIP }</dd>
+			if v.Sum.SSHIP != "" {
+				<dt>{ i18n.T(ctx, "servers.new.ssh_ip") }</dt>
+				<dd>{ v.Sum.SSHIP }</dd>
+			}
 			<dt>{ i18n.T(ctx, "servers.new.sum.host") }</dt>
 			<dd>
 				{ v.Sum.ManagementHostname }
@@ -450,7 +451,6 @@ templ serverHead(v serverView, tab string) {
 			}
 			if v.S.State == "active" && !v.Retiring {
 				@ui.ActionButton(ui.Action{ID: "server.redeploy", Label: "servers.act.redeploy", Method: "GET", Href: serverHref(v.S.ID) + "/redeploy", Kind: ui.Primary, Key: "d"})
-				@ui.ActionButton(ui.Action{ID: "server.addresses", Label: "servers.act.addresses", Method: "GET", Href: serverHref(v.S.ID) + "/addresses"})
 			}
 			if !v.Retiring && !v.Retired {
 				@ui.ActionButton(ui.Action{ID: "server.retire", Label: "servers.retire", Method: "GET", Href: serverHref(v.S.ID) + "/retire", Kind: ui.Danger, Key: "x"})

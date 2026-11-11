@@ -60,6 +60,9 @@ func TestAddressSavedButRedeployFailed(t *testing.T) {
 	if rec.Code != 200 {
 		t.Fatalf("%d\n%s", rec.Code, rec.Body)
 	}
+	if body := rec.Body.String(); !strings.Contains(body, "the redeploy did not start") || !strings.Contains(body, "/redeploy") {
+		t.Fatalf("the page does not say the redeploy did not start:\n%s", body)
+	}
 	addrs, err := store.ServerAddresses(bg, h.App.DB.R, id)
 	if err != nil || len(addrs) != 1 {
 		t.Fatalf("addresses %+v %v", addrs, err)

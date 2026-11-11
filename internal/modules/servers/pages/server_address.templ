@@ -19,7 +19,12 @@ templ serverAddressPage(s ui.Shell, v addressView) {
 				<p class="subtle">{ i18n.T(ctx, "servers.addr.note") }</p>
 			</div>
 		</div>
-		if v.Saved {
+		if v.RedeployErr != "" {
+			@ui.Alert("gold", "alert") {
+				{ i18n.T(ctx, "servers.addr.not_redeployed", i18n.Args{"error": v.RedeployErr}) }
+				<a href={ templ.SafeURL(serverHref(v.S.ID) + "/redeploy") }>{ i18n.T(ctx, "servers.act.redeploy") }</a>
+			}
+		} else if v.Saved {
 			@ui.Alert("pine", "status") {
 				{ i18n.T(ctx, "servers.addr.saved") }
 			}
@@ -30,10 +35,9 @@ templ serverAddressPage(s ui.Shell, v addressView) {
 					<p class="subtle">{ i18n.T(ctx, "servers.addr.none") }</p>
 				}
 				for i, a := range v.Addresses {
-					<div class="row">
+					<div class="row addr">
 						<span class="bold">{ a.IP }</span>
 						<span class="subtle">{ a.Hostname }</span>
-						<span class="flex1"></span>
 						if i == len(v.Addresses)-1 {
 							@ui.ActionButton(ui.Action{
 								ID: "addr.delete." + strconv.FormatInt(a.ID, 10), Label: "servers.addr.remove", Method: "POST",

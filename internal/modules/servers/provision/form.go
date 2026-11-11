@@ -495,10 +495,9 @@ func paramProblem(p manifest.Parameter, raw string) string { return render.Param
 func (s *Service) Summarize(ctx context.Context, f Form, suggest bool) Summary {
 	c, errs := s.check(ctx, f, false)
 	sum := Summary{Errors: errs}
+	// Blank when SSH goes to the server's IP: the summary shows the row only
+	// for a different address.
 	sum.SSHIP = c.form.SSHIP
-	if sum.SSHIP == "" {
-		sum.SSHIP = c.form.IP
-	}
 	if suggest {
 		if cc := s.country(ctx, c.form.IP); country.Valid(cc) {
 			sum.Suggested = cc

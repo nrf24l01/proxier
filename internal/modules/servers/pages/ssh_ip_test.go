@@ -33,7 +33,7 @@ func TestNewServerSeparateConnectionIP(t *testing.T) {
 	if rec.Code != 422 {
 		t.Fatalf("invalid management IP: %d", rec.Code)
 	}
-	mustContain(t, rec.Body.String(), "Enter a valid unicast IPv4 or IPv6 address for SSH")
+	mustContain(t, rec.Body.String(), "Enter a valid IPv4 or IPv6 address for SSH")
 	form.Set("ssh_ip", "192.168.1.10")
 	h.Unreachable(f.IP, true)
 	rec = h.Login.Post("/servers", form)
