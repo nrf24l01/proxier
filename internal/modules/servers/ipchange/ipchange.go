@@ -145,6 +145,13 @@ func (s *Service) Check(ctx context.Context, srv store.Server, f Form) (string, 
 	if ip == srv.IP {
 		return "", FieldErrors{"ip": {Key: "servers.ip.err.same", Args: map[string]any{"name": srv.Name}}}
 	}
+	// The target may be an additional address of this same server; a previous
+	// IP of it is fine (switch back).
+	if name, taken, err := store.AddressHolder(ctx, s.DB.R, ip); err != nil {
+		return "", err
+	} else if taken && name == srv.Name {
+		return "", FieldErrors{"ip": {Key: "servers.ip.err.additional", Args: map[string]any{"name": srv.Name}}}
+	}
 	other, ok, err := store.HolderOfIP(ctx, s.DB.R, ip)
 	switch {
 	case err != nil:

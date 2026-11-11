@@ -133,6 +133,9 @@ type computed struct {
 	Srv    store.Server
 	Slug   string
 	Target Target
+	// Addrs are the server's primary address and its additional ones, as
+	// templates and endpoints see them.
+	Addrs []render.Address
 
 	Man      *manifest.Manifest
 	CurMan   *manifest.Manifest // the version in force; nil when it no longer parses
@@ -184,8 +187,18 @@ func (c *computed) renderContext() render.Context {
 			Country: ctry, Location: loc,
 			ManagementHostname: c.Srv.ManagementHostname, ProxyHostname: c.Srv.ProxyHostname,
 		},
-		Params: params, Gen: c.Gen, Template: render.Template{Slug: c.Slug, Version: c.Plan.ToVersion},
+		Addresses: c.Addrs,
+		Params:    params, Gen: c.Gen, Template: render.Template{Slug: c.Slug, Version: c.Plan.ToVersion},
 	}
+}
+
+// renderAddresses is the primary address followed by the additional ones.
+func renderAddresses(srv store.Server, extra []store.Address) []render.Address {
+	out := []render.Address{{IP: srv.IP, Hostname: srv.ProxyHostname, Number: 1, Primary: true}}
+	for _, a := range extra {
+		out = append(out, render.Address{IP: a.IP, Hostname: a.Hostname, Number: a.Position})
+	}
+	return out
 }
 
 // parseVersion loads a version's manifest.
@@ -220,6 +233,11 @@ func (s *Service) compute(ctx context.Context, srv store.Server, t Target, genOv
 	}
 	c := &computed{Srv: srv, Slug: tpl.Slug, Target: t, Errs: FieldErrors{}}
 	c.Plan = Plan{ServerID: srv.ID, Kind: t.Kind, FromVersion: srv.TemplateVersion, ToVersion: t.Version, Force: t.Force}
+	extra, err := store.ServerAddresses(ctx, s.DB.R, srv.ID)
+	if err != nil {
+		return nil, err
+	}
+	c.Addrs = renderAddresses(srv, extra)
 
 	var tplFiles map[string][]byte
 	if c.Man, tplFiles, err = s.parseVersion(ctx, srv.TemplateID, t.Version); err != nil {

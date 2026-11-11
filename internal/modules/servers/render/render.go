@@ -64,6 +64,11 @@ func Render(m *manifest.Manifest, files map[string][]byte, c Context) (*Rendered
 	// becomes the shared client the files then see in .Clients.
 	r.c.Clients = nil
 	for _, e := range m.Endpoints {
+		// An endpoint bound to an address this server does not have is left
+		// out: a template declares endpoints for every address it can use.
+		if e.Address > len(c.Addresses) {
+			continue
+		}
 		re, ok := r.endpoint(e)
 		if ok {
 			out.Endpoints = append(out.Endpoints, re)
@@ -188,13 +193,25 @@ func (r *renderer) args(pos string, line int, in map[string]any) (map[string]any
 func (r *renderer) endpoint(e manifest.Endpoint) (RenderedEndpoint, bool) {
 	where := "endpoints." + e.Key
 	re := RenderedEndpoint{Key: e.Key, Type: e.Type, Params: map[string]string{}}
+	var addr *Address
+	if e.Address > 0 {
+		a := r.c.Addresses[e.Address-1]
+		addr = &a
+		saved := r.c.Address
+		r.c.Address = addr
+		defer func() { r.c.Address = saved }()
+	}
 	ok := true
 	str := func(field, src string) string {
 		s, good := r.field(where+"."+field, e.Line, src)
 		ok = ok && good
 		return s
 	}
-	re.Host = str("host", e.Host)
+	if addr != nil && strings.TrimSpace(e.Host) == "" {
+		re.Host = addr.Hostname
+	} else {
+		re.Host = str("host", e.Host)
+	}
 	re.Credential = str("credential", e.Credential)
 	port := str("port", e.Port)
 	for k, v := range e.Params {

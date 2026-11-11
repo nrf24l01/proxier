@@ -44,6 +44,15 @@ type Server struct {
 }
 
 // Client is an identity the stack must accept (ADR 0004).
+// Address is one IP of a server with its client-facing hostname. The first
+// is the primary one (the server's own IP and proxy hostname); the others are
+// the server's additional addresses.
+type Address struct {
+	IP, Hostname string
+	Number       int  // 1-based, its index in .Addresses
+	Primary      bool // the server's own IP and proxy hostname
+}
+
 type Client struct{ ID, Name string }
 
 type Template struct {
@@ -51,9 +60,14 @@ type Template struct {
 	Version int
 }
 
-// Context is what templates see: .Server .Params .Gen .Clients .Template.
+// Context is what templates see: .Server .Addresses .Params .Gen .Clients
+// .Template, and .Address inside an endpoint bound to one address.
 type Context struct {
-	Server   Server
+	Server    Server
+	Addresses []Address
+	// Address is the endpoint's own address (manifest endpoint field
+	// "address"); nil renders the file templates.
+	Address  *Address
 	Params   map[string]any
 	Gen      map[string]string
 	Clients  []Client
@@ -98,6 +112,10 @@ func SampleContext(m *manifest.Manifest, slug string, genValues map[string]strin
 			Country:            Country{Code: "XX", Name: "Sample"},
 			Location:           Location{Code: "xx", Name: "Sample", Country: "XX"},
 			ManagementHostname: "xx-1.hosts.example.invalid", ProxyHostname: "xx-1.hosts.example.invalid",
+		},
+		Addresses: []Address{
+			{IP: "192.0.2.10", Hostname: "xx-1.hosts.example.invalid", Number: 1, Primary: true},
+			{IP: "192.0.2.11", Hostname: "xx-1-alt.hosts.example.invalid", Number: 2},
 		},
 		Params:   params,
 		Gen:      all,

@@ -53,6 +53,9 @@ func (p paramField) inputMode() string {
 	return "text"
 }
 
+// addressRow is one additional-address row of the new-server form.
+type addressRow struct{ IP, Hostname string }
+
 type newView struct {
 	IP, Port, Notes string
 	Hostname        string // as typed; "" takes the hostname pattern's name
@@ -62,6 +65,7 @@ type newView struct {
 	SSHUser     string
 	Setup       string
 	SkipDNS     bool
+	Addresses   []addressRow
 	Errs        map[string]string // translated, by form field
 	Country     string            // the picker's text: a country's label, or what was typed
 	Auto        string            // the country the IP suggested last, "" for none
@@ -96,6 +100,17 @@ func formOf(c *echo.Context) provision.Form {
 				f.Params[p] = vs[0]
 			}
 		}
+		ips, hosts := c.Request().PostForm["add_ip"], c.Request().PostForm["add_host"]
+		for i := 0; i < len(ips) || i < len(hosts); i++ {
+			row := provision.FormAddress{}
+			if i < len(ips) {
+				row.IP = ips[i]
+			}
+			if i < len(hosts) {
+				row.Hostname = hosts[i]
+			}
+			f.Addresses = append(f.Addresses, row)
+		}
 	}
 	return f
 }
@@ -127,6 +142,12 @@ func (h *handler) newViewOf(ctx context.Context, f provision.Form, auto string) 
 	}
 	if v.SSHUser == "" {
 		v.SSHUser = "root"
+	}
+	for _, a := range f.Addresses {
+		v.Addresses = append(v.Addresses, addressRow{IP: a.IP, Hostname: a.Hostname})
+	}
+	if len(v.Addresses) == 0 {
+		v.Addresses = []addressRow{{}}
 	}
 	if country.Valid(f.Country) {
 		v.Country = country.Label(f.Country, lang)
@@ -215,8 +236,12 @@ func (h *handler) newServer(c *echo.Context) error {
 // formOfView is the form a view stands for, for the summary of a first visit.
 func (h *handler) formOfView(v newView) provision.Form {
 	port, _ := strconv.Atoi(v.Port)
-	return provision.Form{IP: v.IP, SSHPort: port, Country: countryOf(v.Country), Hostname: v.Hostname, TemplateID: v.TemplateID, Version: v.Version, Params: map[string]string{},
+	f := provision.Form{IP: v.IP, SSHPort: port, Country: countryOf(v.Country), Hostname: v.Hostname, TemplateID: v.TemplateID, Version: v.Version, Params: map[string]string{},
 		AccessMode: v.Access, SSHUser: v.SSHUser, Setup: v.Setup, SkipDNS: v.SkipDNS}
+	for _, a := range v.Addresses {
+		f.Addresses = append(f.Addresses, provision.FormAddress{IP: a.IP, Hostname: a.Hostname})
+	}
+	return f
 }
 
 func (h *handler) renderNewServer(c *echo.Context, status int, v newView) error {

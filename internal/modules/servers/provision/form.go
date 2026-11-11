@@ -34,6 +34,9 @@ import (
 	"github.com/tikhonp/proxier/internal/platform/jobs"
 )
 
+// FormAddress is one additional address row of the new-server form.
+type FormAddress struct{ IP, Hostname string }
+
 // Form is what the new-server form posts.
 type Form struct {
 	IP, RootPassword string
@@ -64,6 +67,9 @@ type Form struct {
 	// SkipDNS skips the form check and provisioning wait for a record the
 	// member manages. Certificate issuance and connection tests still run.
 	SkipDNS bool
+	// Addresses are the server's additional addresses: more IPs on the same
+	// machine, each with its own hostname. Proxier does not manage their DNS.
+	Addresses []FormAddress
 }
 
 // Msg is a refusal: an i18n key and its arguments.
@@ -96,7 +102,10 @@ type Summary struct {
 	// DNSFound is what the check of a record made by hand found when it is
 	// in place ("ns1.example.net answered 203.0.113.10"); a record that is
 	// not is in Errors["dns"].
-	DNSFound  string
+	DNSFound string
+	// Addresses are the additional addresses as they will be stored:
+	// "203.0.113.25 → alt.example.com".
+	Addresses []string
 	Endpoints []string // display names
 	// Suggested is the IP's country, "" when unknown or not asked for.
 	Suggested string
@@ -346,6 +355,7 @@ func (s *Service) check(ctx context.Context, f Form, withPassword bool) (*checke
 			fe(errs, "dns", "servers.err.not_covered", "host", c.hostname)
 		}
 	}
+	c.form.Addresses = s.checkAddresses(ctx, f.Addresses, c.form.IP, c.hostname, errs)
 	if c.manualDNS && !f.SkipDNS && (withPassword || f.CheckDNS) && addr.Is4() && !addr.Is4In6() {
 		s.checkManualDNS(ctx, c, errs)
 	}
@@ -364,6 +374,79 @@ func (s *Service) checkManualDNS(ctx context.Context, c *checked, errs FieldErro
 	default:
 		c.found = found.Said
 	}
+}
+
+// checkAddresses validates the additional address rows and returns the ones
+// to store. A row with both fields empty is left out; a half-filled one is a
+// refusal. Proxier does not manage their DNS, so no record is looked up.
+func (s *Service) checkAddresses(ctx context.Context, rows []FormAddress, primaryIP, primaryHost string, errs FieldErrors) []FormAddress {
+	out := make([]FormAddress, 0, len(rows))
+	seenIP := map[string]bool{}
+	if _, err := netip.ParseAddr(primaryIP); err == nil {
+		seenIP[primaryIP] = true
+	}
+	seenHost := map[string]bool{}
+	if primaryHost != "" {
+		seenHost[primaryHost] = true
+	}
+	for i, row := range rows {
+		ip, host := strings.TrimSpace(row.IP), NormalizeHostname(row.Hostname)
+		keyIP, keyHost := fmt.Sprintf("addr_ip_%d", i), fmt.Sprintf("addr_host_%d", i)
+		if ip == "" && host == "" {
+			continue
+		}
+		ok := true
+		switch addr, err := netip.ParseAddr(ip); {
+		case ip == "":
+			fe(errs, keyIP, "servers.err.ip_required")
+			ok = false
+		case err != nil || !addr.Is4() || addr.Is4In6():
+			fe(errs, keyIP, "servers.err.ip_v4")
+			ok = false
+		default:
+			ip = addr.String()
+			switch name, taken, herr := store.HolderOfIP(ctx, s.DB.R, ip); {
+			case seenIP[ip]:
+				fe(errs, keyIP, "servers.err.addr_ip_dup", "ip", ip)
+				ok = false
+			case herr != nil:
+				fe(errs, keyIP, "servers.err.addr_check", "error", herr.Error())
+				ok = false
+			case taken:
+				fe(errs, keyIP, "servers.err.addr_ip_used", "name", name)
+				ok = false
+			default:
+				seenIP[ip] = true
+			}
+		}
+		switch {
+		case host == "":
+			fe(errs, keyHost, "servers.err.hostname_required")
+			ok = false
+		case render.ValidHostname(host) != nil:
+			fe(errs, keyHost, "servers.err.hostname_invalid")
+			ok = false
+		default:
+			name, taken, herr := store.HolderOfHostname(ctx, s.DB.R, host)
+			switch {
+			case seenHost[host]:
+				fe(errs, keyHost, "servers.err.addr_host_dup", "host", host)
+				ok = false
+			case herr != nil:
+				fe(errs, keyHost, "servers.err.addr_check", "error", herr.Error())
+				ok = false
+			case taken:
+				fe(errs, keyHost, "servers.err.addr_host_used", "name", name)
+				ok = false
+			default:
+				seenHost[host] = true
+			}
+		}
+		if ok {
+			out = append(out, FormAddress{IP: ip, Hostname: host})
+		}
+	}
+	return out
 }
 
 // NormalizeHostname is the hostname as typed in the form, trimmed and in
@@ -447,9 +530,22 @@ func (s *Service) Summarize(ctx context.Context, f Form, suggest bool) Summary {
 		sum.ManualDNS, sum.DNSFound = true, c.found
 		sum.DNSRecord = fmt.Sprintf("A %s → %s", c.hostname, c.form.IP)
 	}
+	for _, a := range c.form.Addresses {
+		sum.Addresses = append(sum.Addresses, a.IP+" → "+a.Hostname)
+	}
 	if c.man != nil {
-		many := len(c.man.Endpoints) > 1
+		// Endpoints bound to addresses the server will not have are left out.
+		n := 0
 		for _, e := range c.man.Endpoints {
+			if e.Address == 0 || e.Address <= 1+len(c.form.Addresses) {
+				n++
+			}
+		}
+		many := n > 1
+		for _, e := range c.man.Endpoints {
+			if e.Address > 0 && e.Address > 1+len(c.form.Addresses) {
+				continue
+			}
 			sum.Endpoints = append(sum.Endpoints, endpoint.DisplayName(flagOf(c.form.Country), shownName(c.form.Country), c.number, e.Key, many))
 		}
 	}
@@ -544,6 +640,11 @@ func (s *Service) Create(ctx context.Context, f Form, actor string) (int64, erro
 		}
 		if err != nil {
 			return err
+		}
+		for _, a := range c.form.Addresses {
+			if _, err := store.InsertAddress(ctx, tx, id, a.IP, a.Hostname, db.At(s.Now())); err != nil {
+				return err
+			}
 		}
 		secrets := map[string]string{}
 		if c.form.AccessMode == store.AccessPassword {
