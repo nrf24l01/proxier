@@ -103,6 +103,40 @@ The mount path determines the parse context. `/etc/nginx/nginx.conf` uses the ma
 
 Validation does not open certificate files or resolve upstream hostnames. The smoke test checks failures that require a running nginx.
 
+## Additional addresses
+
+A server may have several IPs, each with its own hostname ([servers module](../../modules/servers.md#addresses)). A template uses them by position, 1 being the primary address:
+
+- `.Addresses` is the list the file templates loop over: `{IP, Hostname, Number, Primary}`. Render a server block or an inbound for each one.
+- An endpoint adds `address: <n>`. Its fields see `.Address` (that address), and an empty `host` takes `.Address.Hostname`. When the server has no such address, the endpoint is left out, so a template can declare endpoints for more addresses than any one server has.
+- Endpoint keys stay static; the number is the position in `.Addresses`, not a name.
+- Proxier writes no DNS record for an additional address and does not wait for it. The member points the hostname at the IP; until then the proxy test through that endpoint fails.
+- Certificates are the template's business: issue one per hostname (or a SAN certificate) in the install steps if the endpoints use TLS.
+
+For two addresses, two endpoints and two generated credentials:
+
+```yaml
+generated:
+  - { key: uuid_alt, kind: uuid, rotate: true }
+  - { key: path_alt, kind: hex, length: 16, prefix: /, rotate: true }
+
+endpoints:
+  - key: main
+    type: vless-xhttp-tls
+    address: 1
+    port: 443
+    credential: "{{ .Gen.client_uuid }}"
+    params: { path: "{{ .Gen.xhttp_path }}", sni: "{{ .Address.Hostname }}", ... }
+  - key: alt
+    type: vless-xhttp-tls
+    address: 2
+    port: 443
+    credential: "{{ .Gen.uuid_alt }}"
+    params: { path: "{{ .Gen.path_alt }}", sni: "{{ .Address.Hostname }}", ... }
+```
+
+In the files, `{{ range .Addresses }}` renders a server block or inbound per address; `{{ if .Primary }}` tells the primary one apart if it needs something else.
+
 ## Rules
 
 - Versions are immutable and numbered without gaps per template.

@@ -86,7 +86,7 @@ proxy_test:                          # optional; overrides Settings → Servers 
 | `compose-down` | `docker compose down`, with `volumes: true` adding `-v`. |
 | `wait-http` | Polls a URL until it answers with the expected status (default timeout 2 min). With `resolve`, the request runs on the server through `curl --resolve`. |
 
-**Endpoints** declare what clients connect to: a stable `key`, an endpoint `type`, `host`, `port`, `credential` and type-specific `params`. They are rendered on every deployment and stored, so subscriptions always serve current values.
+**Endpoints** declare what clients connect to: a stable `key`, an endpoint `type`, `host`, `port`, `credential` and type-specific `params`. They are rendered on every deployment and stored, so subscriptions always serve current values. An endpoint may set **`address: <n>`** to bind to one of the server's addresses (1 is the primary); its `host` defaults to that address's hostname, and fields see `.Address`. If the server has no such address, the endpoint is left out, so a template can declare endpoints for every address it can use.
 
 **Checks** are the self-check, run over SSH every 5 minutes:
 
@@ -109,6 +109,8 @@ Files, step arguments, endpoint fields and check arguments are Go templates. Mis
 | `.Server.Location.Code`, `.Name`, `.Country` | `nl`, `Netherlands`, `NL`: what templates saw before servers had a country, kept so they still render; `Code` is the first half of the server name |
 | `.Server.IP`, `.Server.SSHPort` | `203.0.113.10`, `22` |
 | `.Server.ManagementHostname`, `.Server.ProxyHostname` | `nl-1.hosts.example.com` |
+| `.Addresses` | the server's addresses, primary first: a list of `{IP, Hostname, Number, Primary}`. Loop it to give each one a server block or inbound. |
+| `.Address` | inside an endpoint with `address:`: that address's `{IP, Hostname, Number, Primary}`; nil in files |
 | `.Params.<key>` | parameters |
 | `.Gen.<key>` | generated values |
 | `.Clients` | the client identities the stack must accept: a list of `{ID, Name}`. It holds one entry: the endpoint credential, named `shared`. |
