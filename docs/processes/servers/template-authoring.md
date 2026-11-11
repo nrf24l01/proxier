@@ -112,7 +112,7 @@ A server may have several IPs, each with its own hostname ([servers module](../.
 - Endpoint keys stay static; the number is the position in `.Addresses`, not a name.
 - Proxier writes no DNS record for an additional address and does not wait for it. The member points the hostname at the IP; until then the proxy test through that endpoint fails.
 - `.Clients` lists every distinct endpoint credential, so the stack accepts the connection URIs of each endpoint: the first is named `shared`, the others `shared-<endpoint key>` (xray wants unique client names). Endpoints that share a credential add one client. Render the list as usual (`{{ range .Clients }}`) and the example below needs no extra step.
-- Certificates are the template's business: issue one per hostname (or a SAN certificate) in the install steps if the endpoints use TLS.
+- Proxier issues no certificates for additional hostnames. If the endpoints use TLS, the install steps issue one per hostname, or one certificate that names them all.
 
 For two addresses, two endpoints and two generated credentials:
 
