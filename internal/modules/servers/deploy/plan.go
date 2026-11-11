@@ -183,7 +183,7 @@ func (c *computed) renderContext() render.Context {
 	ctry, loc := render.Where(c.Srv.Country, c.Srv.Prefix())
 	return render.Context{
 		Server: render.Server{
-			Name: c.Srv.Name, Number: c.Srv.Number, IP: c.Srv.IP, SSHPort: c.Srv.SSHPort,
+			Name: c.Srv.Name, Number: c.Srv.Number, IP: c.Srv.IP, SSHIP: c.Srv.ConnectIP(), SSHPort: c.Srv.SSHPort,
 			Country: ctry, Location: loc,
 			ManagementHostname: c.Srv.ManagementHostname, ProxyHostname: c.Srv.ProxyHostname,
 		},

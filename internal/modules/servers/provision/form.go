@@ -40,7 +40,10 @@ type FormAddress struct{ IP, Hostname string }
 // Form is what the new-server form posts.
 type Form struct {
 	IP, RootPassword string
-	SSHPort          int // 0 = 22
+	// SSHIP overrides the connection address only (e.g. a Tailscale IP).
+	// IP and Addresses remain the service addresses exposed to clients.
+	SSHIP   string
+	SSHPort int // 0 = 22
 	// AccessMode is how Proxier logs in: store.AccessPassword (root's password
 	// creates the proxier user) or store.AccessKey (Proxier's key is already
 	// in SSHUser's authorized_keys). "" takes the Settings → Servers default.
@@ -93,6 +96,7 @@ func (fe FieldErrors) Error() string {
 // Summary is what the live summary shows while the admin types.
 type Summary struct {
 	Name, ManagementHostname, ProxyHostname string
+	SSHIP                                   string
 	// DNSRecord is the record that will be written: "A <name> → <ip>, DNS only, TTL 60",
 	// or with ManualDNS the one the member creates: "A <name> → <ip>".
 	DNSRecord string
@@ -183,6 +187,15 @@ func (s *Service) check(ctx context.Context, f Form, withPassword bool) (*checke
 		c.form.SSHPort = 22
 	}
 	c.form.IP = strings.TrimSpace(f.IP)
+	c.form.SSHIP = strings.TrimSpace(f.SSHIP)
+	if c.form.SSHIP != "" {
+		ip, err := netip.ParseAddr(c.form.SSHIP)
+		if err != nil || ip.Zone() != "" || ip.IsUnspecified() || ip.IsMulticast() {
+			fe(errs, "ssh_ip", "servers.err.ssh_ip")
+		} else {
+			c.form.SSHIP = ip.Unmap().String()
+		}
+	}
 
 	// the address
 	addr, err := netip.ParseAddr(c.form.IP)
@@ -515,6 +528,10 @@ func paramProblem(p manifest.Parameter, raw string) string { return render.Param
 func (s *Service) Summarize(ctx context.Context, f Form, suggest bool) Summary {
 	c, errs := s.check(ctx, f, false)
 	sum := Summary{Errors: errs}
+	sum.SSHIP = c.form.SSHIP
+	if sum.SSHIP == "" {
+		sum.SSHIP = c.form.IP
+	}
 	if suggest {
 		if cc := s.country(ctx, c.form.IP); country.Valid(cc) {
 			sum.Suggested = cc
@@ -631,7 +648,7 @@ func (s *Service) Create(ctx context.Context, f Form, actor string) (int64, erro
 		}
 		id, err = store.InsertServer(ctx, tx, store.NewServer{
 			Country: c.form.Country, Number: number, Name: fmt.Sprintf("%s-%d", c.prefix, number), IP: c.form.IP, SSHPort: c.form.SSHPort,
-			AccessMode: c.form.AccessMode, SSHUser: c.form.SSHUser, Setup: c.form.Setup,
+			AccessMode: c.form.AccessMode, SSHUser: c.form.SSHUser, Setup: c.form.Setup, SSHIP: c.form.SSHIP,
 			ManagementHostname: host, ProxyHostname: host, TemplateID: c.tpl.ID, TemplateVersion: c.version,
 			Params: marshalStrings(c.public), Notes: f.Notes, ManualDNS: c.manualDNS,
 		}, db.At(s.Now()), func(id int64) []byte { return sealed.SealParams(s.Vault, id, c.secret) })
@@ -661,7 +678,7 @@ func (s *Service) Create(ctx context.Context, f Form, actor string) (int64, erro
 			return err
 		}
 		_, err = s.Events.Record(ctx, tx, events.Event{Type: "server.created", Subject: store.ServerSubject(id), Actor: actor,
-			Payload: map[string]any{"ip": c.form.IP, "country": c.form.Country, "hostname": host, "manual_dns": c.manualDNS, "template_version": c.version, "access": c.form.AccessMode, "setup": c.form.Setup}})
+			Payload: map[string]any{"ip": c.form.IP, "ssh_ip": c.form.SSHIP, "country": c.form.Country, "hostname": host, "manual_dns": c.manualDNS, "template_version": c.version, "access": c.form.AccessMode, "setup": c.form.Setup}})
 		return err
 	})
 	if err != nil {

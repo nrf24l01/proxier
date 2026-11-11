@@ -250,15 +250,26 @@ func (s *Service) load(ctx context.Context, r *jobs.Run) (payload, store.Server,
 	return p, srv, nil
 }
 
-// connect proves the new IP is this server: Proxier's key logs in there, and
-// the host key is the one pinned at the old IP. A new address is pinned only
-// then.
+// connect proves SSH access before moving the service IP. A separate SSH IP
+// stays unchanged; otherwise the new IP must present the old IP's host key.
 func (s *Service) connect(ctx context.Context, r *jobs.Run) error {
 	p, srv, err := s.load(ctx, r)
 	if err != nil {
 		return err
 	}
 	port := strconv.Itoa(srv.SSHPort)
+	if srv.SSHIP != "" {
+		c, err := s.SSH.Connect(ctx, sshx.Target{
+			Hop:          sshx.Hop{Address: net.JoinHostPort(srv.ConnectIP(), port), User: srv.LoginUser(), Subject: serverKey(srv.ID)},
+			FirstContact: sshx.PinOnFirstContact,
+		}, r.Log())
+		if err != nil {
+			return fmt.Errorf("no SSH to %s at its management address %s: %w", srv.Name, srv.ConnectIP(), err)
+		}
+		_ = c.Close()
+		r.Log().Info("SSH access through %s is unchanged; the new service IP %s is checked by the proxy test", srv.ConnectIP(), p.To)
+		return nil
+	}
 	c, err := s.SSH.Connect(ctx, sshx.Target{
 		Hop: sshx.Hop{Address: net.JoinHostPort(p.To, port), User: srv.LoginUser(), Subject: serverKey(srv.ID)},
 		// Pin the new address only when it shows the old one's key.
@@ -458,6 +469,9 @@ func (s *Service) dnsStep(ctx context.Context, r *jobs.Run) error {
 // forgetPin drops the host key pinned at an IP the server no longer has, so
 // another server built there later is a first contact, not a changed key.
 func (s *Service) forgetPin(ctx context.Context, srv store.Server, ip, actor string) {
+	if srv.SSHIP != "" && ip == srv.SSHIP {
+		return // still the management address, even after its service role ends
+	}
 	addr := net.JoinHostPort(ip, strconv.Itoa(srv.SSHPort))
 	h, err := s.SSH.KnownHost(ctx, addr)
 	if errors.Is(err, sshx.ErrNotFound) {

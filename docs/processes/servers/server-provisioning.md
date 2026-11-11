@@ -7,7 +7,8 @@ Provisioning creates a server from a template version. Proxier connects with a r
 ## Steps: the form
 
 1. Servers → **New server**. Fields:
-   - **IP address** accepts IPv4. **SSH port**, under Setup options, defaults to 22.
+   - **Primary service IP** accepts IPv4. It is used for public DNS, client endpoints and template bindings (for example nginx). **SSH port**, under Setup options, defaults to 22.
+   - **Advanced IP configuration → SSH connection IP**, optional IPv4/IPv6: connect through a separate management network, for example `100.64.0.10` on Tailscale, while the primary service IP stays `203.0.113.10`. All SSH operations use this address: initial access, deploy/redeploy, remote checks, reboot and removal. Blank means use the primary service IP as before. A later public IP change leaves an explicit SSH IP unchanged. This does not install Tailscale, assign IPs to interfaces or change routing. Proxier must already be able to reach the management address through the host network or its configured tailnet. Prefer Deploy only for an existing Tailscale node: Full setup resets the firewall.
    - **SSH access** selects Root password or SSH key. With Root password, Proxier creates the `proxier` account, installs its key and passwordless sudo, then erases the password after verifying access. With SSH key, first copy Proxier's public key from Settings → SSH into the SSH account's `authorized_keys`. The account defaults to `root`. Other accounts need passwordless sudo. Proxier does not create an account or install keys in key mode.
    - **Server setup**, under Setup options, selects Full or Deploy only. Full disables password and root login over SSH, resets the firewall, enables TCP BBR when supported, and installs the prerequisites and Docker. Deploy only installs the prerequisites and Docker if missing. It leaves SSH configuration, firewall rules and TCP settings unchanged.
    - Settings → Servers controls the initial access and setup selections. The defaults are Root password and Full. Each server stores its own choices.
@@ -44,7 +45,7 @@ Provisioning creates a server from a template version. Proxier connects with a r
 Each step is resumable. A retried job starts at the step that didn't finish.
 
 1. **Preflight.**
-   - Connect to `IP:port`: as root with the password, or as the SSH account with Proxier's key. The host key is pinned now ([ADR 0007](../../adr/0007-agentless-ssh-with-pinned-host-keys.md)).
+   - Connect to `SSH connection IP:port` (or `Primary service IP:port` when blank): as root with the password, or as the SSH account with Proxier's key. The host key is pinned now ([ADR 0007](../../adr/0007-agentless-ssh-with-pinned-host-keys.md)).
    - With key access, prove root commands work (`sudo -n true`, or nothing for root) before changing anything: a key that logs in without sudo fails here.
    - Read `/etc/os-release` and the architecture, and compare them with the template's `requires`.
    - Check that the manifest's TCP ports (e.g. 80, 443) are free (`ss -ltn`).

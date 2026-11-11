@@ -262,7 +262,7 @@ func (d *data) renderContext() render.Context {
 	ctry, loc := render.Where(d.Server.Country, d.Server.Prefix())
 	return render.Context{
 		Server: render.Server{
-			Name: d.Server.Name, Number: d.Server.Number, IP: d.Server.IP, SSHPort: d.Server.SSHPort,
+			Name: d.Server.Name, Number: d.Server.Number, IP: d.Server.IP, SSHIP: d.Server.ConnectIP(), SSHPort: d.Server.SSHPort,
 			Country: ctry, Location: loc,
 			ManagementHostname: d.Server.ManagementHostname, ProxyHostname: d.Server.ProxyHostname,
 		},
@@ -285,7 +285,7 @@ func (d *data) render() (*render.Rendered, error) {
 func (s *Service) target(srv store.Server, user, password string) sshx.Target {
 	return sshx.Target{
 		Hop: sshx.Hop{
-			Address: net.JoinHostPort(srv.IP, strconv.Itoa(srv.SSHPort)), User: user, Password: password,
+			Address: net.JoinHostPort(srv.ConnectIP(), strconv.Itoa(srv.SSHPort)), User: user, Password: password,
 			Subject: "server:" + strconv.FormatInt(srv.ID, 10),
 		},
 		FirstContact: sshx.PinOnFirstContact,
@@ -323,7 +323,7 @@ func (s *Service) preflight(ctx context.Context, r *jobs.Run, d *data) error {
 	var c *sshx.Client
 	var err error
 	if d.Server.KeyAccess() {
-		r.Log().Info("Connecting to %s:%d as %s with Proxier's key", d.Server.IP, d.Server.SSHPort, d.Server.LoginUser())
+		r.Log().Info("Connecting to %s:%d as %s with Proxier's key", d.Server.ConnectIP(), d.Server.SSHPort, d.Server.LoginUser())
 		c, err = s.connect(ctx, r, d.Server)
 		if err != nil {
 			return keyErr(d.Server.LoginUser(), err)
@@ -337,7 +337,7 @@ func (s *Service) preflight(ctx context.Context, r *jobs.Run, d *data) error {
 		if !ok || pw == "" {
 			return jobs.Permanent(errors.New("the root password is needed; use Retry and enter it"))
 		}
-		r.Log().Info("Connecting to %s:%d as root", d.Server.IP, d.Server.SSHPort)
+		r.Log().Info("Connecting to %s:%d as root", d.Server.ConnectIP(), d.Server.SSHPort)
 		c, err = s.SSH.Connect(ctx, s.target(d.Server, "root", pw), r.Log())
 		if err != nil {
 			return rootErr(err)
@@ -849,7 +849,7 @@ func (s *Service) PreviewContext(ctx context.Context, serverID int64, reveal boo
 		}
 		return render.Context{
 			Server: render.Server{
-				Name: srv.Name, Number: srv.Number, IP: srv.IP, SSHPort: srv.SSHPort,
+				Name: srv.Name, Number: srv.Number, IP: srv.IP, SSHIP: srv.ConnectIP(), SSHPort: srv.SSHPort,
 				Country: ctry, Location: loc,
 				ManagementHostname: srv.ManagementHostname, ProxyHostname: srv.ProxyHostname,
 			},

@@ -58,6 +58,7 @@ type addressRow struct{ IP, Hostname string }
 
 type newView struct {
 	IP, Port, Notes string
+	SSHIP           string
 	Hostname        string // as typed; "" takes the hostname pattern's name
 	// Access is how Proxier logs in, Setup what provisioning hardens; both are
 	// the server's choice and start from Settings → Servers.
@@ -88,7 +89,7 @@ type newView struct {
 func formOf(c *echo.Context) provision.Form {
 	atoi := func(k string) int64 { n, _ := strconv.ParseInt(strings.TrimSpace(c.FormValue(k)), 10, 64); return n }
 	f := provision.Form{
-		IP: c.FormValue("ip"), RootPassword: c.FormValue("root_password"), SSHPort: int(atoi("ssh_port")),
+		IP: c.FormValue("ip"), SSHIP: c.FormValue("ssh_ip"), RootPassword: c.FormValue("root_password"), SSHPort: int(atoi("ssh_port")),
 		AccessMode: c.FormValue("access"), SSHUser: c.FormValue("ssh_user"), Setup: c.FormValue("setup"),
 		Country: countryOf(c.FormValue("country")), TemplateID: atoi("template"), Version: int(atoi("version")),
 		Notes: c.FormValue("notes"), Hostname: c.FormValue("hostname"), Params: map[string]string{},
@@ -130,7 +131,7 @@ func countryOf(text string) string {
 func (h *handler) newViewOf(ctx context.Context, f provision.Form, auto string) (newView, error) {
 	lang := string(i18n.From(ctx).Lang)
 	v := newView{IP: f.IP, Notes: f.Notes, Hostname: f.Hostname, Country: f.Country, Auto: auto, Version: f.Version, TemplateID: f.TemplateID, SkipDNS: f.SkipDNS}
-	v.Access, v.Setup, v.SSHUser = f.AccessMode, f.Setup, f.SSHUser
+	v.Access, v.Setup, v.SSHUser, v.SSHIP = f.AccessMode, f.Setup, f.SSHUser, f.SSHIP
 	if v.Access == "" || v.Setup == "" {
 		access, setup := h.Provision.Defaults(ctx)
 		if v.Access == "" {
@@ -236,7 +237,7 @@ func (h *handler) newServer(c *echo.Context) error {
 // formOfView is the form a view stands for, for the summary of a first visit.
 func (h *handler) formOfView(v newView) provision.Form {
 	port, _ := strconv.Atoi(v.Port)
-	f := provision.Form{IP: v.IP, SSHPort: port, Country: countryOf(v.Country), Hostname: v.Hostname, TemplateID: v.TemplateID, Version: v.Version, Params: map[string]string{},
+	f := provision.Form{IP: v.IP, SSHIP: v.SSHIP, SSHPort: port, Country: countryOf(v.Country), Hostname: v.Hostname, TemplateID: v.TemplateID, Version: v.Version, Params: map[string]string{},
 		AccessMode: v.Access, SSHUser: v.SSHUser, Setup: v.Setup, SkipDNS: v.SkipDNS}
 	for _, a := range v.Addresses {
 		f.Addresses = append(f.Addresses, provision.FormAddress{IP: a.IP, Hostname: a.Hostname})

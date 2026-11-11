@@ -45,7 +45,19 @@ templ newServerPage(s ui.Shell, v newView) {
 						if v.Errs["ip"] != "" {
 							<p class="err" role="alert">{ v.Errs["ip"] }</p>
 						}
+						<p class="help">{ i18n.T(ctx, "servers.new.ip.help") }</p>
 					</div>
+					<details open?={ v.SSHIP != "" || v.Errs["ssh_ip"] != "" }>
+						<summary>{ i18n.T(ctx, "servers.new.network") }</summary>
+						<div class="field">
+							<label for="srv-ssh-ip">{ i18n.T(ctx, "servers.new.ssh_ip") }</label>
+							<input id="srv-ssh-ip" class="pc-inp" name="ssh_ip" value={ v.SSHIP } placeholder="100.64.0.10" autocomplete="off" spellcheck="false" aria-invalid?={ v.Errs["ssh_ip"] != "" }/>
+							if v.Errs["ssh_ip"] != "" {
+								<p class="err" role="alert">{ v.Errs["ssh_ip"] }</p>
+							}
+							<p class="help">{ i18n.T(ctx, "servers.new.ssh_ip.help") }</p>
+						</div>
+					</details>
 					<div class="field">
 						<label for="srv-access">{ i18n.T(ctx, "servers.new.access.how") }</label>
 						<select id="srv-access" class="pc-inp" name="access" aria-invalid?={ v.Errs["access"] != "" }>
@@ -300,6 +312,8 @@ templ summaryBody(v newView) {
 				<span class="bold">{ v.Sum.Name }</span>
 				<div class="sm subtle">{ i18n.T(ctx, "servers.new.sum.name.note") }</div>
 			</dd>
+			<dt>{ i18n.T(ctx, "servers.new.ssh_ip") }</dt>
+			<dd>{ v.Sum.SSHIP }</dd>
 			<dt>{ i18n.T(ctx, "servers.new.sum.host") }</dt>
 			<dd>
 				{ v.Sum.ManagementHostname }
@@ -404,6 +418,9 @@ templ serverHead(v serverView, tab string) {
 				}
 			</div>
 			<p class="subtle facts"><span>{ countryName(ctx, v.S.Country) }</span> · <span>{ v.S.IP }</span> · <span title={ v.S.ManagementHostname }>{ v.S.ManagementHostname }</span></p>
+			if v.S.SSHIP != "" {
+				<p class="sm subtle">{ i18n.T(ctx, "servers.new.ssh_ip") }: { v.S.SSHIP }</p>
+			}
 		</div>
 		<div class="actions">
 			if v.CanCancel {

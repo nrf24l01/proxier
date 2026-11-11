@@ -108,6 +108,7 @@ Files, step arguments, endpoint fields and check arguments are Go templates. Mis
 | `.Server.Country.Code`, `.Name`, `.Flag` | `NL`, `Netherlands`, `🇳🇱` (the English name) |
 | `.Server.Location.Code`, `.Name`, `.Country` | `nl`, `Netherlands`, `NL`: what templates saw before servers had a country, kept so they still render; `Code` is the first half of the server name |
 | `.Server.IP`, `.Server.SSHPort` | `203.0.113.10`, `22` |
+| `.Server.SSHIP` | effective SSH connection IP, e.g. `100.64.0.10` on Tailscale; falls back to `.Server.IP`. Never use this for public endpoints or nginx service bindings. |
 | `.Server.ManagementHostname`, `.Server.ProxyHostname` | `nl-1.hosts.example.com` |
 | `.Addresses` | the server's addresses, primary first: a list of `{IP, Hostname, Number, Primary}`. Loop it to give each one a server block or inbound. |
 | `.Address` | inside an endpoint with `address:`: that address's `{IP, Hostname, Number, Primary}`; nil in files |

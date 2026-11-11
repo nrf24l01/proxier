@@ -39,6 +39,7 @@ type Server struct {
 	Country                           Country
 	Location                          Location
 	IP                                string
+	SSHIP                             string // effective SSH connection IP, not a service address
 	SSHPort                           int
 	ManagementHostname, ProxyHostname string
 }
@@ -108,7 +109,7 @@ func SampleContext(m *manifest.Manifest, slug string, genValues map[string]strin
 	}
 	c := Context{
 		Server: Server{
-			Name: "xx-1", Number: 1, IP: "192.0.2.10", SSHPort: 22,
+			Name: "xx-1", Number: 1, IP: "192.0.2.10", SSHIP: "192.0.2.10", SSHPort: 22,
 			Country:            Country{Code: "XX", Name: "Sample"},
 			Location:           Location{Code: "xx", Name: "Sample", Country: "XX"},
 			ManagementHostname: "xx-1.hosts.example.invalid", ProxyHostname: "xx-1.hosts.example.invalid",

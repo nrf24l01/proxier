@@ -34,6 +34,7 @@ The dialog lists these steps.
 The job holds `server:<id>`, so no other job changes the server meanwhile. Until step 3 the server stays at its IP, in Proxier and in DNS.
 
 1. **Reach the new IP.** Connect with Proxier's key as the server's stored SSH account, at the new IP and the server's SSH port. When that address has no pinned host key yet, its key must be the one pinned for the server's current address, which proves it is the same machine. Only then does Proxier pin the key for the new address ([ADR 0007](../../adr/0007-agentless-ssh-with-pinned-host-keys.md)). Another key fails the job ("it is another machine") and pins nothing. No answer fails it too, asking whether the IP is set up on the VPS.
+   With an explicit **SSH connection IP**, this step instead verifies access at that unchanged management address using its pinned key. SSH need not be reachable on the new public IP; the next step checks the service there. The management address's pin is preserved even if it is also the old service IP.
 2. **Proxy test.** The proxy test from home through every endpoint, aimed at the new IP: the hostname stays in TLS and HTTP, as a client's will once DNS leads there. Up to 3 attempts, 20 s apart, like the smoke test. A failure stops the job ("failed from home too … nothing was changed"), unless the member chose to switch anyway; then it logs a warning and goes on.
 3. **Repoint DNS.** For a record made by hand, Proxier only checks it: the zone's nameservers (or 1.1.1.1 and 8.8.8.8 when they can't be asked) must answer the new IP and nothing else. Otherwise the job stops with nothing changed and names the record to set. For the rest: bring each record Proxier made for the server (the management hostname's, and the proxy hostname's once they differ) to the new IP, keeping its comment, DNS-only and TTL 60. A record at the name that Proxier did not make stops the job, with nothing changed. Then, in one transaction:
    - store the record's new content and the server's new IP, and the time of the change;
@@ -60,9 +61,9 @@ A failed or cancelled job → `server.ip_change_failed{to, step, error, cancelle
 
 ## Rules
 
-- A server has one IP. SSH, the self-check, the external checks and DNS all use it. Previous IPs get the proxy test from home, and nothing else (no SSH, no check-host budget).
+- A server has one primary service IP and optional additional service addresses. DNS and public probes use service addresses. SSH and remote self-checks use the explicit SSH connection IP, or the primary IP when no override is set. Previous IPs get only the proxy test from home (no SSH, no check-host budget).
 - No two non-retired servers share an IP, as their IP or a previous one, because one server's checks would reach the other. The new-server form refuses such an IP too ("nl-1 keeps this IP as a previous IP. Forget it there first.").
-- Nothing changes until the new IP shows the server's host key and, unless forced, passes the proxy test from home.
+- Nothing changes until SSH access is verified (at the management IP when configured, otherwise at the new IP with the same host key) and, unless forced, the new IP passes the proxy test from home.
 - Checks from before an IP change are about the old IP. The verdict ignores results older than the change, so stale external answers or a blocked proxy test can't decide the new IP's state.
 - An IP change never touches subscriptions, links, credentials or the stack. Templates whose stack uses `.Server.IP` need a redeploy afterwards; the dialog and the log say so.
 - Retirement drops a server's previous IPs with their results. Their host keys go with the server's other pins.
