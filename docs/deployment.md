@@ -137,10 +137,21 @@ The workflow must be present on the base branch before it can run automatically.
 `.github/workflows/ci.yaml` validates pushes to `main` and temporarily retains a `pull_request` trigger so the PR introducing `pr.yaml` can pass its required checks. Remove that trigger after `pr.yaml` lands on `main`. The temporary PR jobs disable Go and lint caches and use a read-only token. Push jobs can use caches. Checkouts do not retain credentials. Test has a 90-minute limit. Lint and image publishing each have a 45-minute limit.
 
 - After both `test` and `lint` pass on `main`, the `image` job builds the same Dockerfile's `prod` target for `linux/amd64` and publishes `ghcr.io/tikhonp/proxier:<sha>`, `:main` and `:latest`. The build arguments are `APP_VERSION=main-<sha7>`, the commit timestamp and full commit SHA. PRs and release tags do not build or publish GitHub images.
-- Publishing uses the automatic `GITHUB_TOKEN` with `packages: write` scoped to the image job; no registry secret is needed. After the first publish, set the GHCR package's visibility to public if anonymous pulls are wanted. Use `ghcr.io/tikhonp/proxier:latest` in the compose file to pull from GitHub.
+- Publishing uses the automatic `GITHUB_TOKEN` with `packages: write` scoped to the image job; no registry secret is needed. After the first publish, set the GHCR package's visibility to public if anonymous pulls are wanted. Use `ghcr.io/tikhonp/proxier:latest` in the compose file to pull from GitHub. To control upgrades instead, pin a `:<tag>` and change it on purpose, for example with the Forgejo `deploy` job below.
 - Require pull requests and the `test` and `lint` status checks in GitHub's branch protection or ruleset for `main` to enforce merge-only publishing. The workflow runs on pushes to `main`, including direct pushes if repository rules allow them. The workflow runs image publishing jobs for `main` one at a time.
 
 The optional `.forgejo/workflows/ci.yaml` runs the same validation on Forgejo. Image publishing is off until the repository variable `REGISTRY` names your registry, for example `registry.example.com`. Set the secret `REGISTRY_TOKEN` to a token with permission to write packages. Pushes to `main` publish `:<sha>`, `:main` and `:latest`; `v*` tags publish `:<tag>`.
+
+The optional `deploy` job hands the new image to a GitOps repository after the `image` job has pushed it. It runs only on `v*` tags, when both `REGISTRY` and `DEPLOY_REPO` are set, and is otherwise skipped. It clones the branch (depth 1, without submodules) and replaces the one line `<var>=…` in the env file with `<var>=<tag>`. The tag is the tag name, which the `image` job has just published; pushes to `main` deploy nothing. It then commits only that file as `Deploy proxier <tag>` and pushes. If the file has no such line or more than one, the job fails. If the line already holds the tag (a re-run), it commits nothing. When another push gets there first, it rebases and tries again, up to 3 times. Runs for the same repository wait for each other. Any GitOps deployer that watches the env file can then roll the image out. A rollback is a revert of the bump commit in the GitOps repository.
+
+| Setting | Kind | Meaning |
+| --- | --- | --- |
+| `DEPLOY_REPO` | variable | SSH clone URL of the GitOps repository. Its host must have a public DNS name: jobs may run on a Docker-in-Docker runner that resolves only public names. |
+| `DEPLOY_BRANCH` | variable | Branch to commit to; default `main`. |
+| `DEPLOY_ENV_FILE` | variable | Path of the env file in that repository; default `.env`. |
+| `DEPLOY_ENV_VAR` | variable | Variable that holds the tag; default `PROXIER_V`. |
+| `DEPLOY_KNOWN_HOSTS` | variable | `known_hosts` line(s) for the Git host; the host key is checked strictly. |
+| `DEPLOY_SSH_KEY` | secret | Private key of a deploy key with write access to the GitOps repository. |
 
 To run your own build, `docker build -t proxier .` and use that image in the compose file.
 

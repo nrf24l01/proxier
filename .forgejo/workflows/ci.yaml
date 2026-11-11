@@ -124,3 +124,85 @@ jobs:
             BUILD_DATE=${{ github.event.head_commit.timestamp }}
             VCS_REF=${{ github.sha }}
           tags: ${{ steps.version.outputs.tags }}
+
+  # Optional GitOps hand-off: commits the tag the image job just pushed to one
+  # line of an env file in another repository, whose deployer rolls it out.
+  deploy:
+    needs: image
+    # Only v* tags deploy, so a release is chosen on purpose and pushes to
+    # main never move production.
+    if: github.event_name == 'push' && github.ref_type == 'tag' && vars.REGISTRY != '' && vars.DEPLOY_REPO != ''
+    runs-on: ubuntu-latest
+    # Other projects push to the same repository; never drop a queued bump.
+    concurrency:
+      group: deploy-${{ vars.DEPLOY_REPO }}
+      cancel-in-progress: false
+    env:
+      DEPLOY_REPO: ${{ vars.DEPLOY_REPO }}
+      DEPLOY_BRANCH: ${{ vars.DEPLOY_BRANCH || 'main' }}
+      DEPLOY_ENV_FILE: ${{ vars.DEPLOY_ENV_FILE || '.env' }}
+      DEPLOY_ENV_VAR: ${{ vars.DEPLOY_ENV_VAR || 'PROXIER_V' }}
+      # The tag the image job just published.
+      TAG: ${{ github.ref_name }}
+    steps:
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -eu
+          if [ -z "$DEPLOY_SSH_KEY" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ]; then
+            echo "::error::set the secret DEPLOY_SSH_KEY and the variable DEPLOY_KNOWN_HOSTS"
+            exit 1
+          fi
+          dir="$RUNNER_TEMP/deploy-ssh"
+          mkdir -p "$dir" && chmod 700 "$dir"
+          (umask 077 && printf '%s\n' "$DEPLOY_SSH_KEY" > "$dir/key")
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$dir/known_hosts"
+          echo "GIT_SSH_COMMAND=ssh -i $dir/key -o IdentitiesOnly=yes -o UserKnownHostsFile=$dir/known_hosts -o StrictHostKeyChecking=yes" >> "$GITHUB_ENV"
+
+      - name: Commit the image tag
+        run: |
+          set -eu
+          work="$RUNNER_TEMP/deploy-repo"
+          rm -rf "$work"
+          # No submodules: private ones may be unreadable with this key.
+          git clone --depth 1 --branch "$DEPLOY_BRANCH" --no-recurse-submodules "$DEPLOY_REPO" "$work"
+          cd "$work"
+          git config user.name "proxier CI"
+          git config user.email "ci@localhost"
+
+          set_tag() {
+            if [ ! -f "$DEPLOY_ENV_FILE" ]; then
+              echo "::error::$DEPLOY_ENV_FILE not found in $DEPLOY_BRANCH"
+              return 1
+            fi
+            n=$(grep -c "^${DEPLOY_ENV_VAR}=" "$DEPLOY_ENV_FILE" || true)
+            if [ "$n" != "1" ]; then
+              echo "::error::$DEPLOY_ENV_FILE has $n lines setting $DEPLOY_ENV_VAR, want exactly 1"
+              return 1
+            fi
+            sed -i "s|^${DEPLOY_ENV_VAR}=.*\$|${DEPLOY_ENV_VAR}=${TAG}|" "$DEPLOY_ENV_FILE"
+            grep -qx "${DEPLOY_ENV_VAR}=${TAG}" "$DEPLOY_ENV_FILE"
+          }
+
+          set_tag
+          if git diff --quiet -- "$DEPLOY_ENV_FILE"; then
+            echo "$DEPLOY_ENV_VAR is already $TAG"
+            exit 0
+          fi
+          git commit -m "Deploy proxier ${TAG}" -- "$DEPLOY_ENV_FILE"
+
+          for attempt in 1 2 3; do
+            if git push origin "HEAD:$DEPLOY_BRANCH"; then
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt), rebasing on $DEPLOY_BRANCH"
+            git pull --rebase --no-recurse-submodules origin "$DEPLOY_BRANCH"
+          done
+          echo "::error::could not push to $DEPLOY_BRANCH after 3 attempts"
+          exit 1
+
+      - name: Remove SSH files
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/deploy-ssh" "$RUNNER_TEMP/deploy-repo"
