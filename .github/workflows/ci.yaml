@@ -3,16 +3,13 @@ name: CI
 on:
   push:
     branches: [main]
-  # Keep PR checks available until pr.yaml has landed on the base branch.
-  # Remove this trigger in a follow-up after that merge.
-  pull_request:
 
 permissions:
   contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 jobs:
   test:
@@ -27,7 +24,6 @@ jobs:
         timeout-minutes: 10
         with:
           go-version-file: go.mod
-          cache: ${{ github.event_name == 'push' }}
 
       - name: Download modules
         timeout-minutes: 10
@@ -67,7 +63,6 @@ jobs:
         timeout-minutes: 10
         with:
           go-version-file: go.mod
-          cache: ${{ github.event_name == 'push' }}
 
       - name: Download modules
         timeout-minutes: 10
@@ -79,16 +74,15 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.15.0
-          skip-cache: ${{ github.event_name != 'push' }}
 
       - name: govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
-  # Build only after validation of the commit that landed on main. PRs and
-  # release tags never build or publish images on GitHub.
+  # Build only after validation of the commit that landed on main. PRs run
+  # pr.yaml, and release tags never build or publish images on GitHub.
   image:
     needs: [test, lint]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
