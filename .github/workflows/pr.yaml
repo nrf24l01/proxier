@@ -41,7 +41,6 @@ jobs:
             --pids-limit=2048 --memory=12g --cpus=4 \
             --mount "type=bind,source=$GITHUB_WORKSPACE/source,target=/source,readonly" \
             --env PROXIER_TEST_PATIENCE=10 \
-            --env GOTOOLCHAIN=auto \
             --workdir /work --entrypoint /bin/bash \
             golang:1.27.4-bookworm@sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea -euo pipefail -s <<'CHECKS'
           cp -R /source/. /work/
@@ -83,7 +82,6 @@ jobs:
             --cap-drop=ALL --security-opt=no-new-privileges \
             --pids-limit=2048 --memory=12g --cpus=4 \
             --mount "type=bind,source=$GITHUB_WORKSPACE/source,target=/source,readonly" \
-            --env GOTOOLCHAIN=auto \
             --workdir /work --entrypoint /bin/bash \
             golangci/golangci-lint:v2.15.0@sha256:fbfcfd12a6f8d7f1b97b3362ca80fc2a244d46863148c73cb88e7793af96c481 -euo pipefail -s <<'CHECKS'
           cp -R /source/. /work/
